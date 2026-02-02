@@ -1,7 +1,6 @@
 ﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #include "AI2P.h"
-#include "ChessMLModule.h"
 #include "XIANGQIPRO/GameObject/ChessBoard2P.h"
 #include "XIANGQIPRO/Chess/Chesses.h"
 #include <Kismet/GameplayStatics.h>
@@ -767,24 +766,9 @@ bool UAI2P::IsJueSha(EChessColor AIColor)
     Position KingPos = GetKingPos(AIColor);
     Position PlayerKingPos = GetKingPos(PlayerColor);
 
-    bool InCheck = false;
-    auto PlayerMoves = GetAllPossibleMoves(PlayerColor);
-
-    for (const auto& move : PlayerMoves)
-    {
-        if (move.to == KingPos) // AI被将军
-        {
-            InCheck = true;
-            break;
-        }
-    }
-
-    if (!InCheck)
-    {
-        return false;
-    }
-
+    bool bJueSha = true;
     auto AIMoves = GetAllPossibleMoves(AIColor);
+
     for (const auto& aimove : AIMoves)
     {
         if (aimove.to == PlayerKingPos)
@@ -807,12 +791,12 @@ bool UAI2P::IsJueSha(EChessColor AIColor)
 
         UndoTestMove(aimove, chess);
 
-        if (!StillInCheck) // 找到了破除将军的办法
+        if (!StillInCheck) // 存在破除将军的办法
         {
-            InCheck = false;
+            bJueSha = false;
             break;
         }
     }
 
-    return InCheck;
+    return bJueSha;
 }

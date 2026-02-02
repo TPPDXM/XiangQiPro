@@ -2,15 +2,14 @@
 
 #pragma once
 
-#include "../Interface/IF_GameState.h"
-#include "../Util/ChessMove.h"
+#include "XiangQiPro/Interface/IF_GameState.h"
+#include "XiangQiPro/Util/ChessMove.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
 #include "XQPGameStateBase.generated.h"
 
 class UAI2P;
-class UChessMLModule;
 class UAsyncWorker;
 class UChessBoard2P;
 class UUI_Battle2P_Base;
@@ -95,9 +94,6 @@ public:
 
 	UPROPERTY(BlueprintReadOnly)
 	TObjectPtr<UChessBoard2P> board2P;
-
-	UPROPERTY(BlueprintReadOnly)
-	TObjectPtr<UChessMLModule> MLModule;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bEnableMachineLearning = false;

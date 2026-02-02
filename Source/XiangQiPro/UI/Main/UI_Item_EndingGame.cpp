@@ -8,6 +8,7 @@
 #include "Components/Button.h"
 #include "Components/Image.h"
 
+#include "XiangQiPro/Util/EndingLibrary.h"
 #include "XiangQiPro/Util/Logger.h"
 
 void UUI_Item_EndingGame::NativeConstruct()
@@ -26,7 +27,16 @@ void UUI_Item_EndingGame::NativeOnListItemObjectSet(UObject* ListItemObject)
         Index = Obj->Index;
 		UserSelectedIndex = Obj->UserSelectedIndex;
         OnItemClickedDelegate = Obj->OnItemClickedDelegate;
-		IndexText->SetText(FText::FromString(FString::Printf(TEXT("第 %d 关"), Index + 1)));
+
+        FString LevelText = FString::Printf(TEXT("第 %d 关"), Index + 1);
+        FString Title = Obj->Title; // 获取关卡名称
+        if (!Title.Equals(TEXT(""))) // 如果有标题则追加关卡名称
+        {
+            LevelText.Append(TEXT(" - "));
+            LevelText.Append(Title);
+        }
+		IndexText->SetText(FText::FromString(LevelText));
+
         if (UserSelectedIndex)
         {
             if (*UserSelectedIndex == Index)

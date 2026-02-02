@@ -23,6 +23,8 @@ public:
 
 	FOnEndingGameListItemClicked OnItemClickedDelegate;
 
+	FString Title;
+
 	void Init(int32 InIndex, int32* InUserSelectedIndex, FOnEndingGameListItemClicked CallBackFunc);
 	
 };

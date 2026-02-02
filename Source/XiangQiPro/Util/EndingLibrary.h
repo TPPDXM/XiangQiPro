@@ -41,6 +41,9 @@ public:
 	TArray<FChessGenerationInfo> Infos;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString Title = TEXT("");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	uint8 PerfectStepNum = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -61,8 +64,11 @@ class XIANGQIPRO_API UEndingLibrary : public UBlueprintFunctionLibrary
 public:
 
 	UFUNCTION(BlueprintPure)
+	static int32 GetEndingGameNum();
+
+	UFUNCTION(BlueprintPure)
 	static TArray<FChessGenerationInfo> GetChessGenerateInfo(int32 Index);
 
 	UFUNCTION(BlueprintPure)
-	static int32 GetEndingGameNum();
+	static FString GetEndingGameTitle(int32 Index);
 };

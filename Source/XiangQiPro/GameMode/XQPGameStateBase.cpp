@@ -6,7 +6,6 @@
 #include "Async/Async.h"
 
 #include "XiangQiPro/AI/AI2P.h"
-#include "XiangQiPro/AI/ChessMLModule.h"
 #include "XiangQiPro/Chess/Chesses.h"
 #include "XiangQiPro/GameObject/ChessBoard2P.h"
 #include "XiangQiPro/GameObject/ChessBoard2PActor.h"
@@ -65,10 +64,6 @@ void AXQPGameStateBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
     if (AI2P)
         AI2P->RemoveFromRoot();
-    AI2P = nullptr;
-
-    if (MLModule)
-        MLModule->RemoveFromRoot();
     AI2P = nullptr;
 
     board2PActor.Reset();
@@ -184,17 +179,6 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
         {
             AI2P = GetGameInstance()->GetSubsystem<UAI2P>();
             AI2P->AddToRoot();
-        }
-
-        if (!MLModule)
-        {
-            MLModule = NewObject<UChessMLModule>(this);
-            MLModule->AddToRoot();
-            MLModule->Initialize();
-            if (!MLModule->IsTrained())
-            {
-                MLModule->StartTraining();
-            }
         }
     }
     else
