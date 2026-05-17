@@ -17,7 +17,8 @@ enum class EGameMode : uint8
 {
 	Default = 0,
 	AI2P = 1,
-	Ending = 2
+	Ending = 2,
+	SoloRide = 3
 };
 
 /**

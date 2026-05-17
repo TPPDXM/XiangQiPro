@@ -49,9 +49,15 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+	class AChesses* SpawnChessAt(const TSubclassOf<AActor>& ActorClass, const FIntPoint& Pos);
+
 	// 生成棋子Actor并保存到ChessBoard2P
 	void GenerateChesses();
 
 	void GenerateSettingPoints();
+
+	TWeakObjectPtr<class AChesses> GenerateChessesForSoloRide();
+
+	FIntPoint GetRandomEmptyPosition(const TArray<FIntPoint>& BlockedPositions);
 
 };

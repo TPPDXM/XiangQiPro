@@ -53,6 +53,8 @@ public:
     // 获取棋子
     TWeakObjectPtr<AChesses> GetChess(int32 x, int32 y) const;
 
+    TWeakObjectPtr<AChesses> GetChess(FIntPoint Pos) const;
+
     // 设置棋子
     void SetChess(int32 x, int32 y, TWeakObjectPtr<AChesses> Chess);
 

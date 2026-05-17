@@ -8,6 +8,8 @@
 #include "XiangQiPro/Chess/AllChessHeader.h"
 #include "XiangQiPro/GameMode/XQPGameStateBase.h"
 #include "XiangQiPro/GameObject/SettingPoint.h"
+#include "XiangQiPro/Util/ChessMove.h"
+#include "XiangQiPro/Util/ChessInfo.h"
 #include "XiangQiPro/Util/ObjectManager.h"
 #include "XiangQiPro/Util/EndingLibrary.h"
 
@@ -57,19 +59,11 @@ void AChessBoard2PActor::OnEndingGameStart(UObject* OwnerObject, int32 Index)
     for (const auto& info : Infos)
     {
         FVector WorldLoc = Board2P->BoardLocs[info.Pos.X][info.Pos.Y]; // 世界坐标
-        Position SimpLoc = Position(info.Pos.X, info.Pos.Y); // 棋盘坐标
         FTransform Transform(WorldLoc);
 
         // 生成棋子
-        AChesses* Chess = Cast<AChesses>(
-            UGameplayStatics::BeginDeferredActorSpawnFromClass(
-                GetWorld(),
-                info.Class,  // 用指定类型生成棋子
-                Transform,
-                ESpawnActorCollisionHandlingMethod::AlwaysSpawn
-            )
-        );
-        Chess->Init(info.Color, SimpLoc, Board2P); // 初始化棋子
+        AChesses* Chess = SpawnChessAt(info.Class, info.Pos);
+        Chess->Init(info.Color, info.Pos, Board2P); // 初始化棋子
         Chess->FinishSpawning(Transform);
 
         // 将棋子保存到棋盘中
@@ -86,6 +80,22 @@ void AChessBoard2PActor::Tick(float DeltaTime)
 
 }
 
+AChesses* AChessBoard2PActor::SpawnChessAt(const TSubclassOf<AActor>& ActorClass, const FIntPoint& Pos)
+{
+    FVector WorldLoc = Board2P->BoardLocs[Pos.X][Pos.Y]; // 世界坐标
+    FTransform Transform(WorldLoc);
+    // 生成棋子
+    AChesses* Chess = Cast<AChesses>(
+        UGameplayStatics::BeginDeferredActorSpawnFromClass(
+            GetWorld(),
+            ActorClass,  // 用指定类型生成棋子
+            Transform,
+            ESpawnActorCollisionHandlingMethod::AlwaysSpawn
+        )
+    );
+    return Chess;
+}
+
 void AChessBoard2PActor::GenerateChesses()
 {
     if (!Board2P.IsValid())
@@ -94,7 +104,7 @@ void AChessBoard2PActor::GenerateChesses()
         return;
     }
 
-    TArray<TPair<int32, int32>> Indexs = { {0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {0, 8}, {2, 1}, {2, 7}, {3, 0}, {3, 2}, {3, 4}, {3, 6}, {3, 8},
+    TArray<FIntPoint> Indexs = { {0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {0, 8}, {2, 1}, {2, 7}, {3, 0}, {3, 2}, {3, 4}, {3, 6}, {3, 8},
                                            {9, 0}, {9, 1}, {9, 2}, {9, 3}, {9, 4}, {9, 5}, {9, 6}, {9, 7}, {9, 8}, {7, 1}, {7, 7}, {6, 0}, {6, 2}, {6, 4}, {6, 6}, {6, 8} };
     
     TArray<TSubclassOf<AChesses>> Classes = { 
@@ -111,24 +121,13 @@ void AChessBoard2PActor::GenerateChesses()
 
     for (int32 i = 0; i < 32; i++)
     {
-        FVector WorldLoc = Board2P->BoardLocs[Indexs[i].Key][Indexs[i].Value]; // 世界坐标
-        Position SimpLoc = Position(Indexs[i].Key, Indexs[i].Value); // 棋盘坐标
-        FTransform Transform(WorldLoc);
-
         // 生成棋子
-        AChesses* Chess = Cast<AChesses>(
-            UGameplayStatics::BeginDeferredActorSpawnFromClass(
-                GetWorld(),
-                Classes[i],  // 用指定类型生成棋子
-                Transform,
-                ESpawnActorCollisionHandlingMethod::AlwaysSpawn
-            )
-        );
-        Chess->Init(Colors[i], SimpLoc, Board2P); // 初始化棋子
-        Chess->FinishSpawning(Transform);
+        AChesses* Chess = SpawnChessAt(Classes[i], Indexs[i]);
+        Chess->Init(Colors[i], Indexs[i], Board2P); // 初始化棋子
+        Chess->FinishSpawning(FTransform(Board2P->BoardLocs[Indexs[i].X][Indexs[i].Y]));
 
         // 将棋子保存到棋盘中
-        Board2P->AllChess[Indexs[i].Key][Indexs[i].Value] = Chess;
+        Board2P->AllChess[Indexs[i].X][Indexs[i].Y] = Chess;
     }
 
     GenerateSettingPoints();
@@ -163,3 +162,94 @@ void AChessBoard2PActor::GenerateSettingPoints()
     }
 }
 
+TWeakObjectPtr<AChesses> AChessBoard2PActor::GenerateChessesForSoloRide()
+{
+
+    // 生成红方马在棋盘中心 (4, 4)
+    TWeakObjectPtr<AChesses> redHorse = SpawnChessAt(AChess_Ma::StaticClass(), FIntPoint(4, 4));
+    if (redHorse.IsValid())
+    {
+        redHorse->Init(EChessColor::REDCHESS, FIntPoint(4, 4), Board2P);
+        redHorse->FinishSpawning(FTransform(Board2P->BoardLocs[4][4]));
+        Board2P->AllChess[4][4] = redHorse;
+    }
+
+    // 获取马能攻击的位置，这些位置不能生成兵
+    TArray<FChessMove2P> blockedMoves;
+    Board2P->GenerateMaMoves(4, 4, EChessColor::REDCHESS, blockedMoves);
+
+    TArray<FIntPoint> blockedPositions;
+    for (const auto& move : blockedMoves)
+    {
+        blockedPositions.Add(move.to);
+    }
+
+    // 生成初始的3个黑方兵
+    for (int i = 0; i < 3; ++i)
+    {
+        FIntPoint randomPos = GetRandomEmptyPosition(blockedPositions);
+        if (randomPos.X >= 0 && randomPos.Y >= 0) // 检查位置是否有效
+        {
+            TWeakObjectPtr<AChesses> blackSoldier = SpawnChessAt(AChess_Bing::StaticClass(), randomPos);
+            if (blackSoldier.IsValid())
+            {
+                blackSoldier->Init(EChessColor::BLACKCHESS, randomPos, Board2P);
+                blackSoldier->FinishSpawning(FTransform(Board2P->BoardLocs[randomPos.X][randomPos.Y]));
+                Board2P->AllChess[randomPos.X][randomPos.Y] = blackSoldier;
+            }
+        }
+    }
+
+    GenerateSettingPoints(); // 生成可移动点指示器
+    return redHorse;
+}
+
+FIntPoint AChessBoard2PActor::GetRandomEmptyPosition(const TArray<FIntPoint>& BlockedPositions)
+{
+    if (!Board2P.IsValid())
+    {
+        ULogger::LogError(TEXT("Can't get random position, Board2P is nullptr!"));
+        return FIntPoint(-1, -1);
+    }
+
+    TArray<FIntPoint> availablePositions;
+
+    // 遍历棋盘所有位置 (10行 x 9列)
+    for (int32 i = 0; i < 10; i++)
+    {
+        for (int32 j = 0; j < 9; j++)
+        {
+            FIntPoint pos(i, j);
+
+            // 检查位置是否为空
+            if (!Board2P->AllChess[i][j].IsValid())
+            {
+                // 检查是否不在阻塞位置列表中
+                bool bIsBlocked = false;
+                for (const auto& blockedPos : BlockedPositions)
+                {
+                    if (blockedPos.X == i && blockedPos.Y == j)
+                    {
+                        bIsBlocked = true;
+                        break;
+                    }
+                }
+
+                if (!bIsBlocked)
+                {
+                    availablePositions.Add(pos);
+                }
+            }
+        }
+    }
+
+    if (availablePositions.Num() > 0)
+    {
+        int32 randomIndex = FMath::RandRange(0, availablePositions.Num() - 1);
+        return availablePositions[randomIndex];
+    }
+
+    // 如果没有可用位置，返回无效位置
+    ULogger::LogWarning(TEXT("No empty position available!"));
+    return FIntPoint(-1, -1);
+}

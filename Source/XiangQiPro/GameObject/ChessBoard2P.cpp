@@ -103,6 +103,16 @@ TWeakObjectPtr<AChesses> UChessBoard2P::GetChess(int32 x, int32 y) const
     return nullptr;
 }
 
+TWeakObjectPtr<AChesses> UChessBoard2P::GetChess(FIntPoint Pos) const
+{
+    int32 x = Pos.X, y = Pos.Y;
+    if (x >= 0 && x < 10 && y >= 0 && y < 9)
+    {
+        return AllChess[x][y];
+    }
+    return nullptr;
+}
+
 void UChessBoard2P::SetChess(int32 x, int32 y, TWeakObjectPtr<AChesses> Chess)
 {
     if (x >= 0 && x < 10 && y >= 0 && y < 9) 
@@ -515,7 +525,8 @@ void UChessBoard2P::GenerateXiangMoves(int32 x, int32 y, EChessColor color, TArr
         if (IsValidPosition(newX, newY))
         {
             // 检查是否过河
-            if ((color == EChessColor::BLACKCHESS && newX >= 5) || (color == EChessColor::REDCHESS && newX <= 4))
+            if ((color == EChessColor::BLACKCHESS && newX >= 5) || (color == EChessColor::REDCHESS && newX <= 4) || 
+                (color == EChessColor::BLACKCHESS && x <= 4) || (color == EChessColor::REDCHESS && x >= 5)) // 特殊游戏模式象可能本身就在和对面，此时允许全场移动
             {
                 // 检查象眼是否被塞
                 int32 eyeX = x + directions[i][0] / 2;

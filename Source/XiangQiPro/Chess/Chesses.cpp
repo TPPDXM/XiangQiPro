@@ -44,7 +44,7 @@ void AChesses::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2
 	GameState = Cast<GS>(GetWorld()->GetGameState());
 	if (GameState)
 	{
-		if (GameState->GetBattleType() == EBattleType::P2 || GameState->GetBattleType() == EBattleType::P2_AI)
+		//if (GameState->GetBattleType() == EBattleType::P2 || GameState->GetBattleType() == EBattleType::P2_AI)
 		{
 			if (color == EChessColor::REDCHESS)
 			{
@@ -108,7 +108,7 @@ void AChesses::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2
 void AChesses::BeginPlay()
 {
 	Super::BeginPlay();
-	if (MyColor == EChessColor::BLACKCHESS && GameState->GetBattleType() == EBattleType::P2_AI)
+	if (MyColor == EChessColor::BLACKCHESS && (GameState->GetBattleType() == EBattleType::P2_AI || GameState->GetBattleType() == EBattleType::SoloRide))
 	{
 		bSelectable = false; // 棋子属于AI，不可被选中
 	}
@@ -205,7 +205,7 @@ void AChesses::HandleClick()
 	{
 		if (GameState->IsMyTurn()) // 判断是否到了我的回合
 		{
-			if (GameState->GetBattleType() == EBattleType::P2 || GameState->GetBattleType() == EBattleType::P2_AI)
+			//if (GameState->GetBattleType() == EBattleType::P2 || GameState->GetBattleType() == EBattleType::P2_AI)
 			{
 				if (bSelectable)
 				{
