@@ -78,6 +78,7 @@ void AChesses::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2
 		{
 			if (WeakThis->GameState)
 			{
+				WeakThis->bAnimationing = false;
 				WeakThis->Pos = WeakThis->TargetPos;
 				WeakThis->GameState->OnFinishMove2P();
 			}
@@ -205,7 +206,7 @@ void AChesses::HandleClick()
 	{
 		if (GameState->IsMyTurn()) // 判断是否到了我的回合
 		{
-			//if (GameState->GetBattleType() == EBattleType::P2 || GameState->GetBattleType() == EBattleType::P2_AI)
+			if (!bAnimationing)
 			{
 				if (bSelectable)
 				{
@@ -300,6 +301,7 @@ void AChesses::ApplyMove(FChessMove2P Move)
 
 void AChesses::PlayMoveAnim()
 {
+	bAnimationing = true;
 	TimeLine_ChessMove->PlayFromStart(); // 开始播放移动动画
 }
 

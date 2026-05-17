@@ -163,15 +163,15 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
 
         switch (Cast<UXQPGameInstance>(GetGameInstance())->GetGameMode())
         {
-        case EGameMode::Ending:
+        case EXQPGameMode::Ending:
         {
             EXEC_ONENDINGGAMESTART(USaveGameLibrary::GetEndingGameLevel());
             break;
         }
-        case EGameMode::AI2P:
+        case EXQPGameMode::AI2P:
             board2PActor->GenerateChesses(); // 棋盘Actor生成所有象棋并对其初始化
             break;
-        case EGameMode::SoloRide: // 千里走单骑模式
+        case EXQPGameMode::SoloRide: // 千里走单骑模式
             battleTurn = EPlayerTag::P1; // 玩家先行
             battleType = EBattleType::SoloRide;
             SoloRideHorse = board2PActor->GenerateChessesForSoloRide(); // 调用新的棋盘生成函数
@@ -293,7 +293,7 @@ void AXQPGameStateBase::RunAI2P()
     AIAsync = UAsyncWorker::CreateAndStartWorker(
          [this](UAsyncWorker* WorkerInstance)
          {
-             if (Cast<UXQPGameInstance>(GetGameInstance())->GetGameMode() == EGameMode::Ending)
+             if (Cast<UXQPGameInstance>(GetGameInstance())->GetGameMode() == EXQPGameMode::Ending)
              {
                  AIDifficulty = EAI2PDifficulty::Normal;
                  AI2P->SetBoard(board2P);

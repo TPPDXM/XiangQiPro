@@ -95,12 +95,12 @@ void UXQPGameInstance::StopMovie()
 	GetMoviePlayer()->StopMovie();
 }
 
-void UXQPGameInstance::SetGameMode(EGameMode InGameMode)
+void UXQPGameInstance::SetGameMode(EXQPGameMode InGameMode)
 {
 	MyGameMode = InGameMode;
 }
 
-EGameMode UXQPGameInstance::GetGameMode() const
+EXQPGameMode UXQPGameInstance::GetGameMode() const
 {
 	return MyGameMode;
 }

@@ -37,6 +37,6 @@ class XIANGQIPRO_API UProModeLibrary : public UBlueprintFunctionLibrary
 
 public:
 
-	static auto GetProModeInfos() -> TArray<FProModeInfo*>;
+	static TArray<FProModeInfo*> GetProModeInfos();
 	
 };

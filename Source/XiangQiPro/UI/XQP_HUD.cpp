@@ -32,9 +32,9 @@ void AXQP_HUD::InitUI()
 	TSubclassOf<UUserWidget> PauseMenuClass;
 	switch (GameInstance->GetGameMode())
 	{
-	case EGameMode::SoloRide:
-	case EGameMode::Ending:
-	case EGameMode::AI2P:
+	case EXQPGameMode::SoloRide:
+	case EXQPGameMode::Ending:
+	case EXQPGameMode::AI2P:
 		BaseUI = CreateWidget<UI_Battle2P_Base>(GetWorld(), Class_Battle2P_Base);
 		PauseMenuClass = Class_InGamePause;
 

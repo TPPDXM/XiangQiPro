@@ -13,7 +13,7 @@
 #include "XQPGameInstance.generated.h"
 
 UENUM()
-enum class EGameMode : uint8
+enum class EXQPGameMode : uint8
 {
 	Default = 0,
 	AI2P = 1,
@@ -35,7 +35,7 @@ private:
 
 	UUIManager* UIManager;
 
-	EGameMode MyGameMode = EGameMode::Default;
+	EXQPGameMode MyGameMode = EXQPGameMode::Default;
 
 public:
 
@@ -70,9 +70,9 @@ public:
 	void StopMovie();
 
 	UFUNCTION(BlueprintCallable)
-	void SetGameMode(EGameMode InGameMode);
+	void SetGameMode(EXQPGameMode InGameMode);
 
 	UFUNCTION(BlueprintCallable)
-	EGameMode GetGameMode() const;
+	EXQPGameMode GetGameMode() const;
 	
 };

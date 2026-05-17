@@ -56,6 +56,8 @@ protected:
 
 	TWeakObjectPtr<UChessBoard2P> Board2P;
 
+	bool bAnimationing = false;
+
 	// 棋子选中状态
 	bool bSelected = false;
 
