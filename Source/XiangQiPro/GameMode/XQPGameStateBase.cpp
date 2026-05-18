@@ -97,6 +97,12 @@ void AXQPGameStateBase::GameResume(UObject* OwnerObject)
     IIF_GameState::GameResume(OwnerObject);
 }
 
+void AXQPGameStateBase::GamePlayAgain(UObject* OwnerObject)
+{
+    SoloRideScore = 0; // 得分重置
+    IIF_GameState::GamePlayAgain(OwnerObject);
+}
+
 void AXQPGameStateBase::ShowSettingPoint2P(TArray<FChessMove2P> Moves, TWeakObjectPtr<AChesses> Target)
 {
     DismissSettingPoint2P();
@@ -175,6 +181,7 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
             battleTurn = EPlayerTag::P1; // 玩家先行
             battleType = EBattleType::SoloRide;
             SoloRideHorse = board2PActor->GenerateChessesForSoloRide(); // 调用新的棋盘生成函数
+            GenerateNewEnemies(3);
             break;
         default:
             break;
@@ -380,7 +387,7 @@ void AXQPGameStateBase::NotifyGameOver(EChessColor winner)
     EXEC_GAMEOVER(); // 调用游戏结束事件
 }
 
-void AXQPGameStateBase::GenerateNewEnemies()
+void AXQPGameStateBase::GenerateNewEnemies(int32 GenerateCount)
 {
     EnemyGenerateWave++;
 

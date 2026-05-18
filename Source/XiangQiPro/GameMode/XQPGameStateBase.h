@@ -89,6 +89,11 @@ private:
 	// AI2P移动的棋子
 	TWeakObjectPtr<AChesses> AIMovedChess;
 
+	/*
+	* 千里走单骑的对手棋子，以及销毁的轮数
+	*/
+	TWeakObjectPtr<TPair<AChesses, int32>> SoloRideEnemies;
+
 public:
 
 	UPROPERTY(EditAnywhere)
@@ -114,6 +119,9 @@ public:
 
 	// 游戏恢复事件
 	virtual void GameResume(UObject* OwnerObject) override;
+
+	// 游戏重开事件
+	virtual void GamePlayAgain(UObject* OwnerObject) override;
 
 	// 显示置棋位置标记
 	void ShowSettingPoint2P(TArray<FChessMove2P> Moves, TWeakObjectPtr<AChesses> Target);
@@ -167,7 +175,7 @@ public:
 	int32 SoloRideScore = 0; // 红方马得分
 	int32 EnemyGenerateWave = 0; // 敌人生成波次/回合数，用于控制生成概率
 
-	void GenerateNewEnemies();
+	void GenerateNewEnemies(int32 GenerateCount = 1);
 
 	TArray<Position> GetAvailableMove(TWeakObjectPtr<AChesses> Horse);
 	
