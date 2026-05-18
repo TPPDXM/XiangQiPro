@@ -32,6 +32,7 @@ void AXQP_HUD::InitUI()
 	TSubclassOf<UUserWidget> PauseMenuClass;
 	switch (GameInstance->GetGameMode())
 	{
+	case EXQPGameMode::GuessWho:
 	case EXQPGameMode::SoloRide:
 	case EXQPGameMode::Ending:
 	case EXQPGameMode::AI2P:

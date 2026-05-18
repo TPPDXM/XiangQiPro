@@ -6,6 +6,7 @@
 AChess_Pao::AChess_Pao()
 {
 	MyType = EChessType::PAO;
+	MyRealType = EChessType::PAO;
 }
 
 void AChess_Pao::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2P> board2P)
@@ -26,10 +27,4 @@ void AChess_Pao::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoar
 void AChess_Pao::GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObjectPtr<AChesses> target)
 {
 	Super::GenerateMove2P(board2P, target);
-
-	// 获取所有移动方式
-	TArray<FChessMove2P> Moves;
-	board2P->GeneratePaoMoves(Pos.X, Pos.Y, MyColor, Moves);
-
-	GameState->ShowSettingPoint2P(Moves, this);
 }

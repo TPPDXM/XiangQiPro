@@ -6,6 +6,7 @@
 AChess_Xiang::AChess_Xiang()
 {
 	MyType = EChessType::XIANG;
+	MyRealType = EChessType::XIANG;
 }
 
 void AChess_Xiang::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2P> board2P)
@@ -33,10 +34,4 @@ void AChess_Xiang::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBo
 void AChess_Xiang::GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObjectPtr<AChesses> target)
 {
 	Super::GenerateMove2P(board2P, target);
-
-	// 获取所有移动方式
-	TArray<FChessMove2P> Moves;
-	board2P->GenerateXiangMoves(Pos.X, Pos.Y, MyColor, Moves);
-
-	GameState->ShowSettingPoint2P(Moves, this);
 }

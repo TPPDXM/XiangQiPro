@@ -6,6 +6,7 @@
 AChess_Ma::AChess_Ma()
 {
 	MyType = EChessType::MA;
+	MyRealType = EChessType::MA;
 }
 
 void AChess_Ma::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2P> board2P)
@@ -33,10 +34,4 @@ void AChess_Ma::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard
 void AChess_Ma::GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObjectPtr<AChesses> target)
 {
 	Super::GenerateMove2P(board2P, target);
-
-	// 获取所有移动方式
-	TArray<FChessMove2P> Moves;
-	board2P->GenerateMaMoves(Pos.X, Pos.Y, MyColor, Moves);
-
-	GameState->ShowSettingPoint2P(Moves, this);
 }

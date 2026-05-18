@@ -501,7 +501,7 @@ void UChessBoard2P::GenerateShiMoves(int32 x, int32 y, EChessColor color, TArray
         int32 newY = y + directions[i][1];
 
         // 检查是否在九宫格内
-        if (IsInPalace(newX, newY, color)) 
+        if (IsInPalace(newX, newY, color) || !IsInPalace(x, y, color)) // 本身就不在九宫格内的情况会出现在特殊玩法里
         {
             TWeakObjectPtr<AChesses> target = GetChess(newX, newY);
             if (target == nullptr || target->GetColor() != color) 

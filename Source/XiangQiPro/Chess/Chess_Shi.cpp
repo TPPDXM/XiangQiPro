@@ -6,6 +6,7 @@
 AChess_Shi::AChess_Shi()
 {
 	MyType = EChessType::SHI;
+	MyRealType = EChessType::SHI;
 }
 
 void AChess_Shi::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2P> board2P)
@@ -33,10 +34,4 @@ void AChess_Shi::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoar
 void AChess_Shi::GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObjectPtr<AChesses> target)
 {
 	Super::GenerateMove2P(board2P, target);
-
-	// 获取所有移动方式
-	TArray<FChessMove2P> Moves;
-	board2P->GenerateShiMoves(Pos.X, Pos.Y, MyColor, Moves);
-
-	GameState->ShowSettingPoint2P(Moves, this);
 }

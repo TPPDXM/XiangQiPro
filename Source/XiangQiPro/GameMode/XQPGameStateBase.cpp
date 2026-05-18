@@ -104,7 +104,7 @@ void AXQPGameStateBase::GamePlayAgain(UObject* OwnerObject)
     IIF_GameState::GamePlayAgain(OwnerObject);
 }
 
-void AXQPGameStateBase::ShowSettingPoint2P(TArray<FChessMove2P> Moves, TWeakObjectPtr<AChesses> Target)
+void AXQPGameStateBase::ShowSettingPoint2P(TArray<FChessMove2P> Moves, TWeakObjectPtr<AChesses> Target) const
 {
     DismissSettingPoint2P();
     board2P->ShowSettingPoint2P(Moves, Target);
@@ -182,12 +182,15 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
         {
         case EXQPGameMode::Ending:
         {
+            AIDifficulty = EAI2PDifficulty::Normal;
             EXEC_ONENDINGGAMESTART(USaveGameLibrary::GetEndingGameLevel());
             break;
         }
+
         case EXQPGameMode::AI2P:
             board2PActor->GenerateChesses(); // 棋盘Actor生成所有象棋并对其初始化
             break;
+
         case EXQPGameMode::SoloRide: // 千里走单骑模式
             battleTurn = EPlayerTag::P1; // 玩家先行
             battleType = EBattleType::SoloRide;
@@ -195,6 +198,12 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
             USoloRideMode::SoloRideHorse = board2PActor->GenerateChessesForSoloRide(); // 调用新的棋盘生成函数
             USoloRideMode::GenerateNewEnemies(3);
             break;
+
+        case EXQPGameMode::GuessWho: // 兵不厌诈模式
+            AIDifficulty = EAI2PDifficulty::Easy;
+            board2PActor->GenerateChessesForGuessWho();
+            break;
+
         default:
             break;
         }
@@ -232,7 +241,7 @@ void AXQPGameStateBase::ApplyMove2P(TWeakObjectPtr<AChesses> target, FChessMove2
     board2P->ApplyMove(target, move);
 }
 
-void AXQPGameStateBase::OnFinishMove2P()
+void AXQPGameStateBase::OnFinishMove2P(TWeakObjectPtr<AChesses> Target)
 {
     if (bGameOver)
     {
@@ -247,6 +256,14 @@ void AXQPGameStateBase::OnFinishMove2P()
     }
 
     SwitchBattleTurn(); // 轮换执棋
+
+    if (Cast<UXQPGameInstance>(GetGameInstance())->GetGameMode() == EXQPGameMode::GuessWho)
+    {
+        if (Target.IsValid())
+        {
+            Target->SwitchToRealIdentity(); // 棋子移动过后恢复真实身份
+        }
+    }
 
     switch (battleTurn) // 表示当前该谁了
     {
@@ -274,7 +291,6 @@ void AXQPGameStateBase::RunAI2P()
          {
              if (Cast<UXQPGameInstance>(GetGameInstance())->GetGameMode() == EXQPGameMode::Ending)
              {
-                 AIDifficulty = EAI2PDifficulty::Normal;
                  AI2P->SetBoard(board2P);
                  if (AI2P->IsJueSha(EChessColor::BLACKCHESS))
                  {

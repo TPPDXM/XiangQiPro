@@ -115,7 +115,7 @@ public:
 	virtual void GamePlayAgain(UObject* OwnerObject) override;
 
 	// 显示置棋位置标记
-	void ShowSettingPoint2P(TArray<FChessMove2P> Moves, TWeakObjectPtr<AChesses> Target);
+	void ShowSettingPoint2P(TArray<FChessMove2P> Moves, TWeakObjectPtr<AChesses> Target) const;
 
 	// 使所有置棋位置标记消失
 	void DismissSettingPoint2P() const;
@@ -151,7 +151,7 @@ public:
 	void ApplyMove2P(TWeakObjectPtr<AChesses> target, FChessMove2P move);
 
 	// 双人对战棋子移动完毕
-	void OnFinishMove2P();
+	void OnFinishMove2P(TWeakObjectPtr<AChesses> Target);
 
 	// 运行双人象棋AI
 	UFUNCTION(BlueprintCallable, Category = "AI")

@@ -6,6 +6,7 @@
 AChess_Jiang::AChess_Jiang() : Super()
 {
 	MyType = EChessType::JIANG;
+	MyRealType = EChessType::JIANG;
 }
 
 void AChess_Jiang::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2P> board2P)
@@ -39,10 +40,4 @@ void AChess_Jiang::Defeated()
 void AChess_Jiang::GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObjectPtr<AChesses> target)
 {
 	Super::GenerateMove2P(board2P, target);
-
-	// 获取所有移动方式
-	TArray<FChessMove2P> Moves;
-	board2P->GenerateJiangMoves(Pos.X, Pos.Y, MyColor, Moves);
-	
-	GameState->ShowSettingPoint2P(Moves, this);
 }

@@ -58,6 +58,6 @@ public:
 
 	TWeakObjectPtr<class AChesses> GenerateChessesForSoloRide();
 
-	FIntPoint GetRandomEmptyPosition(const TArray<FIntPoint>& BlockedPositions);
+	void GenerateChessesForGuessWho();
 
 };

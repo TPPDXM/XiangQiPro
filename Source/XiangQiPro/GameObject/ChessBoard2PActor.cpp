@@ -12,8 +12,12 @@
 #include "XiangQiPro/Util/ChessInfo.h"
 #include "XiangQiPro/Util/ObjectManager.h"
 #include "XiangQiPro/Util/EndingLibrary.h"
+#include "XiangQiPro/Util/ArrayToolLibrary.h"
 
 #include "Kismet/GameplayStatics.h"
+
+#define RED EChessColor::REDCHESS
+#define BLACK EChessColor::BLACKCHESS
 
 // Sets default values
 AChessBoard2PActor::AChessBoard2PActor()
@@ -109,21 +113,13 @@ void AChessBoard2PActor::GenerateChesses()
     
     TArray<TSubclassOf<AChesses>> Classes = { 
     AChess_Jv::StaticClass(), AChess_Ma::StaticClass(), AChess_Xiang::StaticClass(), AChess_Shi::StaticClass(), AChess_Jiang::StaticClass(), AChess_Shi::StaticClass(), AChess_Xiang::StaticClass(), AChess_Ma::StaticClass(), AChess_Jv::StaticClass(), 
-    AChess_Pao::StaticClass(), AChess_Pao::StaticClass(), AChess_Bing::StaticClass(), AChess_Bing::StaticClass(), AChess_Bing::StaticClass(), AChess_Bing::StaticClass(), AChess_Bing::StaticClass(),
-    AChess_Jv::StaticClass(), AChess_Ma::StaticClass(), AChess_Xiang::StaticClass(), AChess_Shi::StaticClass(), AChess_Jiang::StaticClass(), AChess_Shi::StaticClass(), AChess_Xiang::StaticClass(), AChess_Ma::StaticClass(), AChess_Jv::StaticClass(),
     AChess_Pao::StaticClass(), AChess_Pao::StaticClass(), AChess_Bing::StaticClass(), AChess_Bing::StaticClass(), AChess_Bing::StaticClass(), AChess_Bing::StaticClass(), AChess_Bing::StaticClass() };
-
-#define RED EChessColor::REDCHESS
-#define BLACK EChessColor::BLACKCHESS
-
-    TArray<EChessColor> Colors = { RED, RED, RED, RED, RED, RED, RED, RED, RED, RED, RED, RED, RED, RED, RED, RED, 
-    BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK };
 
     for (int32 i = 0; i < 32; i++)
     {
         // 生成棋子
-        AChesses* Chess = SpawnChessAt(Classes[i], Indexs[i]);
-        Chess->Init(Colors[i], Indexs[i], Board2P); // 初始化棋子
+        AChesses* Chess = SpawnChessAt(Classes[i % 16], Indexs[i]);
+        Chess->Init(i < 16 ? RED : BLACK, Indexs[i], Board2P); // 初始化棋子
         Chess->FinishSpawning(FTransform(Board2P->BoardLocs[Indexs[i].X][Indexs[i].Y]));
 
         // 将棋子保存到棋盘中
@@ -177,3 +173,66 @@ TWeakObjectPtr<AChesses> AChessBoard2PActor::GenerateChessesForSoloRide()
     GenerateSettingPoints(); // 生成可移动点指示器
     return redHorse;
 }
+
+void AChessBoard2PActor::GenerateChessesForGuessWho()
+{
+
+    if (!Board2P.IsValid())
+    {
+        ULogger::LogError(TEXT("Can't generate chesses, because Board2P is nullptr!"));
+        return;
+    }
+
+    // 双方将需确定位置生成
+    auto JiangChess = SpawnChessAt(AChess_Jiang::StaticClass(), FIntPoint(0, 4));
+    JiangChess->Init(RED, FIntPoint(0, 4), Board2P);
+    JiangChess->FinishSpawning(FTransform(Board2P->BoardLocs[0][4]));
+    Board2P->AllChess[0][4] = JiangChess;
+
+    JiangChess = SpawnChessAt(AChess_Jiang::StaticClass(), FIntPoint(9, 4));
+    JiangChess->Init(BLACK, FIntPoint(9, 4), Board2P);
+    JiangChess->FinishSpawning(FTransform(Board2P->BoardLocs[9][4]));
+    Board2P->AllChess[9][4] = JiangChess;
+
+    TArray<FIntPoint> Pos = { {0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 5}, {0, 6}, {0, 7}, {0, 8}, {2, 1}, {2, 7}, {3, 0}, {3, 2}, {3, 4}, {3, 6}, {3, 8},
+                                           {9, 0}, {9, 1}, {9, 2}, {9, 3}, {9, 5}, {9, 6}, {9, 7}, {9, 8}, {7, 1}, {7, 7}, {6, 0}, {6, 2}, {6, 4}, {6, 6}, {6, 8} };
+    TArray<FIntPoint> ShuffledPos(Pos);
+    UArrayToolLibrary::ShuffleArray(ShuffledPos); // 打乱生成位置
+
+    TArray<TSubclassOf<AChesses>> Classes = {
+    AChess_Jv::StaticClass(), AChess_Ma::StaticClass(), AChess_Xiang::StaticClass(), AChess_Shi::StaticClass(), AChess_Shi::StaticClass(), AChess_Xiang::StaticClass(), AChess_Ma::StaticClass(), AChess_Jv::StaticClass(),
+    AChess_Pao::StaticClass(), AChess_Pao::StaticClass(), AChess_Bing::StaticClass(), AChess_Bing::StaticClass(), AChess_Bing::StaticClass(), AChess_Bing::StaticClass(), AChess_Bing::StaticClass() };
+
+    for (int32 i = 0; i < 30; i++)
+    {
+        // 生成棋子
+        AChesses* Chess = SpawnChessAt(Classes[i % 15], ShuffledPos[i]);
+        Chess->Init(i < 15 ? RED : BLACK, ShuffledPos[i], Board2P); // 初始化棋子
+        Chess->ChessMask->SetVisibility(false);
+
+        // 将棋子保存到棋盘中
+        Board2P->AllChess[ShuffledPos[i].X][ShuffledPos[i].Y] = Chess;
+    }
+
+    // 赋予假的类型和颜色
+    TArray<EChessType> FakeType = { EChessType::JV, EChessType::MA, EChessType::XIANG, EChessType::SHI, EChessType::SHI, EChessType::XIANG, EChessType::MA, EChessType::JV,
+    EChessType::PAO, EChessType::PAO, EChessType::BING , EChessType::BING , EChessType::BING , EChessType::BING , EChessType::BING };
+    for (int32 i = 0; i < 15; i++)
+    {
+        auto& chess = Board2P->AllChess[Pos[i].X][Pos[i].Y];
+        chess->SetColor(RED);
+        chess->SetType(FakeType[i]);
+        chess->FinishSpawning(FTransform(Board2P->BoardLocs[Pos[i].X][Pos[i].Y]));
+    }
+    for (int32 i = 15; i < 30; i++)
+    {
+        auto& chess = Board2P->AllChess[Pos[i].X][Pos[i].Y];
+        chess->SetColor(BLACK);
+        chess->SetType(FakeType[i - 15]);
+        chess->FinishSpawning(FTransform(Board2P->BoardLocs[Pos[i].X][Pos[i].Y]));
+    }
+    GenerateSettingPoints();
+}
+
+#undef RED
+#undef BLACK

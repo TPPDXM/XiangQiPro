@@ -38,6 +38,7 @@ AChesses::AChesses()
 void AChesses::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2P> board2P)
 {
 	MyColor = color;
+	MyRealColor = color;
 	Pos = pos;
 	Board2P = board2P;
 
@@ -80,7 +81,7 @@ void AChesses::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2
 			{
 				WeakThis->bAnimationing = false;
 				WeakThis->Pos = WeakThis->TargetPos;
-				WeakThis->GameState->OnFinishMove2P();
+				WeakThis->GameState->OnFinishMove2P(WeakThis);
 			}
 		}
 		}));
@@ -109,10 +110,7 @@ void AChesses::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2
 void AChesses::BeginPlay()
 {
 	Super::BeginPlay();
-	if (MyColor == EChessColor::BLACKCHESS && (GameState->GetBattleType() == EBattleType::P2_AI || GameState->GetBattleType() == EBattleType::SoloRide))
-	{
-		bSelectable = false; // 棋子属于AI，不可被选中
-	}
+	UpdateSelectable();
 }
 
 void AChesses::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -266,9 +264,19 @@ EChessColor AChesses::GetColor() const
 	return MyColor;
 }
 
+void AChesses::SetColor(EChessColor InColor)
+{
+	MyColor = InColor;
+}
+
 EChessType AChesses::GetType() const
 {
 	return MyType;
+}
+
+void AChesses::SetType(EChessType InType)
+{
+	MyType = InType;
 }
 
 Position AChesses::GetPosition() const
@@ -279,6 +287,18 @@ Position AChesses::GetPosition() const
 bool AChesses::IsDead() const
 {
 	return bDead;
+}
+
+void AChesses::UpdateSelectable()
+{
+	if (MyColor == EChessColor::BLACKCHESS && (GameState->GetBattleType() == EBattleType::P2_AI || GameState->GetBattleType() == EBattleType::SoloRide))
+	{
+		bSelectable = false; // 棋子属于AI，不可被选中
+	}
+	else
+	{
+		bSelectable = true; // 玩家可以选中
+	}
 }
 
 void AChesses::GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObjectPtr<AChesses> target)
@@ -295,6 +315,11 @@ void AChesses::GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObject
 			}
 		}
 	}
+
+	// 获取所有移动方式
+	TArray<FChessMove2P> Moves = board2P->GenerateMovesForChess(Pos.X, Pos.Y, this);
+
+	GameState->ShowSettingPoint2P(Moves, this);
 }
 
 void AChesses::ApplyMove(FChessMove2P Move)
@@ -331,5 +356,13 @@ FVector AChesses::CalculateParabolicPosition(const FVector& Start, const FVector
 	float OneMinusT = 1 - T;
 	FVector Result = (OneMinusT * OneMinusT) * P0 + 2 * OneMinusT * T * P1 + (T * T) * P2;
 	return Result;
+}
+
+void AChesses::SwitchToRealIdentity()
+{
+	MyColor = MyRealColor;
+	MyType = MyRealType;
+	ChessMask->SetVisibility(true);
+	UpdateSelectable();
 }
 

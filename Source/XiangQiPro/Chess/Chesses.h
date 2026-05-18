@@ -43,8 +43,12 @@ protected:
 	// 棋子颜色(阵营)
 	EChessColor MyColor;
 
+	EChessColor MyRealColor;
+
 	// 棋子类型
 	EChessType MyType;
+
+	EChessType MyRealType;
 
 	// 棋子当前的简化坐标
 	Position Pos;
@@ -142,15 +146,21 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Chess")
 	EChessColor GetColor() const;
 
+	void SetColor(EChessColor InColor);
+
 	// 获取棋子类型
 	UFUNCTION(BlueprintPure, Category = "Chess")
 	EChessType GetType() const;
+
+	void SetType(EChessType InType);
 
 	// 获取简化坐标
 	Position GetPosition() const;
 
 	// 获取是否阵亡
 	bool IsDead() const;
+
+	void UpdateSelectable();
 
 	virtual void GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObjectPtr<AChesses> target);
 
@@ -167,4 +177,7 @@ public:
 	* @param T 曲线位置百分比
 	*/
 	FVector CalculateParabolicPosition(const FVector& Start, const FVector& Vertex, const FVector& End, float T);
+	
+	// 切换至真实身份，兵不厌诈游戏使用
+	void SwitchToRealIdentity();
 };

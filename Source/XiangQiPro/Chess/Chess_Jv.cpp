@@ -6,6 +6,7 @@
 AChess_Jv::AChess_Jv()
 {
 	MyType = EChessType::JV;
+	MyRealType = EChessType::JV;
 }
 
 void AChess_Jv::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2P> board2P)
@@ -33,10 +34,4 @@ void AChess_Jv::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard
 void AChess_Jv::GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObjectPtr<AChesses> target)
 {
 	Super::GenerateMove2P(board2P, target);
-
-	// 获取所有移动方式
-	TArray<FChessMove2P> Moves;
-	board2P->GenerateJvMoves(Pos.X, Pos.Y, MyColor, Moves);
-
-	GameState->ShowSettingPoint2P(Moves, this);
 }

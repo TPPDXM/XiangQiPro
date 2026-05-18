@@ -6,6 +6,7 @@
 AChess_Bing::AChess_Bing()
 {
 	MyType = EChessType::BING; 
+	MyRealType = EChessType::BING;
 }
 
 void AChess_Bing::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2P> board2P)
@@ -33,10 +34,4 @@ void AChess_Bing::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoa
 void AChess_Bing::GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObjectPtr<AChesses> target)
 {
 	Super::GenerateMove2P(board2P, target);
-
-	// 获取所有移动方式
-	TArray<FChessMove2P> Moves;
-	board2P->GenerateBingMoves(Pos.X, Pos.Y, MyColor, Moves);
-
-	GameState->ShowSettingPoint2P(Moves, this);
 }
