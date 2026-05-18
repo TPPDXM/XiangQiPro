@@ -5,12 +5,12 @@
 #include "XiangQiPro/Util/ObjectManager.h"
 #include "XiangQiPro/Util/Logger.h"
 
-#define DATATABLE_PATH TEXT("/Script/Engine.DataTable'/Game/DataTable/ChessGenerationInfos.ChessGenerationInfos'")
+#define DATATABLE_ENDING_PATH TEXT("/Script/Engine.DataTable'/Game/DataTable/ChessGenerationInfos.ChessGenerationInfos'")
 
 int32 UEndingLibrary::GetEndingGameNum()
 {
     FChessGenerationInfo Infos;
-    auto DataTable = OM::GetObject<UDataTable>(DATATABLE_PATH);
+    auto DataTable = OM::GetObject<UDataTable>(DATATABLE_ENDING_PATH);
 
     TArray<FName> rowName = DataTable->GetRowNames();
     return rowName.Num();
@@ -19,7 +19,7 @@ int32 UEndingLibrary::GetEndingGameNum()
 TArray<FChessGenerationInfo> UEndingLibrary::GetChessGenerateInfo(int32 Index)
 {
     FChessGenerationInfo Infos;
-    auto DataTable = OM::GetObject<UDataTable>(DATATABLE_PATH);
+    auto DataTable = OM::GetObject<UDataTable>(DATATABLE_ENDING_PATH);
 
     TArray<FName> rowName = DataTable->GetRowNames();
 
@@ -45,7 +45,7 @@ TArray<FChessGenerationInfo> UEndingLibrary::GetChessGenerateInfo(int32 Index)
 FString UEndingLibrary::GetEndingGameTitle(int32 Index)
 {
     FChessGenerationInfo Infos;
-    auto DataTable = OM::GetObject<UDataTable>(DATATABLE_PATH);
+    auto DataTable = OM::GetObject<UDataTable>(DATATABLE_ENDING_PATH);
 
     TArray<FName> rowName = DataTable->GetRowNames();
 

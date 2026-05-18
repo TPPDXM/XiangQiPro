@@ -103,7 +103,8 @@ void ASettingPoint::SetActivate(bool bInActive)
 		PointNiagara->SetHiddenInGame(false);
 		Sphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block); // 开始相应鼠标
 
-		if (GameState->GetChessBoard2P()->AllChess[Position2P.X][Position2P.Y] != nullptr) // 可以吃子
+		auto& chess = GameState->GetChessBoard2P()->AllChess[Position2P.X][Position2P.Y];
+		if (chess != nullptr && !chess->IsDead()) // 可以吃子
 		{
 			SetActorLocation(DefaultWorldPosition + FVector(0, 0, 2.5f)); // 向上偏移,到棋子顶部
 		}

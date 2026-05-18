@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "XiangQiPro/Interface/IF_ProMode.h"
 #include "XiangQiPro/Interface/IF_GameState.h"
 #include "XiangQiPro/Util/ChessMove.h"
 
@@ -43,7 +42,7 @@ enum class EPlayerTag : uint8
  * 
  */
 UCLASS()
-class XIANGQIPRO_API AXQPGameStateBase : public AGameStateBase, public IIF_GameState, public IIF_ProMode
+class XIANGQIPRO_API AXQPGameStateBase : public AGameStateBase, public IIF_GameState
 {
 	GENERATED_BODY()
 
@@ -75,9 +74,6 @@ private:
 	// AI异步任务
 	UAsyncWorker* AIAsync;
 
-	// 千里走单骑的马
-	TWeakObjectPtr<AChesses> SoloRideHorse;
-
 private:
 
 	// 更新得分
@@ -88,11 +84,6 @@ private:
 
 	// AI2P移动的棋子
 	TWeakObjectPtr<AChesses> AIMovedChess;
-
-	/*
-	* 千里走单骑的对手棋子，以及销毁的轮数
-	*/
-	TWeakObjectPtr<TPair<AChesses, int32>> SoloRideEnemies;
 
 public:
 
@@ -132,11 +123,15 @@ public:
 	// 获取双人棋盘(非Actor)
 	TWeakObjectPtr<UChessBoard2P> GetChessBoard2P();
 
+	TWeakObjectPtr<AChessBoard2PActor> GetChessBoard2PActor();
+
 	// 获取对战人数类型
 	EBattleType GetBattleType();
 
 	// 获取执棋对象
 	EPlayerTag GetBattleTurn();
+
+	void SetBattleTurn(EPlayerTag BT);
 
 	void SetHUD2P(TWeakObjectPtr<UUI_Battle2P_Base> hud2P);
 
@@ -170,13 +165,5 @@ public:
 
 	// 游戏结束
 	void NotifyGameOver(EChessColor winner);
-
-	// 千里走单骑模式专用
-	int32 SoloRideScore = 0; // 红方马得分
-	int32 EnemyGenerateWave = 0; // 敌人生成波次/回合数，用于控制生成概率
-
-	void GenerateNewEnemies(int32 GenerateCount = 1);
-
-	TArray<Position> GetAvailableMove(TWeakObjectPtr<AChesses> Horse);
 	
 };

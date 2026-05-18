@@ -5,12 +5,12 @@
 #include "XiangQiPro/Util/ObjectManager.h"
 #include "XiangQiPro/Util/Logger.h"
 
-#define DATATABLE_PATH TEXT("/Script/Engine.DataTable'/Game/DataTable/ProModeInfos.ProModeInfos'")
+#define DATATABLE_PROMODE_PATH TEXT("/Script/Engine.DataTable'/Game/DataTable/ProModeInfos.ProModeInfos'")
 
 TArray<FProModeInfo*> UProModeLibrary::GetProModeInfos()
 {
     TArray<FProModeInfo*> Infos;
-    auto DataTable = OM::GetObject<UDataTable>(DATATABLE_PATH);
+    auto DataTable = OM::GetObject<UDataTable>(DATATABLE_PROMODE_PATH);
 
     if (!DataTable)
     {

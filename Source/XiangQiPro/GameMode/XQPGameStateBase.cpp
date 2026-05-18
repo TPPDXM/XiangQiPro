@@ -3,6 +3,7 @@
 
 #include "XQPGameStateBase.h"
 #include "XQPGameInstance.h"
+#include "SoloRideMode.h"
 #include "Async/Async.h"
 
 #include "XiangQiPro/AI/AI2P.h"
@@ -99,7 +100,7 @@ void AXQPGameStateBase::GameResume(UObject* OwnerObject)
 
 void AXQPGameStateBase::GamePlayAgain(UObject* OwnerObject)
 {
-    SoloRideScore = 0; // 得分重置
+    USoloRideMode::ResetSoloRideData();
     IIF_GameState::GamePlayAgain(OwnerObject);
 }
 
@@ -119,6 +120,11 @@ TWeakObjectPtr<UChessBoard2P> AXQPGameStateBase::GetChessBoard2P()
     return board2P;
 }
 
+TWeakObjectPtr<AChessBoard2PActor> AXQPGameStateBase::GetChessBoard2PActor()
+{
+    return board2PActor;
+}
+
 EBattleType AXQPGameStateBase::GetBattleType()
 {
     return battleType;
@@ -127,6 +133,11 @@ EBattleType AXQPGameStateBase::GetBattleType()
 EPlayerTag AXQPGameStateBase::GetBattleTurn()
 {
     return battleTurn;
+}
+
+void AXQPGameStateBase::SetBattleTurn(EPlayerTag BT)
+{
+    battleTurn = BT;
 }
 
 void AXQPGameStateBase::SetHUD2P(TWeakObjectPtr<UUI_Battle2P_Base> hud2P)
@@ -180,8 +191,9 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
         case EXQPGameMode::SoloRide: // 千里走单骑模式
             battleTurn = EPlayerTag::P1; // 玩家先行
             battleType = EBattleType::SoloRide;
-            SoloRideHorse = board2PActor->GenerateChessesForSoloRide(); // 调用新的棋盘生成函数
-            GenerateNewEnemies(3);
+            USoloRideMode::InitSoloRideGame(this); // 初始化千里走单骑游戏系统
+            USoloRideMode::SoloRideHorse = board2PActor->GenerateChessesForSoloRide(); // 调用新的棋盘生成函数
+            USoloRideMode::GenerateNewEnemies(3);
             break;
         default:
             break;
@@ -201,26 +213,14 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
 
 void AXQPGameStateBase::ApplyMove2P(TWeakObjectPtr<AChesses> target, FChessMove2P move)
 {
-    if (battleType == EBattleType::SoloRide) // 千里走单骑模式
+    if (battleType == EBattleType::SoloRide)  // 千里走单骑模式
     {
-        if (battleTurn == EPlayerTag::P1) // 玩家执棋
+        if (USoloRideMode::OnApplyMove(move)) // 需要更新得分
         {
-            TWeakObjectPtr<AChesses> chess = board2P->GetChess(move.to);
-            if (chess.IsValid())
-            {
-                EChessType Type = chess->GetType(); // 获取被吃掉的子的类型
-                if (Type == EChessType::BING)
-                {
-                    SoloRideScore += 5; // 吃掉兵加5分
-                }
-                else
-                {
-                    SoloRideScore += 10; // 其他加10分
-                }
-                HUD2P->UpdateScore(SoloRideScore, 0); // 更新得分显示
-            }
+            HUD2P->UpdateScore(USoloRideMode::SoloRideScore, 0); // 更新得分显示
         }
     }
+
     if (HUD2P.IsValid())
     {
         HUD2P->AddOperatingRecord(battleTurn, target, move); // 记录走子
@@ -242,35 +242,7 @@ void AXQPGameStateBase::OnFinishMove2P()
 
     if (battleType == EBattleType::SoloRide && battleTurn == EPlayerTag::P1)
     {
-        if (!SoloRideHorse.IsValid())
-        {
-            ULogger::LogError(TEXT("AXQPGameStateBase::OnFinishMove2P"), TEXT("SoloRideHorse is nullptr."));
-            return;
-        }
-        Position horsePos = SoloRideHorse->GetPosition();
-        auto horseMoves = board2P->GenerateMovesForChess(horsePos.X, horsePos.Y, SoloRideHorse);
-
-        if (horseMoves.Num() <= 0)
-        {
-            EXEC_ONSOLORIDEDEFEAT(SoloRideScore); // 执行失败事件
-            return;
-        }
-
-        auto moves = board2P->GenerateAllMoves(EChessColor::BLACKCHESS);
-        for (const auto& move : moves)
-        {
-            // 检查玩家移动后是否被吃
-            if (move.to == SoloRideHorse->GetPosition())
-            {
-                battleTurn = EPlayerTag::P2;
-                ApplyMove2P(board2P->GetChess(move.from), move); // 吃掉玩家的马
-                EXEC_ONSOLORIDEDEFEAT(SoloRideScore);            // 执行失败事件
-                return;
-            }
-        }
-
-        // 生成新的敌人
-        GenerateNewEnemies();
+        USoloRideMode::OnFinishMove();
         return;
     }
 
@@ -385,71 +357,4 @@ void AXQPGameStateBase::NotifyGameOver(EChessColor winner)
     HUD2P->ShowGameOver(winner);
 
     EXEC_GAMEOVER(); // 调用游戏结束事件
-}
-
-void AXQPGameStateBase::GenerateNewEnemies(int32 GenerateCount)
-{
-    EnemyGenerateWave++;
-
-    // 1. 计算生成数量和类型概率
-    int32 generateCount = 1;//Math::RandomIntegerInRange(1, 3);
-    TArray<TSubclassOf<AChesses>> classPool;
-
-    // 根据波次调整概率池
-    if (EnemyGenerateWave < 8) 
-    {
-        // 前期：100% 兵
-        for (int i = 0; i < 10; ++i) classPool.Add(AChess_Bing::StaticClass());
-    }
-    else if (EnemyGenerateWave < 15) 
-    {
-        // 中期：80% 兵，20% 象
-        for (int i = 0; i < 8; ++i) classPool.Add(AChess_Bing::StaticClass());
-        for (int i = 0; i < 2; ++i) classPool.Add(AChess_Xiang::StaticClass());
-    }
-    else 
-    {
-        // 后期：70% 兵，20% 象，10% 马
-        for (int i = 0; i < 7; ++i) classPool.Add(AChess_Bing::StaticClass());
-        for (int i = 0; i < 2; ++i) classPool.Add(AChess_Xiang::StaticClass());
-        for (int i = 0; i < 1; ++i) classPool.Add(AChess_Ma::StaticClass());
-    }
-
-    // 2. 查找红方马的位置和安全移动位置
-    TArray<Position> safeMoves = GetAvailableMove(SoloRideHorse); // 获取当前安全移动位置
-
-    // 3. 生成新敌人
-    for (int32 i = 0; i < generateCount && safeMoves.Num() > 0; ++i)
-    {
-        // 从安全位置中随机选一个，确保生成后马至少还有一处可走
-        int32 randomIndex = FMath::RandRange(0, safeMoves.Num() - 1);
-        Position spawnPos = safeMoves[randomIndex];
-        safeMoves.RemoveAt(randomIndex); // 移除此位置，避免下次重复
-
-        // 随机选择棋子类型
-        TSubclassOf<AChesses> chessClass = classPool[FMath::RandRange(0, classPool.Num() - 1)];
-
-        // 生成敌人
-        AChesses* newEnemy = board2PActor->SpawnChessAt(chessClass, spawnPos);
-        newEnemy->Init(EChessColor::BLACKCHESS, spawnPos, board2P);
-        newEnemy->FinishSpawning(FTransform(board2P->BoardLocs[spawnPos.X][spawnPos.Y]));
-        board2P->AllChess[spawnPos.X][spawnPos.Y] = newEnemy;
-    }
-}
-
-TArray<Position> AXQPGameStateBase::GetAvailableMove(TWeakObjectPtr<AChesses> Horse)
-{
-    Position HorsePos = SoloRideHorse->GetPosition();
-    TArray<Position> Moves;
-    for (int32 i = 0; i < 10; i++)
-        for (int32 j = 0; j < 9; j++)
-        {
-            if (i != HorsePos.X - 1 && i != HorsePos.X && i != HorsePos.X + 1 &&
-                j != HorsePos.Y - 1 && j != HorsePos.Y && j != HorsePos.Y + 1 &&
-                !board2P->GetChess(i, j).IsValid())                                 // 排除掉马周围的位置以及有棋子占据的位置
-            {
-                Moves.Add({ i,j });
-            }
-        }
-    return Moves;
 }

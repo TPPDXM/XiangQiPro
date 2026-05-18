@@ -245,11 +245,15 @@ void AChesses::HandleClick()
 
 void AChesses::Defeated()
 {
-	FadeNiagara->SetActive(true); // 激活粒子效果
-	ChessMask->SetHiddenInGame(true); // 提前隐藏掉
+	if (bDead)
+		return;
+
+	bDead = true;													// 标记阵亡
+	FadeNiagara->SetActive(true);									// 激活粒子效果
+	ChessMask->SetHiddenInGame(true);								// 提前隐藏掉
 	ChessMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 关闭碰撞体积
-	ChessMesh->SetOverlayMaterial(nullptr); // 移除描边材质
-	Timeline_Fade->PlayFromStart(); // 执行击败效果的曲线
+	ChessMesh->SetOverlayMaterial(nullptr);							// 移除描边材质
+	Timeline_Fade->PlayFromStart();									// 执行击败效果的曲线
 }
 
 FString AChesses::GetChessName() const
@@ -270,6 +274,11 @@ EChessType AChesses::GetType() const
 Position AChesses::GetPosition() const
 {
 	return Pos;
+}
+
+bool AChesses::IsDead() const
+{
+	return bDead;
 }
 
 void AChesses::GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObjectPtr<AChesses> target)

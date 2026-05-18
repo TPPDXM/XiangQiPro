@@ -64,6 +64,8 @@ protected:
 	// 棋子可以被选中
 	bool bSelectable = true;
 
+	bool bDead = false;
+
 	UCurveFloat* CF_ChessMove;
 
 public:
@@ -146,6 +148,9 @@ public:
 
 	// 获取简化坐标
 	Position GetPosition() const;
+
+	// 获取是否阵亡
+	bool IsDead() const;
 
 	virtual void GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObjectPtr<AChesses> target);
 

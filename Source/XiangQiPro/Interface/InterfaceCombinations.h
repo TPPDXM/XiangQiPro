@@ -23,7 +23,7 @@ UGameplayStatics::GetAllActorsWithInterface(this, U##InterfaceClass::StaticClass
 UWidgetBlueprintLibrary::GetAllWidgetsWithInterface(this, AllWidgets, U##InterfaceClass::StaticClass(), false); \
 \
 TArray<UObject*> AllObject(AllActors); \
-AllObject.Append(AllWidgets); \
+AllObject.Append((const TArray<UObject*>&) AllWidgets); \
 \
 for (UObject* object : AllObject) \
 { \
@@ -48,7 +48,7 @@ UGameplayStatics::GetAllActorsWithInterface(this, U##InterfaceClass::StaticClass
 UWidgetBlueprintLibrary::GetAllWidgetsWithInterface(this, AllWidgets, U##InterfaceClass::StaticClass(), false); \
 \
 TArray<UObject*> AllObject(AllActors); \
-AllObject.Append(AllWidgets); \
+AllObject.Append((const TArray<UObject*>&) AllWidgets); \
 \
 for (UObject* object : AllObject) \
 { \
