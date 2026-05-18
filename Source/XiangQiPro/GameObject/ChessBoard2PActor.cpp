@@ -174,9 +174,14 @@ TWeakObjectPtr<AChesses> AChessBoard2PActor::GenerateChessesForSoloRide()
     return redHorse;
 }
 
+/*
+* 保存两份生成坐标，打乱其中一份，然后按照类型生成棋子
+* 此时的棋子在初始化时就已经保存了真实的类型和颜色
+* 后续再按照另一份未打乱的坐标赋予每个棋子假的颜色和类型，用于在揭露真实面目前玩家和电脑的操控
+* 
+*/
 void AChessBoard2PActor::GenerateChessesForGuessWho()
 {
-
     if (!Board2P.IsValid())
     {
         ULogger::LogError(TEXT("Can't generate chesses, because Board2P is nullptr!"));
@@ -208,7 +213,7 @@ void AChessBoard2PActor::GenerateChessesForGuessWho()
         // 生成棋子
         AChesses* Chess = SpawnChessAt(Classes[i % 15], ShuffledPos[i]);
         Chess->Init(i < 15 ? RED : BLACK, ShuffledPos[i], Board2P); // 初始化棋子
-        Chess->ChessMask->SetVisibility(false);
+        Chess->ChessMask->SetVisibility(false); // 隐藏棋子的Mask显示
 
         // 将棋子保存到棋盘中
         Board2P->AllChess[ShuffledPos[i].X][ShuffledPos[i].Y] = Chess;

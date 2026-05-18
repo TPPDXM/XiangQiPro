@@ -227,7 +227,7 @@ void ACameraMainActor::Tick(float DeltaTime)
 		float Theta = FMath::DegreesToRadians(FinalHorizontalAngle);
 		float Phi = FMath::DegreesToRadians(FinalVerticalAngle);
 
-		FVector Offset;
+		FVector Offset = { 0,0,0 };
 		Offset.X = CameraDistance * FMath::Cos(Phi) * FMath::Cos(Theta);
 		Offset.Y = CameraDistance * FMath::Cos(Phi) * FMath::Sin(Theta);
 		Offset.Z = CameraDistance * FMath::Sin(Phi) + CameraHeightOffset;

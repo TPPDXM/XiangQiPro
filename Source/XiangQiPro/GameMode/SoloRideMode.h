@@ -2,6 +2,9 @@
 
 #pragma once
 
+#include <vector>
+#include <utility>
+
 #include "XiangQiPro/Util/ChessMove.h"
 #include "XiangQiPro/Interface/IF_ProMode.h"
 

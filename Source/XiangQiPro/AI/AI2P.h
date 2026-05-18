@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <unordered_map>
+
 #include "XiangQiPro/Interface/IF_EndingGame.h"
 
 #include "XiangQiPro/Util/ChessInfo.h"
