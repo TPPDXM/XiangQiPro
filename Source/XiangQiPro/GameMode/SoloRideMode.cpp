@@ -7,8 +7,6 @@
 #include "XiangQiPro/Chess/AllChessHeader.h"
 #include "XiangQiPro/Util/Logger.h"
 
-#define this GS
-
 AXQPGameStateBase* USoloRideMode::GS = nullptr;
 std::vector<std::pair<TWeakObjectPtr<AChesses>, int32>> USoloRideMode::SoloRideEnemies = std::vector<std::pair<TWeakObjectPtr<AChesses>, int32>>(0);
 TWeakObjectPtr<AChesses> USoloRideMode::SoloRideHorse = nullptr;
@@ -54,7 +52,9 @@ void USoloRideMode::OnFinishMove()
 
     if (horseMoves.Num() <= 0)
     {
+#define this GS
         EXEC_ONSOLORIDEDEFEAT(SoloRideScore); // 执行失败事件
+#undef this
         return;
     }
 
@@ -66,7 +66,9 @@ void USoloRideMode::OnFinishMove()
         {
             GS->SetBattleTurn(EPlayerTag::P2);
             GS->ApplyMove2P(GS->GetChessBoard2P()->GetChess(move.from), move); // 吃掉玩家的马
-            EXEC_ONSOLORIDEDEFEAT(SoloRideScore);            // 执行失败事件
+#define this GS
+            EXEC_ONSOLORIDEDEFEAT(SoloRideScore); // 执行失败事件
+#undef this
             return;
         }
     }

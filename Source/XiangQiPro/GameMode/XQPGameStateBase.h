@@ -118,18 +118,18 @@ public:
 	void ShowSettingPoint2P(TArray<FChessMove2P> Moves, TWeakObjectPtr<AChesses> Target);
 
 	// 使所有置棋位置标记消失
-	void DismissSettingPoint2P();
+	void DismissSettingPoint2P() const;
 
 	// 获取双人棋盘(非Actor)
 	TWeakObjectPtr<UChessBoard2P> GetChessBoard2P();
 
-	TWeakObjectPtr<AChessBoard2PActor> GetChessBoard2PActor();
+	TWeakObjectPtr<AChessBoard2PActor> GetChessBoard2PActor() const;
 
 	// 获取对战人数类型
-	EBattleType GetBattleType();
+	EBattleType GetBattleType() const;
 
 	// 获取执棋对象
-	EPlayerTag GetBattleTurn();
+	EPlayerTag GetBattleTurn() const;
 
 	void SetBattleTurn(EPlayerTag BT);
 

@@ -110,7 +110,7 @@ void AXQPGameStateBase::ShowSettingPoint2P(TArray<FChessMove2P> Moves, TWeakObje
     board2P->ShowSettingPoint2P(Moves, Target);
 }
 
-void AXQPGameStateBase::DismissSettingPoint2P()
+void AXQPGameStateBase::DismissSettingPoint2P() const
 {
     board2P->DismissSettingPoint2P();
 }
@@ -120,17 +120,17 @@ TWeakObjectPtr<UChessBoard2P> AXQPGameStateBase::GetChessBoard2P()
     return board2P;
 }
 
-TWeakObjectPtr<AChessBoard2PActor> AXQPGameStateBase::GetChessBoard2PActor()
+TWeakObjectPtr<AChessBoard2PActor> AXQPGameStateBase::GetChessBoard2PActor() const
 {
     return board2PActor;
 }
 
-EBattleType AXQPGameStateBase::GetBattleType()
+EBattleType AXQPGameStateBase::GetBattleType() const
 {
     return battleType;
 }
 
-EPlayerTag AXQPGameStateBase::GetBattleTurn()
+EPlayerTag AXQPGameStateBase::GetBattleTurn() const
 {
     return battleTurn;
 }
