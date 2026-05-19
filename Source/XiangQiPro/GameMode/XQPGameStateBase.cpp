@@ -289,7 +289,8 @@ void AXQPGameStateBase::RunAI2P()
     AIAsync = UAsyncWorker::CreateAndStartWorker(
          [this](UAsyncWorker* WorkerInstance)
          {
-             if (Cast<UXQPGameInstance>(GetGameInstance())->GetGameMode() == EXQPGameMode::Ending)
+            UXQPGameInstance* GI = Cast<UXQPGameInstance>(GetGameInstance());
+             if (GI->GetGameMode() == EXQPGameMode::Ending)
              {
                  AI2P->SetBoard(board2P);
                  if (AI2P->IsJueSha(EChessColor::BLACKCHESS))
@@ -299,6 +300,11 @@ void AXQPGameStateBase::RunAI2P()
                      return;
                  }
              }
+             else if (GI->GetGameMode() == EXQPGameMode::GuessWho) // 兵不厌诈模式
+             {
+                 FPlatformProcess::Sleep(0.5f); // 延迟0.5秒防止看不清翻出来的棋
+             }
+
              // 获取最佳移动方式和要移动的棋子 
              AIMove2P = AI2P->GetBestMove(board2P, EChessColor::BLACKCHESS, AIDifficulty);
 
