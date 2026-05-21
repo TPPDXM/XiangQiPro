@@ -326,7 +326,7 @@ void ACameraMainActor::HandleMouseMovement(float DeltaTime)
 	{
 		// 获取鼠标位置
 		float MouseX, MouseY;
-		PlayerController->GetMousePosition(MouseX, MouseY);
+		bool bGotMousePosition = PlayerController->GetMousePosition(MouseX, MouseY);
 
 		// 获取视口大小
 		int32 ViewportSizeX, ViewportSizeY;
@@ -335,7 +335,7 @@ void ACameraMainActor::HandleMouseMovement(float DeltaTime)
 		if (ViewportSizeX > 0 && ViewportSizeY > 0)
 		{
 			// 仅在鼠标在窗口内时调整目标位置
-			if ((MouseX <= ViewportSizeX && MouseX > 0) && (MouseY <= ViewportSizeY && MouseY > 0))
+			if (bGotMousePosition)
 			{
 				// 将鼠标位置归一化到 [0, 1] 范围
 				TargetMouseX = FMath::Clamp(MouseX / ViewportSizeX, 0.0f, 1.0f);

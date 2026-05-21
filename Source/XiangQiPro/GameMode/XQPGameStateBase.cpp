@@ -222,6 +222,8 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
 
 void AXQPGameStateBase::ApplyMove2P(TWeakObjectPtr<AChesses> target, FChessMove2P move)
 {
+    SwitchBattleTurn(); // 轮换执棋
+
     if (battleType == EBattleType::SoloRide)  // 千里走单骑模式
     {
         if (USoloRideMode::OnApplyMove(move)) // 需要更新得分
@@ -254,8 +256,6 @@ void AXQPGameStateBase::OnFinishMove2P(TWeakObjectPtr<AChesses> Target)
         USoloRideMode::OnFinishMove();
         return;
     }
-
-    SwitchBattleTurn(); // 轮换执棋
 
     if (Cast<UXQPGameInstance>(GetGameInstance())->GetGameMode() == EXQPGameMode::GuessWho)
     {
