@@ -100,7 +100,6 @@ void AXQPGameStateBase::GameResume(UObject* OwnerObject)
 
 void AXQPGameStateBase::GamePlayAgain(UObject* OwnerObject)
 {
-    USoloRideMode::ResetSoloRideData();
     IIF_GameState::GamePlayAgain(OwnerObject);
 }
 

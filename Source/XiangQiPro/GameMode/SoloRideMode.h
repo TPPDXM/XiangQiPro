@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include <vector>
+#include <list>
 #include <utility>
 
 #include "XiangQiPro/Util/ChessMove.h"
@@ -31,7 +31,7 @@ class XIANGQIPRO_API USoloRideMode : public UBlueprintFunctionLibrary
 	/*
 	* 千里走单骑的对手棋子，以及销毁的轮数
 	*/
-	static std::vector<std::pair<TWeakObjectPtr<AChesses>, int32>> SoloRideEnemies;
+	static std::list<std::pair<TWeakObjectPtr<AChesses>, int32>> SoloRideEnemies;
 
 public:
 

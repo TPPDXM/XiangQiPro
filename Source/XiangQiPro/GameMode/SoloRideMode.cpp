@@ -8,7 +8,7 @@
 #include "XiangQiPro/Util/Logger.h"
 
 AXQPGameStateBase* USoloRideMode::GS = nullptr;
-std::vector<std::pair<TWeakObjectPtr<AChesses>, int32>> USoloRideMode::SoloRideEnemies = std::vector<std::pair<TWeakObjectPtr<AChesses>, int32>>(0);
+std::list<std::pair<TWeakObjectPtr<AChesses>, int32>> USoloRideMode::SoloRideEnemies = std::list<std::pair<TWeakObjectPtr<AChesses>, int32>>(0);
 TWeakObjectPtr<AChesses> USoloRideMode::SoloRideHorse = nullptr;
 int32 USoloRideMode::SoloRideScore = 0;
 int32 USoloRideMode::EnemyGenerateWave = 0;
@@ -16,6 +16,7 @@ int32 USoloRideMode::EnemyGenerateWave = 0;
 void USoloRideMode::InitSoloRideGame(AXQPGameStateBase* InGameState)
 {
     GS = InGameState;
+    USoloRideMode::ResetSoloRideData();
 }
 
 bool USoloRideMode::OnApplyMove(FChessMove2P move)
@@ -133,7 +134,7 @@ void USoloRideMode::GenerateNewEnemies(int32 GenerateCount)
         int32 DestroyWave = (*it).second;
         if (!chess.IsValid())
         {
-            SoloRideEnemies.erase(it);
+            it = SoloRideEnemies.erase(it);
             continue;
         }
 

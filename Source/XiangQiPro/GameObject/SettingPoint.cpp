@@ -26,7 +26,7 @@ ASettingPoint::ASettingPoint()
 	RootComponent = PointNiagara;
 
 	Sphere = CreateDefaultSubobject<USphereComponent>(TEXT("Sphere"));
-	Sphere->SetSphereRadius(2);
+	Sphere->SetSphereRadius(3);
 	Sphere->SetupAttachment(PointNiagara);
 	
 	// Êó±êÊÂ¼ş
