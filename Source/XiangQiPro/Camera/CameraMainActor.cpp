@@ -335,7 +335,11 @@ void ACameraMainActor::HandleMouseMovement(float DeltaTime)
 		if (ViewportSizeX > 0 && ViewportSizeY > 0)
 		{
 			// 仅在鼠标在窗口内时调整目标位置
-			if (bGotMousePosition)
+			if (bGotMousePosition 
+#if !PLATFORM_DESKTOP 
+				&& (MouseX <= ViewportSizeX && MouseX > 0) && (MouseY <= ViewportSizeY && MouseY > 0) 
+#endif
+				)
 			{
 				// 将鼠标位置归一化到 [0, 1] 范围
 				TargetMouseX = FMath::Clamp(MouseX / ViewportSizeX, 0.0f, 1.0f);
