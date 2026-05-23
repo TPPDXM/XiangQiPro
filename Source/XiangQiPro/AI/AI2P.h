@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include <unordered_map>
+#include <atomic>
 
 #include "XiangQiPro/Interface/IF_EndingGame.h"
 
@@ -63,7 +63,7 @@ public:
 
 private:
 
-    bool bStopThinking = false;;
+    std::atomic<bool> bStopThinking{false};
 
     int32 MaxTime = 10000;
 
@@ -77,7 +77,9 @@ private:
 
     TArray<TArray<WeakChessPtr>> LocalAllChess;  // 10行9列的棋盘
 
-    std::unordered_map<EChessType, std::unordered_map<EChessColor, TArray<TArray<int32>>>> PositionValues;
+    // 缓存将/帅位置，避免每次全盘扫描
+    Position BlackKingPos;
+    Position RedKingPos;
 
 private:
 
@@ -120,10 +122,10 @@ private:
     WeakChessPtr GetChess(int32 X, int32 Y);
 
     // 检查位置是否在棋盘内
-    bool IsValidPosition(int32 x, int32 y);
+    bool IsValidPosition(int32 x, int32 y) const noexcept;
 
     // 检查位置是否在九宫格内
-    bool IsInPalace(int32 x, int32 y, EChessColor color);
+    bool IsInPalace(int32 x, int32 y, EChessColor color) const noexcept;
 
     bool IsInCheck(EChessColor Color, Position KingPos);
 

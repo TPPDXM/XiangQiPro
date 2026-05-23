@@ -70,10 +70,10 @@ public:
     void ApplyMove(TWeakObjectPtr<AChesses> target, FChessMove2P move);
 
     // 检查位置是否在棋盘内
-    bool IsValidPosition(int32 x, int32 y) const;
+    bool IsValidPosition(int32 x, int32 y) const noexcept;
 
     // 检查位置是否在九宫格内
-    bool IsInPalace(int32 x, int32 y, EChessColor color) const;
+    bool IsInPalace(int32 x, int32 y, EChessColor color) const noexcept;
 
     // 检查两个位置之间是否有棋子（用于炮和车的移动）
     int32 CountPiecesBetween(int32 fromX, int32 fromY, int32 toX, int32 toY) const;
