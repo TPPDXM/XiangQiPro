@@ -225,6 +225,9 @@ std::pair<FChessMove2P, int32> UAI2P::Minimax(int32 depth, int32 alpha, int32 be
 
 int32 UAI2P::EvaluateBoard(EChessColor Color)
 {
+    if (GetKingPos(Color) == Position{-1, -1})
+        return INT_MIN;
+
     int32 Score = 0;
     for (int32 i = 0; i < 10; ++i)
     {
@@ -304,17 +307,26 @@ TArray<FChessMove2P> UAI2P::GetAllPossibleMoves(EChessColor Color)
 WeakChessPtr UAI2P::MakeTestMove(FChessMove2P Move)
 {
     WeakChessPtr OriginalChess = GetChess(Move.to.X, Move.to.Y);
-    LocalAllChess[Move.to.X][Move.to.Y] = GetChess(Move.from.X, Move.from.Y);
-    LocalAllChess[Move.from.X][Move.from.Y] = nullptr;
 
     // 如果移动的是将/帅，更新缓存
-    if (auto movedPiece = GetChess(Move.to.X, Move.to.Y); movedPiece.IsValid() && movedPiece->GetType() == EChessType::JIANG)
+    if (auto movedPiece = GetChess(Move.from.X, Move.from.Y); movedPiece.IsValid() && movedPiece->GetType() == EChessType::JIANG)
     {
         if (movedPiece->GetColor() == EChessColor::BLACKCHESS)
             BlackKingPos = Move.to;
         else
             RedKingPos = Move.to;
     }
+    
+    if (OriginalChess.IsValid() && OriginalChess->GetType() == EChessType::JIANG)
+    {
+        if (OriginalChess->GetColor() == EChessColor::BLACKCHESS)
+            BlackKingPos = { -1, -1 };
+        else
+            RedKingPos = { -1, -1 };
+    }
+
+    LocalAllChess[Move.to.X][Move.to.Y] = GetChess(Move.from.X, Move.from.Y);
+    LocalAllChess[Move.from.X][Move.from.Y] = nullptr;
 
     return OriginalChess;
 }
@@ -331,6 +343,14 @@ void UAI2P::UndoTestMove(FChessMove2P Move, WeakChessPtr OriginalChess)
             BlackKingPos = Move.from;
         else
             RedKingPos = Move.from;
+    }
+    
+    if (OriginalChess.IsValid() && OriginalChess->GetType() == EChessType::JIANG)
+    {
+        if (OriginalChess->GetColor() == EChessColor::BLACKCHESS)
+            BlackKingPos = Move.to;
+        else
+            RedKingPos = Move.to;
     }
 }
 
@@ -649,30 +669,7 @@ bool UAI2P::IsInCheck(EChessColor Color, Position KingPos)
 
 Position UAI2P::GetKingPos(EChessColor Color)
 {
-    // 直接返回缓存位置
-    const Position& pos = (Color == EChessColor::BLACKCHESS) ? BlackKingPos : RedKingPos;
-
-    // 如果缓存无效（极少数情况），回退到扫描
-    if (pos.X == -1)
-    {
-        for (int32 i = 9; i >= 0; --i)
-        {
-            for (int32 j = 3; j < 6; ++j)
-            {
-                if (auto chess = GetChess(i, j); chess.IsValid() && chess->GetType() == EChessType::JIANG && chess->GetColor() == Color)
-                {
-                    // 更新缓存
-                    if (Color == EChessColor::BLACKCHESS)
-                        const_cast<Position&>(BlackKingPos) = Position(i, j);
-                    else
-                        const_cast<Position&>(RedKingPos) = Position(i, j);
-                    return (Color == EChessColor::BLACKCHESS) ? BlackKingPos : RedKingPos;
-                }
-            }
-        }
-    }
-
-    return pos;
+    return (Color == EChessColor::BLACKCHESS) ? BlackKingPos : RedKingPos;
 }
 
 bool UAI2P::IsJueSha(EChessColor AIColor)
