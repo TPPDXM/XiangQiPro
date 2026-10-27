@@ -4,9 +4,12 @@
 #include "UI_QualitySettings.h"
 #include "XiangQiPro/UI/XQP_HUD.h"
 
+// 构造界面并初始化控件与事件绑定。
 void UUI_QualitySettings::NativeConstruct()
 {
 	Super::NativeConstruct();
+	if (!IsValid(UserSettings) || !IsValid(QualitySettingsList)) return;
+	QualitySettingsList->ClearListItems();
 
 	ADD_QUALITY_OPTION("后期效果", PostProcessing);
 	ADD_QUALITY_OPTION("抗锯齿", AntiAliasing);

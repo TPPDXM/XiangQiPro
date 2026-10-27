@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <atomic>
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
 #include "Async/AsyncWork.h"
@@ -31,7 +32,9 @@ class XIANGQIPRO_API UAsyncWorker : public UObject
     GENERATED_BODY()
 
 public:
+    // 初始化同步事件，构造阶段不加入根集合。
     UAsyncWorker();
+    // 归还同步事件并释放已完成任务。
     virtual ~UAsyncWorker();
 
     // 创建异步工作器
@@ -97,12 +100,12 @@ public:
     /**
      * 是否应该暂停
      */
-    bool ShouldPause() const { return bShouldPause; }
+    bool ShouldPause() const { return CurrentState.load() == EAsyncWorkerState::Paused; }
 
     /**
      * 设置工作函数
      */
-    void SetWorkFunction(TFunction<void(UAsyncWorker*)> InWorkFunction) { WorkFunction = MoveTemp(InWorkFunction); }
+    void SetWorkFunction(TFunction<void(UAsyncWorker*)> InWorkFunction);
 
     /**
      * 更新进度（线程安全，可在工作函数中调用）
@@ -115,6 +118,7 @@ public:
     void CheckPause();
 
 protected:
+    // GC销毁前等待任务退出，保证任务不访问已销毁的工作器。
     virtual void BeginDestroy() override;
 
 private:
@@ -122,11 +126,14 @@ private:
     class FWorkerTask : public FNonAbandonableTask
     {
     public:
+        // 任务运行期间工作器由根引用保活。
         FWorkerTask(UAsyncWorker* InWorker)
             : Worker(InWorker) {
         }
 
+        // 执行工作并始终派送完成通知。
         void DoWork();
+        // 获取线程池统计标识。
         FORCEINLINE TStatId GetStatId() const
         {
             RETURN_QUICK_DECLARE_CYCLE_STAT(FWorkerTask, STATGROUP_ThreadPoolAsyncTasks);
@@ -161,9 +168,6 @@ private:
     // 线程安全的取消标志
     std::atomic<bool> bShouldStop;
 
-    // 线程安全的暂停标志
-    std::atomic<bool> bShouldPause;
-
     // 当前状态
     std::atomic<EAsyncWorkerState> CurrentState;
 
@@ -176,8 +180,8 @@ private:
     // 进度委托
     FOnAsyncWorkProgress ProgressDelegate;
 
-    // 线程同步
-    FCriticalSection CriticalSection;
+    // 记录工作器是否主动添加了根引用
+    bool bOwnsRoot = false;
 
     // 暂停恢复事件
     FEvent* PauseEvent;

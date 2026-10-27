@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
@@ -27,21 +27,22 @@ private:
 
 	bool bActive = false;
 
-	// Ĭ����������
+	// 默认世界坐标
 	FVector DefaultWorldPosition;
 
-	// ������
+	// 简化坐标
 	Position Position2P;
 
-	AXQPGameStateBase* GameState;
+	TWeakObjectPtr<AXQPGameStateBase> GameState;
 
-	// Niagaraϵͳ
-	UNiagaraSystem* NS_SettingPoint;
+	// Niagara系统
+	UPROPERTY()
+	TObjectPtr<UNiagaraSystem> NS_SettingPoint = nullptr;
 
-	// Ŀ���ƶ�������
+	// 目标移动的棋子
 	TWeakObjectPtr<AChesses> TargetChess;
-	
-public:	
+
+public:
 	// Sets default values for this actor's properties
 	ASettingPoint();
 
@@ -54,45 +55,45 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
+	// 响应重开事件并清理上一局状态。
 	virtual void GamePlayAgain(UObject* OwnerObject) override;
 
-public:	
+public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
-
+	// 将触摸进入转换为悬停反馈。
 	UFUNCTION()
 	void OnInputTouchEnter(ETouchIndex::Type FingerIndex, UPrimitiveComponent* TouchedComponent);
-
+	// 将触摸离开转换为悬停结束反馈。
 	UFUNCTION()
 	void OnInputTouchLeave(ETouchIndex::Type FingerIndex, UPrimitiveComponent* TouchedComponent);
-
+	// 将触摸结束转换为落子点击。
 	UFUNCTION()
 	void OnInputTouchEnd(ETouchIndex::Type FingerIndex, UPrimitiveComponent* TouchedComponent);
 
-	// ͳһ����ͣ���봦��
+	// 统一的悬停进入处理
 	UFUNCTION()
 	void HandleHoverStart(UPrimitiveComponent* TouchedComponent);
 
-	// ͳһ����ͣ�뿪����
+	// 统一的悬停离开处理
 	UFUNCTION()
 	void HandleHoverEnd(UPrimitiveComponent* TouchedComponent);
 
-	// ͳһ�ĵ������
+	// 统一的点击处理
 	UFUNCTION()
 	void HandleClick(UPrimitiveComponent* TouchedComponent, FKey ButtonPressed);
 
-	// �������
+	// 激活组件
 	void SetActivate(bool bInActive);
 
-	// ����Ŀ������
+	// 设置目标棋子
 	void SetTargetChess(TWeakObjectPtr<AChesses> targetChess);
 
-	// ��ȡĿ������
+	// 获取目标棋子
 	TWeakObjectPtr<AChesses> GetTargetChess();
-
+	// 获取落子点棋盘坐标。
 	FVector2D GetPosition2P();
-
+	// 设置落子点棋盘坐标。
 	void SetPosition2P(Position InPosition2P);
 
 };

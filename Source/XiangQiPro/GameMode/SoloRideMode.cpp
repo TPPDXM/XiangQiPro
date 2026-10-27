@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+ï»¿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "SoloRideMode.h"
@@ -7,33 +7,36 @@
 #include "XiangQiPro/Chess/AllChessHeader.h"
 #include "XiangQiPro/Util/Logger.h"
 
-AXQPGameStateBase* USoloRideMode::GS = nullptr;
+TWeakObjectPtr<AXQPGameStateBase> USoloRideMode::GS = nullptr;
 std::list<std::pair<TWeakObjectPtr<AChesses>, int32>> USoloRideMode::SoloRideEnemies = std::list<std::pair<TWeakObjectPtr<AChesses>, int32>>(0);
 TWeakObjectPtr<AChesses> USoloRideMode::SoloRideHorse = nullptr;
 int32 USoloRideMode::SoloRideScore = 0;
 int32 USoloRideMode::EnemyGenerateWave = 0;
 
+// ç»‘å®šæœ¬å±€GameStateå¹¶æ¸…ç©ºå•éª‘ç©æ³•æ•°æ®ã€‚
 void USoloRideMode::InitSoloRideGame(AXQPGameStateBase* InGameState)
 {
-    GS = InGameState;
     USoloRideMode::ResetSoloRideData();
+    GS = InGameState;
 }
 
+// åœ¨è½å­å‰ç»Ÿè®¡å•éª‘ç©æ³•çš„åƒå­å¾—åˆ†ã€‚
 bool USoloRideMode::OnApplyMove(FChessMove2P move)
 {
-    if (GS->GetBattleTurn() == EPlayerTag::P1) // Íæ¼ÒÖ´Æå
+    if (!GS.IsValid() || !IsValid(GS->board2P)) return false;
+    if (GS->GetBattleTurn() == EPlayerTag::P1) // ç©å®¶æ‰§æ£‹
     {
         TWeakObjectPtr<AChesses> chess = GS->board2P->GetChess(move.to);
         if (chess.IsValid() && !chess->IsDead())
         {
-            EChessType Type = chess->GetType(); // »ñÈ¡±»³ÔµôµÄ×ÓµÄÀàĞÍ
+            EChessType Type = chess->GetType(); // è·å–è¢«åƒæ‰çš„å­çš„ç±»å‹
             if (Type == EChessType::BING)
             {
-                USoloRideMode::SoloRideScore += 5; // ³Ôµô±ø¼Ó5·Ö
+                USoloRideMode::SoloRideScore += 5; // åƒæ‰å…µåŠ 5åˆ†
             }
             else
             {
-                USoloRideMode::SoloRideScore += 10; // ÆäËû¼Ó10·Ö
+                USoloRideMode::SoloRideScore += 10; // å…¶ä»–åŠ 10åˆ†
             }
             return true;
         }
@@ -41,8 +44,10 @@ bool USoloRideMode::OnApplyMove(FChessMove2P move)
     return false;
 }
 
+// åœ¨å•éª‘ç§»åŠ¨ç»“æŸååˆ¤æ–­å¤±è´¥ä¸ç”Ÿæˆæ•Œäººã€‚
 void USoloRideMode::OnFinishMove()
 {
+    if (!GS.IsValid() || !IsValid(GS->board2P)) return;
     if (!SoloRideHorse.IsValid())
     {
         ULogger::LogError(TEXT("AXQPGameStateBase::OnFinishMove2P"), TEXT("SoloRideHorse is nullptr."));
@@ -53,8 +58,8 @@ void USoloRideMode::OnFinishMove()
 
     if (horseMoves.Num() <= 0)
     {
-#define this GS
-        EXEC_ONSOLORIDEDEFEAT(SoloRideScore); // Ö´ĞĞÊ§°ÜÊÂ¼ş
+#define this GS.Get()
+        EXEC_ONSOLORIDEDEFEAT(SoloRideScore); // æ‰§è¡Œå¤±è´¥äº‹ä»¶
 #undef this
         return;
     }
@@ -62,68 +67,71 @@ void USoloRideMode::OnFinishMove()
     auto moves = GS->board2P->GenerateAllMoves(EChessColor::BLACKCHESS);
     for (const auto& move : moves)
     {
-        // ¼ì²éÍæ¼ÒÒÆ¶¯ºóÊÇ·ñ±»³Ô
+        // æ£€æŸ¥ç©å®¶ç§»åŠ¨åæ˜¯å¦è¢«åƒ
         if (move.to == SoloRideHorse->GetPosition())
         {
             GS->SetBattleTurn(EPlayerTag::P2);
-            GS->ApplyMove2P(GS->GetChessBoard2P()->GetChess(move.from), move); // ³ÔµôÍæ¼ÒµÄÂí
-#define this GS
-            EXEC_ONSOLORIDEDEFEAT(SoloRideScore); // Ö´ĞĞÊ§°ÜÊÂ¼ş
+            GS->ApplyMove2P(GS->GetChessBoard2P()->GetChess(move.from), move); // åƒæ‰ç©å®¶çš„é©¬
+#define this GS.Get()
+            EXEC_ONSOLORIDEDEFEAT(SoloRideScore); // æ‰§è¡Œå¤±è´¥äº‹ä»¶
 #undef this
             return;
         }
     }
 
-    // Éú³ÉĞÂµÄµĞÈË
+    // ç”Ÿæˆæ–°çš„æ•Œäºº
     GenerateNewEnemies();
 }
 
+// æŒ‰æ³¢æ¬¡ç”Ÿæˆæ•Œäººå¹¶æ¸…é™¤åˆ°æœŸæ£‹å­ã€‚
 void USoloRideMode::GenerateNewEnemies(int32 GenerateCount)
 {
+    if (!GS.IsValid() || !IsValid(GS->board2P) || !GS->GetChessBoard2PActor().IsValid() || !SoloRideHorse.IsValid()) return;
     EnemyGenerateWave++;
 
-    // 1. ¼ÆËãÉú³ÉÊıÁ¿ºÍÀàĞÍ¸ÅÂÊ
+    // 1. è®¡ç®—ç”Ÿæˆæ•°é‡å’Œç±»å‹æ¦‚ç‡
     TArray<TSubclassOf<AChesses>> classPool;
 
-    // ¸ù¾İ²¨´Îµ÷Õû¸ÅÂÊ³Ø
+    // æ ¹æ®æ³¢æ¬¡è°ƒæ•´æ¦‚ç‡æ± 
     if (EnemyGenerateWave < 8)
     {
-        // Ç°ÆÚ£º100% ±ø
+        // å‰æœŸï¼š100% å…µ
         for (int i = 0; i < 10; ++i) classPool.Add(AChess_Bing::StaticClass());
     }
     else if (EnemyGenerateWave < 15)
     {
-        // ÖĞÆÚ£º80% ±ø£¬20% Ïó
+        // ä¸­æœŸï¼š80% å…µï¼Œ20% è±¡
         for (int i = 0; i < 8; ++i) classPool.Add(AChess_Bing::StaticClass());
         for (int i = 0; i < 2; ++i) classPool.Add(AChess_Xiang::StaticClass());
     }
     else
     {
-        // ºóÆÚ£º70% ±ø£¬20% Ïó£¬10% Âí
+        // åæœŸï¼š70% å…µï¼Œ20% è±¡ï¼Œ10% é©¬
         for (int i = 0; i < 7; ++i) classPool.Add(AChess_Bing::StaticClass());
         for (int i = 0; i < 2; ++i) classPool.Add(AChess_Xiang::StaticClass());
         for (int i = 0; i < 1; ++i) classPool.Add(AChess_Ma::StaticClass());
     }
 
-    // 2. ²éÕÒºì·½ÂíµÄÎ»ÖÃºÍ°²È«ÒÆ¶¯Î»ÖÃ
-    TArray<Position> safeMoves = GetAvailablePos(SoloRideHorse); // »ñÈ¡µ±Ç°°²È«ÒÆ¶¯Î»ÖÃ
+    // 2. æŸ¥æ‰¾çº¢æ–¹é©¬çš„ä½ç½®å’Œå®‰å…¨ç§»åŠ¨ä½ç½®
+    TArray<Position> safeMoves = GetAvailablePos(SoloRideHorse); // è·å–å½“å‰å®‰å…¨ç§»åŠ¨ä½ç½®
 
-    // 3. Éú³ÉĞÂµĞÈË
+    // 3. ç”Ÿæˆæ–°æ•Œäºº
     for (int32 i = 0; i < GenerateCount && safeMoves.Num() > 0; ++i)
     {
-        // ´Ó°²È«Î»ÖÃÖĞËæ»úÑ¡Ò»¸ö£¬È·±£Éú³ÉºóÂíÖÁÉÙ»¹ÓĞÒ»´¦¿É×ß
+        // ä»å®‰å…¨ä½ç½®ä¸­éšæœºé€‰ä¸€ä¸ªï¼Œç¡®ä¿ç”Ÿæˆåé©¬è‡³å°‘è¿˜æœ‰ä¸€å¤„å¯èµ°
         int32 randomIndex = FMath::RandRange(0, safeMoves.Num() - 1);
         Position spawnPos = safeMoves[randomIndex];
-        safeMoves.RemoveAt(randomIndex); // ÒÆ³ı´ËÎ»ÖÃ£¬±ÜÃâÏÂ´ÎÖØ¸´
+        safeMoves.RemoveAt(randomIndex); // ç§»é™¤æ­¤ä½ç½®ï¼Œé¿å…ä¸‹æ¬¡é‡å¤
 
-        // Ëæ»úÑ¡ÔñÆå×ÓÀàĞÍ
+        // éšæœºé€‰æ‹©æ£‹å­ç±»å‹
         TSubclassOf<AChesses> chessClass = classPool[FMath::RandRange(0, classPool.Num() - 1)];
 
-        // Éú³ÉµĞÈË
+        // ç”Ÿæˆæ•Œäºº
         AChesses* newEnemy = GS->GetChessBoard2PActor()->SpawnChessAt(chessClass, spawnPos);
+        if (!IsValid(newEnemy)) continue;
         newEnemy->Init(EChessColor::BLACKCHESS, spawnPos, GS->board2P);
         newEnemy->FinishSpawning(FTransform(GS->board2P->BoardLocs[spawnPos.X][spawnPos.Y]));
-        GS->board2P->AllChess[spawnPos.X][spawnPos.Y] = newEnemy;
+        GS->board2P->SetChess(spawnPos.X, spawnPos.Y, newEnemy);
 
         SoloRideEnemies.push_back({ newEnemy, EnemyGenerateWave + Math::RandomIntegerInRange(3, 5) });
     }
@@ -140,22 +148,28 @@ void USoloRideMode::GenerateNewEnemies(int32 GenerateCount)
 
         if (EnemyGenerateWave >= DestroyWave)
         {
+            const Position Pos = chess->GetPosition();
+            if (GS->board2P->GetChess(Pos) == chess) GS->board2P->SetChess(Pos.X, Pos.Y, nullptr);
             chess->Defeated();
+            it = SoloRideEnemies.erase(it);
+            continue;
         }
         ++it;
     }
 }
 
+// è·å–è¿œç¦»ç©å®¶æ£‹å­çš„ç©ºé—²ç”Ÿæˆä½ç½®ã€‚
 TArray<Position> USoloRideMode::GetAvailablePos(TWeakObjectPtr<AChesses> Horse)
 {
-    Position HorsePos = SoloRideHorse->GetPosition();
+    if (!GS.IsValid() || !IsValid(GS->board2P) || !Horse.IsValid()) return {};
+    Position HorsePos = Horse->GetPosition();
     TArray<Position> Moves;
     for (int32 i = 0; i < 10; i++)
         for (int32 j = 0; j < 9; j++)
         {
             if (i != HorsePos.X - 1 && i != HorsePos.X && i != HorsePos.X + 1 &&
                 j != HorsePos.Y - 1 && j != HorsePos.Y && j != HorsePos.Y + 1 &&
-                !GS->board2P->GetChess(i, j).IsValid())                                 // ÅÅ³ıµôÂíÖÜÎ§µÄÎ»ÖÃÒÔ¼°ÓĞÆå×ÓÕ¼¾İµÄÎ»ÖÃ
+                !GS->board2P->GetChess(i, j).IsValid())                                 // æ’é™¤æ‰é©¬å‘¨å›´çš„ä½ç½®ä»¥åŠæœ‰æ£‹å­å æ®çš„ä½ç½®
             {
                 Moves.Add({ i,j });
             }
@@ -163,8 +177,11 @@ TArray<Position> USoloRideMode::GetAvailablePos(TWeakObjectPtr<AChesses> Horse)
     return Moves;
 }
 
+// æ¸…ç†å•éª‘ç©æ³•å¼•ç”¨ã€æ³¢æ¬¡å’Œåˆ†æ•°ã€‚
 void USoloRideMode::ResetSoloRideData()
 {
+    GS.Reset();
+    SoloRideHorse.Reset();
     SoloRideEnemies.clear();
     SoloRideScore = 0;
     EnemyGenerateWave = 0;

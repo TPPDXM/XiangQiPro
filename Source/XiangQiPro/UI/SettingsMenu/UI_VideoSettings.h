@@ -45,7 +45,7 @@ protected:
 				FString(UTF8_TO_TCHAR("窗口化")) };
 
 	UPROPERTY(BlueprintReadOnly)
-	TArray<FString> VsyncModeList = { 
+	TArray<FString> VsyncModeList = {
 				FString(UTF8_TO_TCHAR("禁用")),
 				FString(UTF8_TO_TCHAR("启用")) };
 
@@ -57,7 +57,7 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly)
 	TArray<FIntPoint> Resolutions;
-
+	// 构造界面并初始化控件与事件绑定。
 	virtual void NativeConstruct() override;
 
 private:

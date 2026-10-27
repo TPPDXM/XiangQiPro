@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+ï»¿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
@@ -6,6 +6,8 @@
 #include "../Util/ChessMove.h"
 
 #include "CoreMinimal.h"
+#include "Subsystems/GameInstanceSubsystem.h"
+#include "XiangQiPro/AI/ChessPosition.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "ChessBoard2P.generated.h"
 
@@ -17,113 +19,135 @@ typedef UKismetMathLibrary Math;
 typedef UChessBoard2P ChessBoard2P;
 
 /**
- * 
+ *
  */
 UCLASS()
 class XIANGQIPRO_API UChessBoard2P : public UGameInstanceSubsystem
 {
 	GENERATED_BODY()
 
-    EChessColor sideToMove;
+    uint64 Revision = 0;
+    EChessColor sideToMove = EChessColor::REDCHESS;
 
 public:
-
+	// åˆå§‹åŒ–ç©ºæ£‹ç›˜ï¼Œç­‰å¾…æ£‹ç›˜Actorå»ºç«‹åæ ‡ã€‚
 	UChessBoard2P();
 
-    TArray<TArray<TWeakObjectPtr<AChesses>>> AllChess;  // 10ĞĞ9ÁĞµÄÆåÅÌ
+    // æ¸¸æˆçº¿ç¨‹å†…ä¸€æ¬¡æ€§è¯»å–æ£‹å­ç±»å‹å’Œé˜µè¥ï¼Œè¿”å›ç‹¬ç«‹çš„çº¯æ•°æ®å±€é¢ã€‚
+    FChessPosition CreateSnapshot() const;
+    // éªŒè¯èµ°æ³•ä¸å½“å‰æ£‹ç›˜ä¸€è‡´ï¼Œå¹¶æ£€æŸ¥å®Œæ•´åˆæ³•æ€§ã€‚
+    bool IsLegalMove(TWeakObjectPtr<AChesses> Target, const FChessMove2P& Move) const;
+    // æ¸…ç†ä¸Šä¸€å±€ActoråŠæ‰€æœ‰æ£‹ç›˜ç¼“å­˜ã€‚
+    void ResetBoard();
 
-    TArray<TArray<FVector>> BoardLocs; // ÆåÅÌÖÃÆåµãÎ»ÖÃ
+    // è·å–å±€é¢ä¿®è®¢å·ï¼Œåªèƒ½åœ¨æ¸¸æˆçº¿ç¨‹ä½¿ç”¨ã€‚
+    uint64 GetRevision() const { return Revision; }
+    // æ£‹å­èº«ä»½æ”¹å˜æ—¶ä½¿æ—§æœç´¢ç»“æœå¤±æ•ˆã€‚
+    void MarkPositionChanged() { check(IsInGameThread()); ++Revision; }
+
+    bool bVariantRules = false;
+    bool bRequireKing = true;
+
+    TArray<TArray<TWeakObjectPtr<AChesses>>> AllChess;  // 10è¡Œ9åˆ—çš„æ£‹ç›˜
+
+    TArray<TArray<FVector>> BoardLocs; // æ£‹ç›˜ç½®æ£‹ç‚¹ä½ç½®
 
     TArray<TArray<TWeakObjectPtr<ASettingPoint>>> SettingPoints;
 
 public:
 
-    // ³õÊ¼»¯ÆåÅÌ
+    // åˆå§‹åŒ–æ£‹ç›˜
     void InitializeBoard(TWeakObjectPtr<AChessBoard2PActor> ChessBoard2PActor);
 
-    // ÏÔÊ¾ÖÃÆåÎ»ÖÃ±ê¼Ç
+    // æ˜¾ç¤ºç½®æ£‹ä½ç½®æ ‡è®°
     void ShowSettingPoint2P(TArray<FChessMove2P> Moves, TWeakObjectPtr<AChesses> Target);
 
-    // Ê¹ËùÓĞÖÃÆåÎ»ÖÃ±ê¼ÇÏûÊ§
+    // ä½¿æ‰€æœ‰ç½®æ£‹ä½ç½®æ ‡è®°æ¶ˆå¤±
     void DismissSettingPoint2P();
 
-    // ÉèÖÃÖ´Æå·½
+    // è®¾ç½®æ‰§æ£‹æ–¹
     void SetSideToMove(EChessColor color);
 
-    // »ñÈ¡Æå×Ó
+    // è·å–æ£‹å­
     TWeakObjectPtr<AChesses> GetChess(int32 x, int32 y) const;
-
+    // é€šè¿‡ç®€åŒ–åæ ‡è¯»å–æ£‹å­ã€‚
     TWeakObjectPtr<AChesses> GetChess(FIntPoint Pos) const;
 
-    // ÉèÖÃÆå×Ó
+    // è®¾ç½®æ£‹å­
     void SetChess(int32 x, int32 y, TWeakObjectPtr<AChesses> Chess);
-
+    // è¾“å‡ºå½“å‰æ£‹ç›˜çš„æ£‹å­ç±»å‹ï¼Œä¾¿äºè°ƒè¯•ã€‚
     void DebugCheckBoardState() const;
 
-    // ÒÆ¶¯Æå×Ó,½öAI¼ÆËãÊ¹ÓÃ,Äã²»Ó¦¸Ãµ÷ÓÃÕâ¸öº¯Êı
+    // æ¸¸æˆçº¿ç¨‹å…¼å®¹è¯•èµ°å…¥å£ï¼Œåå°æœç´¢ä½¿ç”¨çº¯æ•°æ®æ£‹ç›˜ã€‚
     void MakeTestMove(FChessMove2P move, TWeakObjectPtr<AChesses> movedPiece);
 
-    // ³·ÏúÒÆ¶¯,½öAI¼ÆËãÊ¹ÓÃ,Äã²»Ó¦¸Ãµ÷ÓÃÕâ¸öº¯Êı
+    // æ’¤é”€æ¸¸æˆçº¿ç¨‹ä¸­çš„å…¼å®¹è¯•èµ°ã€‚
     void UndoTestMove(FChessMove2P move, TWeakObjectPtr<AChesses> movedPiece, TWeakObjectPtr<AChesses> capturedPiece);
 
-    // Ó¦ÓÃÆå×ÓÒÆ¶¯
+    // åº”ç”¨æ£‹å­ç§»åŠ¨
     void ApplyMove(TWeakObjectPtr<AChesses> target, FChessMove2P move);
 
-    // ¼ì²éÎ»ÖÃÊÇ·ñÔÚÆåÅÌÄÚ
+    // æ£€æŸ¥ä½ç½®æ˜¯å¦åœ¨æ£‹ç›˜å†…
     bool IsValidPosition(int32 x, int32 y) const noexcept;
 
-    // ¼ì²éÎ»ÖÃÊÇ·ñÔÚ¾Å¹¬¸ñÄÚ
+    // æ£€æŸ¥ä½ç½®æ˜¯å¦åœ¨ä¹å®«æ ¼å†…
     bool IsInPalace(int32 x, int32 y, EChessColor color) const noexcept;
 
-    // ¼ì²éÁ½¸öÎ»ÖÃÖ®¼äÊÇ·ñÓĞÆå×Ó£¨ÓÃÓÚÅÚºÍ³µµÄÒÆ¶¯£©
+    // æ£€æŸ¥ä¸¤ä¸ªä½ç½®ä¹‹é—´æ˜¯å¦æœ‰æ£‹å­ï¼ˆç”¨äºç‚®å’Œè½¦çš„ç§»åŠ¨ï¼‰
     int32 CountPiecesBetween(int32 fromX, int32 fromY, int32 toX, int32 toY) const;
 
-    // Éú³ÉËùÓĞºÏ·¨×ß·¨
+    // ç”Ÿæˆæ‰€æœ‰åˆæ³•èµ°æ³•
     TArray<FChessMove2P> GenerateAllMoves(EChessColor color);
 
-    // ÎªÌØ¶¨Æå×ÓÉú³É×ß·¨
+    // ä¸ºç‰¹å®šæ£‹å­ç”Ÿæˆèµ°æ³•
     TArray<FChessMove2P> GenerateMovesForChess(int32 x, int32 y, TWeakObjectPtr<AChesses> chess);
 
-    // Éú³É½«/Ë§µÄ×ß·¨
+    // ç”Ÿæˆå°†/å¸…çš„èµ°æ³•
     void GenerateJiangMoves(int32 x, int32 y, EChessColor color, TArray<FChessMove2P>& moves) const;
 
-    // ¼ì²é½«Ë§ÊÇ·ñÃæ¶ÔÃæÇÒÖĞ¼äÎŞÆå×Ó×èµ²
+    // æ£€æŸ¥å°†å¸…æ˜¯å¦é¢å¯¹é¢ä¸”ä¸­é—´æ— æ£‹å­é˜»æŒ¡
     bool AreKingsFacingEachOther() const;
 
-    // »ñÈ¡½«Ë§Ö®¼äµÄÆå×ÓÊıÁ¿
+    // è·å–å°†å¸…ä¹‹é—´çš„æ£‹å­æ•°é‡
     int32 CountPiecesBetweenKings() const;
 
-    // Éú³É½«Ë§Ö±½Ó¹¥»÷µÄ×ß·¨
+    // ç”Ÿæˆå°†å¸…ç›´æ¥æ”»å‡»çš„èµ°æ³•
     void GenerateKingDirectAttackMoves(int32 x, int32 y, EChessColor color, TArray<FChessMove2P>& moves) const;
 
-    // Éú³ÉÊ¿/ÊËµÄ×ß·¨
+    // ç”Ÿæˆå£«/ä»•çš„èµ°æ³•
     void GenerateShiMoves(int32 x, int32 y, EChessColor color, TArray<FChessMove2P>& moves) const;
 
-    // Éú³ÉÏó/ÏàµÄ×ß·¨
+    // ç”Ÿæˆè±¡/ç›¸çš„èµ°æ³•
     void GenerateXiangMoves(int32 x, int32 y, EChessColor color, TArray<FChessMove2P>& moves) const;
 
-    // Éú³ÉÂí/‚ØµÄ×ß·¨
+    // ç”Ÿæˆé©¬/å‚Œçš„èµ°æ³•
     void GenerateMaMoves(int32 x, int32 y, EChessColor color, TArray<FChessMove2P>& moves) const;
 
-    // Éú³É³µ/‚eµÄ×ß·¨
+    // ç”Ÿæˆè½¦/ä¿¥çš„èµ°æ³•
     void GenerateJvMoves(int32 x, int32 y, EChessColor color, TArray<FChessMove2P>& moves) const;
 
-    // Éú³ÉÅÚ/³hµÄ×ß·¨
+    // ç”Ÿæˆç‚®/ç ²çš„èµ°æ³•
     void GeneratePaoMoves(int32 x, int32 y, EChessColor color, TArray<FChessMove2P>& moves) const;
 
-    // Éú³É±ø/×äµÄ×ß·¨
+    // ç”Ÿæˆå…µ/å’çš„èµ°æ³•
     void GenerateBingMoves(int32 x, int32 y, EChessColor color, TArray<FChessMove2P>& moves) const;
 
-    // ½«¾ü¼ì²â
+    // å°†å†›æ£€æµ‹
     bool IsKingInCheck(EChessColor color);
-
+    // æ£€æŸ¥æŒ‡å®šé˜µè¥çš„æ£‹å­èƒ½å¦æ”»å‡»ç›®æ ‡ä½ç½®ã€‚
     bool CanAttackPosition(int32 fromX, int32 fromY, int32 toX, int32 toY, EChessColor attackerColor) const;
-
+    // ä½¿ç”¨ç»Ÿä¸€è§„åˆ™åˆ¤æ–­å°†å¸…çš„æ”»å‡»èŒƒå›´ã€‚
     bool CanJiangAttack(int32 fromX, int32 fromY, int32 toX, int32 toY, EChessColor color) const;
+    // ä½¿ç”¨ç»Ÿä¸€è§„åˆ™åˆ¤æ–­å£«ä»•çš„æ”»å‡»èŒƒå›´ã€‚
     bool CanShiAttack(int32 fromX, int32 fromY, int32 toX, int32 toY, EChessColor color) const;
+    // ä½¿ç”¨ç»Ÿä¸€è§„åˆ™åˆ¤æ–­è±¡ç›¸çš„æ”»å‡»èŒƒå›´ã€‚
     bool CanXiangAttack(int32 fromX, int32 fromY, int32 toX, int32 toY, EChessColor color) const;
+    // ä½¿ç”¨ç»Ÿä¸€è§„åˆ™åˆ¤æ–­é©¬çš„æ”»å‡»èŒƒå›´ã€‚
     bool CanMaAttack(int32 fromX, int32 fromY, int32 toX, int32 toY, EChessColor color) const;
+    // ä½¿ç”¨ç»Ÿä¸€è§„åˆ™åˆ¤æ–­è½¦çš„æ”»å‡»èŒƒå›´ã€‚
     bool CanJvAttack(int32 fromX, int32 fromY, int32 toX, int32 toY, EChessColor color) const;
+    // ä½¿ç”¨ç»Ÿä¸€è§„åˆ™åˆ¤æ–­ç‚®çš„æ”»å‡»èŒƒå›´ã€‚
     bool CanPaoAttack(int32 fromX, int32 fromY, int32 toX, int32 toY, EChessColor color) const;
+    // ä½¿ç”¨ç»Ÿä¸€è§„åˆ™åˆ¤æ–­å…µå’çš„æ”»å‡»èŒƒå›´ã€‚
     bool CanBingAttack(int32 fromX, int32 fromY, int32 toX, int32 toY, EChessColor color) const;
 };

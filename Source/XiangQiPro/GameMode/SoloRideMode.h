@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+ï»¿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
@@ -19,47 +19,47 @@ class AChesses;
 class AXQPGameStateBase;
 
 /**
- * 
+ *
  */
 UCLASS()
 class XIANGQIPRO_API USoloRideMode : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
 
-	static AXQPGameStateBase* GS;
+	static TWeakObjectPtr<AXQPGameStateBase> GS;
 
 	/*
-	* Ç§Àï×ßµ¥ÆïµÄ¶ÔÊÖÆå×Ó£¬ÒÔ¼°Ïú»ÙµÄÂÖÊı
+	* åƒé‡Œèµ°å•éª‘çš„å¯¹æ‰‹æ£‹å­ï¼Œä»¥åŠé”€æ¯çš„è½®æ•°
 	*/
 	static std::list<std::pair<TWeakObjectPtr<AChesses>, int32>> SoloRideEnemies;
 
 public:
 
-	// Ç§Àï×ßµ¥ÆïµÄÂí
+	// åƒé‡Œèµ°å•éª‘çš„é©¬
 	static TWeakObjectPtr<AChesses> SoloRideHorse;
 
-	// ºì·½ÂíµÃ·Ö
+	// çº¢æ–¹é©¬å¾—åˆ†
 	static int32 SoloRideScore;
 
-	// µĞÈËÉú³É²¨´Î/»ØºÏÊı£¬ÓÃÓÚ¿ØÖÆÉú³É¸ÅÂÊ
+	// æ•Œäººç”Ÿæˆæ³¢æ¬¡/å›åˆæ•°ï¼Œç”¨äºæ§åˆ¶ç”Ÿæˆæ¦‚ç‡
 	static int32 EnemyGenerateWave;
 
-	// ³õÊ¼»¯
+	// åˆå§‹åŒ–
 	static void InitSoloRideGame(AXQPGameStateBase* InGameState);
 
-	// Ó¦ÓÃÆå×ÓÒÆ¶¯£¬·µ»ØÎªÕæÊ±¸üĞÂµÃ·Ö
+	// åº”ç”¨æ£‹å­ç§»åŠ¨ï¼Œè¿”å›ä¸ºçœŸæ—¶æ›´æ–°å¾—åˆ†
 	static bool OnApplyMove(FChessMove2P move);
 
-	// Íæ¼Ò½áÊøÒÆ¶¯Ê±µ÷ÓÃ
+	// ç©å®¶ç»“æŸç§»åŠ¨æ—¶è°ƒç”¨
 	static void OnFinishMove();
 
-	// Éú³ÉµĞÈË£¬Ä¬ÈÏËæ»ú1~2¸ö
+	// ç”Ÿæˆæ•Œäººï¼Œé»˜è®¤éšæœº1~2ä¸ª
 	static void GenerateNewEnemies(int32 GenerateCount = UKismetMathLibrary::RandomIntegerInRange(1, 2));
 
-	// »ñÈ¡¿ÉÓÃµÄÉú³ÉÎ»ÖÃ
+	// è·å–å¯ç”¨çš„ç”Ÿæˆä½ç½®
 	static TArray<Position> GetAvailablePos(TWeakObjectPtr<AChesses> Horse);
 
-	// ÖØÖÃÊı¾İ£¬ÀıÈçµÃ·Ö¡¢ÂÖÊı
+	// é‡ç½®æ•°æ®ï¼Œä¾‹å¦‚å¾—åˆ†ã€è½®æ•°
 	static void ResetSoloRideData();
-	
+
 };

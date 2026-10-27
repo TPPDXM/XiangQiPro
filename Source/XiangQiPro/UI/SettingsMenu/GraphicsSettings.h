@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
@@ -8,7 +8,7 @@
 #include "GraphicsSettings.generated.h"
 
 /**
- * �������ú���Ƶ���õĸ���
+ * 画面设置和视频设置的父类
  */
 UCLASS()
 class XIANGQIPRO_API UGraphicsSettings : public UUserWidget
@@ -19,11 +19,11 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly)
 	UGameUserSettings* UserSettings;
-	
+
 protected:
-
+	// 构造界面并初始化控件与事件绑定。
 	virtual void NativeConstruct() override;
-
+	// 保存并应用用户画面设置。
 	UFUNCTION(BlueprintCallable)
 	void SaveAndApply();
 };

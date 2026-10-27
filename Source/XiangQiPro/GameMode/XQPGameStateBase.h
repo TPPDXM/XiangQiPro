@@ -6,11 +6,11 @@
 #include "XiangQiPro/Util/ChessMove.h"
 
 #include "CoreMinimal.h"
+#include "XiangQiPro/AI/ChessSearch.h"
 #include "GameFramework/GameStateBase.h"
 #include "XQPGameStateBase.generated.h"
 
 class UAI2P;
-class UAsyncWorker;
 class UChessBoard2P;
 class UUI_Battle2P_Base;
 class AChessBoard2PActor;
@@ -26,7 +26,7 @@ enum class EBattleType : uint8
 {
 	P2 = 0 UMETA(DisplayName = "2Players"),
 	P2_AI = 1 UMETA(DisplayName = "2Players With AI"),
-	P3 = 2 UMETA(DisplayName = "3Players"),  
+	P3 = 2 UMETA(DisplayName = "3Players"),
 	SoloRide = 3 UMETA(DisplayName = "千里走单骑")
 };
 
@@ -39,7 +39,7 @@ enum class EPlayerTag : uint8
 };
 
 /**
- * 
+ *
  */
 UCLASS()
 class XIANGQIPRO_API AXQPGameStateBase : public AGameStateBase, public IIF_GameState
@@ -69,21 +69,26 @@ private:
 
 	bool bGameOver = false;
 
-	bool bIsJueSha = false;
+    bool bAIPaused = false;
+    bool bMoveInProgress = false;
+    bool bHasPendingAIResult = false;
+    bool bEndingPlay = false;
+    uint64 AIRequestId = 0;
+    uint64 SearchBoardKey = 0;
+    uint64 SearchBoardRevision = 0;
+    FChessSearchResult PendingAIResult;
+    TSharedPtr<FChessSearch, ESPMode::ThreadSafe> ActiveSearch;
 
-	// AI异步任务
-	UAsyncWorker* AIAsync;
-
-private:
-
-	// 更新得分
-	void UpdateScore();
-
-	// AI2P计算后得到的移动结果
-	FChessMove2P AIMove2P;
-
-	// AI2P移动的棋子
-	TWeakObjectPtr<AChesses> AIMovedChess;
+    // 取消当前搜索并使已排队的完成回调失效。
+    void CancelAIRequest();
+    // 在游戏线程接收结果，暂停期间暂存结果。
+    void ReceiveAIResult(uint64 RequestId, const FChessSearchResult& Result);
+    // 校验局面并提交AI落子或无棋可走的结算。
+    void ApplyAIResult(const FChessSearchResult& Result);
+    // 统一处理普通胜负和残局通关。
+    void Finish2PGame(EChessColor Winner);
+    // 更新双方子力得分显示。
+    void UpdateScore();
 
 public:
 
@@ -99,10 +104,13 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bEnableMachineLearning = false;
 
+	// 初始化默认对战模式和AI难度。
 	AXQPGameStateBase();
 
+	// 读取本局的难度配置。
 	virtual void BeginPlay() override;
 
+	// 退出关卡时取消搜索并释放本局引用。
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	// 游戏暂停事件
@@ -122,7 +130,7 @@ public:
 
 	// 获取双人棋盘(非Actor)
 	TWeakObjectPtr<UChessBoard2P> GetChessBoard2P();
-
+	// 获取当前棋盘Actor的弱引用。
 	TWeakObjectPtr<AChessBoard2PActor> GetChessBoard2PActor() const;
 
 	// 获取对战人数类型
@@ -130,9 +138,9 @@ public:
 
 	// 获取执棋对象
 	EPlayerTag GetBattleTurn() const;
-
+	// 修改执棋方时取消旧回合的搜索。
 	void SetBattleTurn(EPlayerTag BT);
-
+	// 绑定界面并同步当前得分和回合。
 	void SetHUD2P(TWeakObjectPtr<UUI_Battle2P_Base> hud2P);
 
 	// 获取玩家1的得分
@@ -165,5 +173,5 @@ public:
 
 	// 游戏结束
 	void NotifyGameOver(EChessColor winner);
-	
+
 };

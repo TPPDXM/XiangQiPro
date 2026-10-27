@@ -7,100 +7,55 @@
 template <typename FunctionType>
 struct FDoOnce;
 
-/*
-* 设置一个仅执行一次的代码块
-*/
+// 游戏线程内的一次性调用器，统一支持有返回值和void函数。
 template <typename Ret, typename... ParamTypes>
 struct FDoOnce<Ret(ParamTypes...)>
 {
-
 public:
+    // 创建未绑定工作函数的一次性调用器。
+    FDoOnce() = default;
 
-	FORCEINLINE FDoOnce() : bDoOnce(true), WorkFunction(nullptr) {}
+    // 保存待执行工作函数。
+    explicit FDoOnce(TFunction<Ret(ParamTypes...)> Function)
+        : WorkFunction(MoveTemp(Function))
+    {
+    }
 
-	FORCEINLINE FDoOnce(TFunction<Ret(ParamTypes...)> Function) : bDoOnce(true), WorkFunction(Function) {}
+    // 替换工作函数，保留当前是否允许执行的状态。
+    void SetWorkFunction(TFunction<Ret(ParamTypes...)> Function)
+    {
+        WorkFunction = MoveTemp(Function);
+    }
 
-	FORCEINLINE void SetWorkFunction(TFunction<Ret(ParamTypes...)> Function)
-	{
-		WorkFunction = Function;
-	}
+    // 清除函数并恢复可执行标志。
+    void Reset()
+    {
+        bDoOnce = true;
+        WorkFunction = nullptr;
+    }
 
-	FORCEINLINE void Reset() 
-	{ 
-		bDoOnce = true; 
-		WorkFunction = nullptr;
-	}
+    // 设置是否允许再次执行。
+    void SetExecutable(bool bNewDoOnce)
+    {
+        bDoOnce = bNewDoOnce;
+    }
 
-	FORCEINLINE void SetExecutable(bool bNewDoOnce)
-	{
-		bDoOnce = bNewDoOnce;
-	}
+    // 查询当前是否允许执行。
+    bool IsExecutable() const
+    {
+        return bDoOnce;
+    }
 
-	FORCEINLINE bool IsExecutable() const
-	{ 
-		return bDoOnce; 
-	}
-
-	FORCEINLINE Ret Execute(ParamTypes... Params)
-	{
-		if (bDoOnce && WorkFunction)
-		{
-			bDoOnce = false;
-			Ret value = WorkFunction(Params...); // 执行操作
-			return value; // 返回
-		}
-		return Ret();
-	}
+    // 执行前关闭入口，并保留闭包副本防止回调清理调用器自身。
+    Ret Execute(ParamTypes... Params)
+    {
+        if (!bDoOnce || !WorkFunction) return Ret();
+        bDoOnce = false;
+        const TFunction<Ret(ParamTypes...)> Function = WorkFunction;
+        return Function(Forward<ParamTypes>(Params)...);
+    }
 
 private:
-
-	bool bDoOnce;
-
-	TFunction<Ret(ParamTypes...)> WorkFunction;
-};
-
-/*
-* 设置一个仅执行一次的代码块, 且无返回值
-*/
-template <typename... ParamTypes>
-struct FDoOnce<void(ParamTypes...)>
-{
-public:
-	FORCEINLINE FDoOnce() : bDoOnce(true), WorkFunction(nullptr) {}
-
-	FORCEINLINE FDoOnce(TFunction<void(ParamTypes...)> Function) : bDoOnce(true), WorkFunction(Function) {}
-
-	FORCEINLINE void SetWorkFunction(TFunction<void(ParamTypes...)> Function)
-	{
-		WorkFunction = Function;
-	}
-
-	FORCEINLINE void Reset()
-	{
-		bDoOnce = true;
-		WorkFunction = nullptr;
-	}
-
-	FORCEINLINE void SetExecutable(bool bNewDoOnce)
-	{
-		bDoOnce = bNewDoOnce;
-	}
-
-	FORCEINLINE bool IsExecutable() const
-	{
-		return bDoOnce;
-	}
-
-	FORCEINLINE void Execute(ParamTypes... Params)
-	{
-		if (bDoOnce && WorkFunction)
-		{
-			bDoOnce = false;
-			WorkFunction(Params...);
-		}
-	}
-
-private:
-	bool bDoOnce;
-	TFunction<void(ParamTypes...)> WorkFunction;
+    bool bDoOnce = true;
+    TFunction<Ret(ParamTypes...)> WorkFunction;
 };

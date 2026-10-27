@@ -1,10 +1,11 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
 #include "Logger.h"
 
 #include "CoreMinimal.h"
+#include "UObject/ConstructorHelpers.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "ObjectManager.generated.h"
 
@@ -20,21 +21,25 @@ class XIANGQIPRO_API UObjectManager : public UBlueprintFunctionLibrary
 
 public:
 
+	// 按路径加载资源，路径为空时直接返回空引用。
 	template <typename T>
 	static T* GetObject(const TCHAR* ObjectToFind, UObject* Outer = nullptr)
 	{
-		return LoadObject<T>(Outer, ObjectToFind);
+		return ObjectToFind && *ObjectToFind ? LoadObject<T>(Outer, ObjectToFind) : nullptr;
 	}
 
+	// 按路径加载指定基类的蓝图类型。
 	template <typename T>
 	static UClass* GetBlueprint(const TCHAR* ClassToFind, UObject* Outer = nullptr)
 	{
-		return LoadClass<T>(Outer, ClassToFind);
+		return ClassToFind && *ClassToFind ? LoadClass<T>(Outer, ClassToFind) : nullptr;
 	}
 
+	// 在构造阶段加载默认资源，可选输出加载失败日志。
 	template <typename T>
 	static T* GetConstructorObject(const TCHAR* ObjectToFind, bool bPrintLog = false)
 	{
+		if (!ObjectToFind || !*ObjectToFind) return nullptr;
 		ConstructorHelpers::FObjectFinder<T> Obj(ObjectToFind);
 		if (bPrintLog)
 		{
@@ -46,9 +51,11 @@ public:
 		return Obj.Object;
 	}
 
+	// 在构造阶段加载默认蓝图类型。
 	template <typename T>
 	static TSubclassOf<T> GetConstructorBlueprint(const TCHAR* ClassToFind, bool bPrintLog = false)
 	{
+		if (!ClassToFind || !*ClassToFind) return nullptr;
 		ConstructorHelpers::FClassFinder<T> BP(ClassToFind);
 		if (bPrintLog)
 		{

@@ -74,14 +74,16 @@ void ACameraMainActor::BeginPlay()
 	CalculateBaseAngles();
 }
 
+// 创建主界面并交给UI管理器。
 void ACameraMainActor::InitUI()
 {
-	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+	if (APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr)
 	{
 		HUD = Cast<AXQP_HUD>(PC->GetHUD());
-		if (HUD)
+		if (HUD.IsValid())
 		{
 			UI_Main_Base* Base = CreateWidget<UI_Main_Base>(GetWorld(), HUD->Class_Main_Base);
+			if (!IsValid(Base) || !GetGameInstance()) return;
 			Base->Init(this);
 
 			if (UUIManager* UIManager = GetGameInstance()->GetSubsystem<UUIManager>())
@@ -100,17 +102,20 @@ void ACameraMainActor::InitUI()
 	}
 }
 
+// 设置并播放场景背景音乐。
 void ACameraMainActor::InitAudio()
 {
 	MainAudio->SetSound(MainMusic); // 设置音频资源
 	MainAudio->Play(); // 开始播放背景音乐
 }
 
+// 视口大小改变时更新画面比例。
 void ACameraMainActor::OnViewportResized(FViewport* Viewport, uint32 Param)
 {
 	UpdateFilmbackAspectRatio();
 }
 
+// 按视口宽高比调整相机胶片尺寸。
 void ACameraMainActor::UpdateFilmbackAspectRatio()
 {
 	TWeakObjectPtr<ACameraMainActor> WeakThis(this);
@@ -161,7 +166,7 @@ void ACameraMainActor::UpdateFilmbackAspectRatio()
 // 计算基础角度
 void ACameraMainActor::CalculateBaseAngles()
 {
-	if (FocusTarget)
+	if (IsValid(FocusTarget))
 	{
 		FVector ToCamera = GetActorLocation() - FocusTarget->GetActorLocation();
 		ToCamera.Normalize();
@@ -176,9 +181,10 @@ void ACameraMainActor::CalculateBaseAngles()
 	}
 }
 
+// 更新目标方向和手动对焦距离。
 void ACameraMainActor::UpdateCameraFocus()
 {
-	if (FocusTarget)
+	if (IsValid(FocusTarget))
 	{
 		// 重新计算基础角度（以防目标位置变化）
 		CalculateBaseAngles();
@@ -207,7 +213,7 @@ void ACameraMainActor::Tick(float DeltaTime)
 	}
 
 	// 更新相机位置以保持聚焦目标
-	if (FocusTarget)
+	if (IsValid(FocusTarget))
 	{
 		// 计算基于鼠标偏移的最终角度
 		float FinalHorizontalAngle = BaseHorizontalAngle + FMath::Clamp(
@@ -296,7 +302,7 @@ void ACameraMainActor::SetFocusTarget(AActor* NewTarget)
 {
 	FocusTarget = NewTarget;
 
-	if (FocusTarget)
+	if (IsValid(FocusTarget))
 	{
 		// 重新计算基础角度
 		CalculateBaseAngles();
@@ -335,9 +341,9 @@ void ACameraMainActor::HandleMouseMovement(float DeltaTime)
 		if (ViewportSizeX > 0 && ViewportSizeY > 0)
 		{
 			// 仅在鼠标在窗口内时调整目标位置
-			if (bGotMousePosition 
-#if !PLATFORM_DESKTOP 
-				&& (MouseX <= ViewportSizeX && MouseX > 0) && (MouseY <= ViewportSizeY && MouseY > 0) 
+			if (bGotMousePosition
+#if !PLATFORM_DESKTOP
+				&& (MouseX <= ViewportSizeX && MouseX > 0) && (MouseY <= ViewportSizeY && MouseY > 0)
 #endif
 				)
 			{

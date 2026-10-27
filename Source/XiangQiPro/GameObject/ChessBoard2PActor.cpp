@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+ï»¿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "ChessBoard2PActor.h"
@@ -29,6 +29,7 @@ AChessBoard2PActor::AChessBoard2PActor()
 	ChessBoardMesh->SetStaticMesh(OM::GetConstructorObject<UStaticMesh>(PATH_SM_CHESSBOARD_2P));
 }
 
+// ç»‘å®šæœ¬å±€æ£‹ç›˜æ•°æ®ã€‚
 void AChessBoard2PActor::Init(TWeakObjectPtr<UChessBoard2P> InBoard2P)
 {
     Board2P = InBoard2P;
@@ -47,31 +48,32 @@ void AChessBoard2PActor::BeginPlay()
     }
 }
 
+// å“åº”é‡å¼€äº‹ä»¶å¹¶æ¸…ç†ä¸Šä¸€å±€çŠ¶æ€ã€‚
 void AChessBoard2PActor::GamePlayAgain(UObject* OwnerObject)
 {
-    AXQPGameStateBase* GameState = Cast<AXQPGameStateBase>(GetWorld()->GetGameState());
-    if (GameState)
-    {
-        GameState->Start2PGame(this);
-    }
+    // æ–°å±€ç”±GameStateåœ¨å¹¿æ’­ç»“æŸåç»Ÿä¸€å¯åŠ¨ã€‚
     IIF_GameState::GamePlayAgain(OwnerObject);
 }
 
+// æ ¹æ®æ®‹å±€æ•°æ®è¡¨ç”Ÿæˆæ£‹å­å’Œè½å­ç‚¹ã€‚
 void AChessBoard2PActor::OnEndingGameStart(UObject* OwnerObject, int32 Index)
 {
+    if (!Board2P.IsValid()) return;
     auto Infos = UEndingLibrary::GetChessGenerateInfo(Index);
     for (const auto& info : Infos)
     {
-        FVector WorldLoc = Board2P->BoardLocs[info.Pos.X][info.Pos.Y]; // ÊÀ½ç×ø±ê
+        if (!Board2P->BoardLocs.IsValidIndex(info.Pos.X) || !Board2P->BoardLocs[info.Pos.X].IsValidIndex(info.Pos.Y)) continue;
+        FVector WorldLoc = Board2P->BoardLocs[info.Pos.X][info.Pos.Y]; // ä¸–ç•Œåæ ‡
         FTransform Transform(WorldLoc);
 
-        // Éú³ÉÆå×Ó
+        // ç”Ÿæˆæ£‹å­
         AChesses* Chess = SpawnChessAt(info.Class, info.Pos);
-        Chess->Init(info.Color, info.Pos, Board2P); // ³õÊ¼»¯Æå×Ó
+        if (!IsValid(Chess)) continue;
+        Chess->Init(info.Color, info.Pos, Board2P); // åˆå§‹åŒ–æ£‹å­
         Chess->FinishSpawning(Transform);
 
-        // ½«Æå×Ó±£´æµ½ÆåÅÌÖĞ
-        Board2P->AllChess[info.Pos.X][info.Pos.Y] = Chess;
+        // å°†æ£‹å­ä¿å­˜åˆ°æ£‹ç›˜ä¸­
+        Board2P->SetChess(info.Pos.X, info.Pos.Y, Chess);
     }
     GenerateSettingPoints();
     IIF_EndingGame::OnEndingGameStart(OwnerObject, Index);
@@ -84,15 +86,18 @@ void AChessBoard2PActor::Tick(float DeltaTime)
 
 }
 
+// æ£€æŸ¥ç±»å‹å’Œåæ ‡åå»¶è¿Ÿç”Ÿæˆæ£‹å­Actorã€‚
 AChesses* AChessBoard2PActor::SpawnChessAt(const TSubclassOf<AActor>& ActorClass, const FIntPoint& Pos)
 {
-    FVector WorldLoc = Board2P->BoardLocs[Pos.X][Pos.Y]; // ÊÀ½ç×ø±ê
+    if (!IsValid(GetWorld()) || !ActorClass || !ActorClass->IsChildOf(AChesses::StaticClass()) || !Board2P.IsValid() ||
+        !Board2P->BoardLocs.IsValidIndex(Pos.X) || !Board2P->BoardLocs[Pos.X].IsValidIndex(Pos.Y)) return nullptr;
+    FVector WorldLoc = Board2P->BoardLocs[Pos.X][Pos.Y]; // ä¸–ç•Œåæ ‡
     FTransform Transform(WorldLoc);
-    // Éú³ÉÆå×Ó
+    // ç”Ÿæˆæ£‹å­
     AChesses* Chess = Cast<AChesses>(
         UGameplayStatics::BeginDeferredActorSpawnFromClass(
             GetWorld(),
-            ActorClass,  // ÓÃÖ¸¶¨ÀàĞÍÉú³ÉÆå×Ó
+            ActorClass,  // ç”¨æŒ‡å®šç±»å‹ç”Ÿæˆæ£‹å­
             Transform,
             ESpawnActorCollisionHandlingMethod::AlwaysSpawn
         )
@@ -100,6 +105,7 @@ AChesses* AChessBoard2PActor::SpawnChessAt(const TSubclassOf<AActor>& ActorClass
     return Chess;
 }
 
+// ç”Ÿæˆæ ‡å‡†è±¡æ£‹åˆå§‹æ£‹ç›˜ã€‚
 void AChessBoard2PActor::GenerateChesses()
 {
     if (!Board2P.IsValid())
@@ -110,37 +116,40 @@ void AChessBoard2PActor::GenerateChesses()
 
     TArray<FIntPoint> Indexs = { {0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {0, 8}, {2, 1}, {2, 7}, {3, 0}, {3, 2}, {3, 4}, {3, 6}, {3, 8},
                                            {9, 0}, {9, 1}, {9, 2}, {9, 3}, {9, 4}, {9, 5}, {9, 6}, {9, 7}, {9, 8}, {7, 1}, {7, 7}, {6, 0}, {6, 2}, {6, 4}, {6, 6}, {6, 8} };
-    
-    TArray<TSubclassOf<AChesses>> Classes = { 
-    AChess_Jv::StaticClass(), AChess_Ma::StaticClass(), AChess_Xiang::StaticClass(), AChess_Shi::StaticClass(), AChess_Jiang::StaticClass(), AChess_Shi::StaticClass(), AChess_Xiang::StaticClass(), AChess_Ma::StaticClass(), AChess_Jv::StaticClass(), 
+
+    TArray<TSubclassOf<AChesses>> Classes = {
+    AChess_Jv::StaticClass(), AChess_Ma::StaticClass(), AChess_Xiang::StaticClass(), AChess_Shi::StaticClass(), AChess_Jiang::StaticClass(), AChess_Shi::StaticClass(), AChess_Xiang::StaticClass(), AChess_Ma::StaticClass(), AChess_Jv::StaticClass(),
     AChess_Pao::StaticClass(), AChess_Pao::StaticClass(), AChess_Bing::StaticClass(), AChess_Bing::StaticClass(), AChess_Bing::StaticClass(), AChess_Bing::StaticClass(), AChess_Bing::StaticClass() };
 
     for (int32 i = 0; i < 32; i++)
     {
-        // Éú³ÉÆå×Ó
+        // ç”Ÿæˆæ£‹å­
         AChesses* Chess = SpawnChessAt(Classes[i % 16], Indexs[i]);
-        Chess->Init(i < 16 ? RED : BLACK, Indexs[i], Board2P); // ³õÊ¼»¯Æå×Ó
+        if (!IsValid(Chess)) continue;
+        Chess->Init(i < 16 ? RED : BLACK, Indexs[i], Board2P); // åˆå§‹åŒ–æ£‹å­
         Chess->FinishSpawning(FTransform(Board2P->BoardLocs[Indexs[i].X][Indexs[i].Y]));
 
-        // ½«Æå×Ó±£´æµ½ÆåÅÌÖĞ
-        Board2P->AllChess[Indexs[i].X][Indexs[i].Y] = Chess;
+        // å°†æ£‹å­ä¿å­˜åˆ°æ£‹ç›˜ä¸­
+        Board2P->SetChess(Indexs[i].X, Indexs[i].Y, Chess);
     }
 
     GenerateSettingPoints();
 }
 
+// ä¸ºæ¯ä¸ªæ£‹ç›˜æ ¼ç”Ÿæˆè½å­æç¤ºActorã€‚
 void AChessBoard2PActor::GenerateSettingPoints()
 {
-    /************Éú³ÉÂä×Óµã*************/
+    if (!Board2P.IsValid() || !GetWorld()) return;
+    /************ç”Ÿæˆè½å­ç‚¹*************/
     for (int32 i = 0; i < 10; i++)
     {
         for (int32 j = 0; j < 9; j++)
         {
-            FVector WorldLoc = Board2P->BoardLocs[i][j]; // ÊÀ½ç×ø±ê
-            WorldLoc.Z -= 1.3f; // ºÍÆå×ÓµÄ¸ß¶È²»Ò»Ñù
+            FVector WorldLoc = Board2P->BoardLocs[i][j]; // ä¸–ç•Œåæ ‡
+            WorldLoc.Z -= 1.3f; // å’Œæ£‹å­çš„é«˜åº¦ä¸ä¸€æ ·
             FTransform Transform(WorldLoc);
 
-            // Éú³ÉÖÃÆåÎ»ÖÃActor
+            // ç”Ÿæˆç½®æ£‹ä½ç½®Actor
             ASettingPoint* SettingPoint = Cast<ASettingPoint>(
                 UGameplayStatics::BeginDeferredActorSpawnFromClass(
                     GetWorld(),
@@ -149,36 +158,38 @@ void AChessBoard2PActor::GenerateSettingPoints()
                     ESpawnActorCollisionHandlingMethod::AlwaysSpawn
                 )
             );
+            if (!IsValid(SettingPoint)) continue;
             SettingPoint->SetPosition2P(Position(i, j));
             SettingPoint->FinishSpawning(Transform);
 
-            // ±£´æµ½ÆåÅÌÖĞ
+            // ä¿å­˜åˆ°æ£‹ç›˜ä¸­
             Board2P->SettingPoints[i][j] = SettingPoint;
         }
     }
 }
 
+// ç”Ÿæˆå•éª‘ç©æ³•çš„ç©å®¶é©¬å’Œè½å­æç¤ºã€‚
 TWeakObjectPtr<AChesses> AChessBoard2PActor::GenerateChessesForSoloRide()
 {
 
-    // Éú³Éºì·½ÂíÔÚÆåÅÌÖĞĞÄ (4, 4)
+    // ç”Ÿæˆçº¢æ–¹é©¬åœ¨æ£‹ç›˜ä¸­å¿ƒ (4, 4)
     TWeakObjectPtr<AChesses> redHorse = SpawnChessAt(AChess_Ma::StaticClass(), FIntPoint(4, 4));
     if (redHorse.IsValid())
     {
         redHorse->Init(EChessColor::REDCHESS, FIntPoint(4, 4), Board2P);
         redHorse->FinishSpawning(FTransform(Board2P->BoardLocs[4][4]));
-        Board2P->AllChess[4][4] = redHorse;
+        Board2P->SetChess(4, 4, redHorse);
     }
 
-    GenerateSettingPoints(); // Éú³É¿ÉÒÆ¶¯µãÖ¸Ê¾Æ÷
+    GenerateSettingPoints(); // ç”Ÿæˆå¯ç§»åŠ¨ç‚¹æŒ‡ç¤ºå™¨
     return redHorse;
 }
 
 /*
-* ±£´æÁ½·İÉú³É×ø±ê£¬´òÂÒÆäÖĞÒ»·İ£¬È»ºó°´ÕÕÀàĞÍÉú³ÉÆå×Ó
-* ´ËÊ±µÄÆå×ÓÔÚ³õÊ¼»¯Ê±¾ÍÒÑ¾­±£´æÁËÕæÊµµÄÀàĞÍºÍÑÕÉ«
-* ºóĞøÔÙ°´ÕÕÁíÒ»·İÎ´´òÂÒµÄ×ø±ê¸³ÓèÃ¿¸öÆå×Ó¼ÙµÄÑÕÉ«ºÍÀàĞÍ£¬ÓÃÓÚÔÚ½ÒÂ¶ÕæÊµÃæÄ¿Ç°Íæ¼ÒºÍµçÄÔµÄ²Ù¿Ø
-* 
+* ä¿å­˜ä¸¤ä»½ç”Ÿæˆåæ ‡ï¼Œæ‰“ä¹±å…¶ä¸­ä¸€ä»½ï¼Œç„¶åæŒ‰ç…§ç±»å‹ç”Ÿæˆæ£‹å­
+* æ­¤æ—¶çš„æ£‹å­åœ¨åˆå§‹åŒ–æ—¶å°±å·²ç»ä¿å­˜äº†çœŸå®çš„ç±»å‹å’Œé¢œè‰²
+* åç»­å†æŒ‰ç…§å¦ä¸€ä»½æœªæ‰“ä¹±çš„åæ ‡èµ‹äºˆæ¯ä¸ªæ£‹å­å‡çš„é¢œè‰²å’Œç±»å‹ï¼Œç”¨äºåœ¨æ­éœ²çœŸå®é¢ç›®å‰ç©å®¶å’Œç”µè„‘çš„æ“æ§
+*
 */
 void AChessBoard2PActor::GenerateChessesForGuessWho()
 {
@@ -188,21 +199,23 @@ void AChessBoard2PActor::GenerateChessesForGuessWho()
         return;
     }
 
-    // Ë«·½½«ĞèÈ·¶¨Î»ÖÃÉú³É
+    // åŒæ–¹å°†éœ€ç¡®å®šä½ç½®ç”Ÿæˆ
     auto JiangChess = SpawnChessAt(AChess_Jiang::StaticClass(), FIntPoint(0, 4));
+    if (!IsValid(JiangChess)) return;
     JiangChess->Init(RED, FIntPoint(0, 4), Board2P);
     JiangChess->FinishSpawning(FTransform(Board2P->BoardLocs[0][4]));
-    Board2P->AllChess[0][4] = JiangChess;
+    Board2P->SetChess(0, 4, JiangChess);
 
     JiangChess = SpawnChessAt(AChess_Jiang::StaticClass(), FIntPoint(9, 4));
+    if (!IsValid(JiangChess)) return;
     JiangChess->Init(BLACK, FIntPoint(9, 4), Board2P);
     JiangChess->FinishSpawning(FTransform(Board2P->BoardLocs[9][4]));
-    Board2P->AllChess[9][4] = JiangChess;
+    Board2P->SetChess(9, 4, JiangChess);
 
     TArray<FIntPoint> Pos = { {0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 5}, {0, 6}, {0, 7}, {0, 8}, {2, 1}, {2, 7}, {3, 0}, {3, 2}, {3, 4}, {3, 6}, {3, 8},
                                            {9, 0}, {9, 1}, {9, 2}, {9, 3}, {9, 5}, {9, 6}, {9, 7}, {9, 8}, {7, 1}, {7, 7}, {6, 0}, {6, 2}, {6, 4}, {6, 6}, {6, 8} };
     TArray<FIntPoint> ShuffledPos(Pos);
-    UArrayToolLibrary::ShuffleArray(ShuffledPos); // ´òÂÒÉú³ÉÎ»ÖÃ
+    UArrayToolLibrary::ShuffleArray(ShuffledPos); // æ‰“ä¹±ç”Ÿæˆä½ç½®
 
     TArray<TSubclassOf<AChesses>> Classes = {
     AChess_Jv::StaticClass(), AChess_Ma::StaticClass(), AChess_Xiang::StaticClass(), AChess_Shi::StaticClass(), AChess_Shi::StaticClass(), AChess_Xiang::StaticClass(), AChess_Ma::StaticClass(), AChess_Jv::StaticClass(),
@@ -210,28 +223,31 @@ void AChessBoard2PActor::GenerateChessesForGuessWho()
 
     for (int32 i = 0; i < 30; i++)
     {
-        // Éú³ÉÆå×Ó
+        // ç”Ÿæˆæ£‹å­
         AChesses* Chess = SpawnChessAt(Classes[i % 15], ShuffledPos[i]);
-        Chess->Init(i < 15 ? RED : BLACK, ShuffledPos[i], Board2P); // ³õÊ¼»¯Æå×Ó
-        Chess->ChessMask->SetVisibility(false); // Òş²ØÆå×ÓµÄMaskÏÔÊ¾
+        if (!IsValid(Chess)) continue;
+        Chess->Init(i < 15 ? RED : BLACK, ShuffledPos[i], Board2P); // åˆå§‹åŒ–æ£‹å­
+        Chess->ChessMask->SetVisibility(false); // éšè—æ£‹å­çš„Maskæ˜¾ç¤º
 
-        // ½«Æå×Ó±£´æµ½ÆåÅÌÖĞ
-        Board2P->AllChess[ShuffledPos[i].X][ShuffledPos[i].Y] = Chess;
+        // å°†æ£‹å­ä¿å­˜åˆ°æ£‹ç›˜ä¸­
+        Board2P->SetChess(ShuffledPos[i].X, ShuffledPos[i].Y, Chess);
     }
 
-    // ¸³Óè¼ÙµÄÀàĞÍºÍÑÕÉ«
+    // èµ‹äºˆå‡çš„ç±»å‹å’Œé¢œè‰²
     TArray<EChessType> FakeType = { EChessType::JV, EChessType::MA, EChessType::XIANG, EChessType::SHI, EChessType::SHI, EChessType::XIANG, EChessType::MA, EChessType::JV,
     EChessType::PAO, EChessType::PAO, EChessType::BING , EChessType::BING , EChessType::BING , EChessType::BING , EChessType::BING };
     for (int32 i = 0; i < 15; i++)
     {
-        auto& chess = Board2P->AllChess[Pos[i].X][Pos[i].Y];
+        const auto chess = Board2P->GetChess(Pos[i]);
+        if (!chess.IsValid()) continue;
         chess->SetColor(RED);
         chess->SetType(FakeType[i]);
         chess->FinishSpawning(FTransform(Board2P->BoardLocs[Pos[i].X][Pos[i].Y]));
     }
     for (int32 i = 15; i < 30; i++)
     {
-        auto& chess = Board2P->AllChess[Pos[i].X][Pos[i].Y];
+        const auto chess = Board2P->GetChess(Pos[i]);
+        if (!chess.IsValid()) continue;
         chess->SetColor(BLACK);
         chess->SetType(FakeType[i - 15]);
         chess->FinishSpawning(FTransform(Board2P->BoardLocs[Pos[i].X][Pos[i].Y]));

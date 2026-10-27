@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
@@ -23,7 +23,7 @@ enum class EXQPGameMode : uint8
 };
 
 /**
- * ��Ϸʵ����
+ * 游戏实例类
  */
 UCLASS()
 class XIANGQIPRO_API UXQPGameInstance : public UGameInstance
@@ -34,12 +34,13 @@ private:
 
 	FDoOnce<void(FLoadingScreenAttributes&)> FirstLoad;
 
-	UUIManager* UIManager;
+	UPROPERTY()
+	TObjectPtr<UUIManager> UIManager = nullptr;
 
 	EXQPGameMode MyGameMode = EXQPGameMode::Default;
 
 public:
-
+	// 初始化默认属性和组件。
 	UXQPGameInstance();
 
 	UPROPERTY(BlueprintReadWrite)
@@ -60,20 +61,20 @@ public:
 	TSubclassOf<UUserWidget> FirstLoadingWidget;
 
 public:
-
+	// 注册关卡加载事件并获取UI子系统。
 	virtual void Init() override;
-
+	// 开始加载关卡时配置过渡界面。
 	void BeginLoadMap(const FString& MapName);
-
+	// 关卡加载结束后停止加载画面。
 	void EndLoadMap(UWorld* LoadedWorld);
-
+	// 停止当前加载影片。
 	UFUNCTION(BlueprintCallable, Category = "MoviePlayer")
 	void StopMovie();
-
+	// 设置下一局使用的玩法。
 	UFUNCTION(BlueprintCallable)
 	void SetGameMode(EXQPGameMode InGameMode);
-
+	// 获取当前玩法。
 	UFUNCTION(BlueprintCallable)
 	EXQPGameMode GetGameMode() const;
-	
+
 };

@@ -3,6 +3,7 @@
 
 #include "UI_Item_EndingGame.h"
 #include "EndingGameData.h"
+#include "UI_Introduce_Ending.h"
 
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
@@ -11,12 +12,14 @@
 #include "XiangQiPro/Util/EndingLibrary.h"
 #include "XiangQiPro/Util/Logger.h"
 
+// 构造界面并初始化控件与事件绑定。
 void UUI_Item_EndingGame::NativeConstruct()
 {
 	Super::NativeConstruct();
-	ItemButton->OnClicked.AddDynamic(this, &UUI_Item_EndingGame::OnItemClicked);
+	if (IsValid(ItemButton)) ItemButton->OnClicked.AddUniqueDynamic(this, &UUI_Item_EndingGame::OnItemClicked);
 }
 
+// 接收列表数据并刷新复用条目的显示。
 void UUI_Item_EndingGame::NativeOnListItemObjectSet(UObject* ListItemObject)
 {
 	IUserObjectListEntry::NativeOnListItemObjectSet(ListItemObject);
@@ -25,7 +28,7 @@ void UUI_Item_EndingGame::NativeOnListItemObjectSet(UObject* ListItemObject)
 	{
 		bIsInitItem = true;
         Index = Obj->Index;
-		UserSelectedIndex = Obj->UserSelectedIndex;
+		SelectionOwner = Obj->SelectionOwner;
         OnItemClickedDelegate = Obj->OnItemClickedDelegate;
 
         FString LevelText = FString::Printf(TEXT("第 %d 关"), Index + 1);
@@ -35,11 +38,11 @@ void UUI_Item_EndingGame::NativeOnListItemObjectSet(UObject* ListItemObject)
             LevelText.Append(TEXT(" - "));
             LevelText.Append(Title);
         }
-		IndexText->SetText(FText::FromString(LevelText));
+		if (IsValid(IndexText)) IndexText->SetText(FText::FromString(LevelText));
 
-        if (UserSelectedIndex)
+        if (SelectionOwner.IsValid())
         {
-            if (*UserSelectedIndex == Index)
+            if (SelectionOwner->GetSelectedIndex() == Index)
             {
                 OnItemClicked();
             }
@@ -51,20 +54,26 @@ void UUI_Item_EndingGame::NativeOnListItemObjectSet(UObject* ListItemObject)
 	}
 }
 
+// 列表条目被回收时清理状态和引用。
 void UUI_Item_EndingGame::NativeOnEntryReleased()
 {
     IUserObjectListEntry::NativeOnEntryReleased();
     SetSelected(false);
+    SelectionOwner.Reset();
+    OnItemClickedDelegate.Clear();
 }
 
+// 广播列表条目的点击事件。
 void UUI_Item_EndingGame::OnItemClicked()
 {
     OnItemClickedDelegate.Broadcast(this);
 }
 
+// 更新条目选中颜色和轮廓。
 void UUI_Item_EndingGame::SetSelected(bool bIsSelected)
 {
     bSelected = bIsSelected;
+    if (!IsValid(SelectedIndicator) || !IsValid(IndexText)) return;
 
     FSlateBrush brush;
     brush.DrawAs = ESlateBrushDrawType::Type::RoundedBox; // 绘制类型

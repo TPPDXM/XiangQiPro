@@ -2,63 +2,50 @@
 
 #pragma once
 
-/**
- *  INTERFACE PARAMETER COMBINATIONS
- *  -----------------------------------------------------------------------------------------------
- *
- *	This file defines the different combinations of macros used to declare different interface types.
- *	which should be included in cpp files that need access to these macros.
- */
+#include "CoreMinimal.h"
+#include "Kismet/GameplayStatics.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
+#include "Blueprint/UserWidget.h"
 
-#include <Kismet/GameplayStatics.h>
-#include <Blueprint/WidgetBlueprintLibrary.h>
+namespace XQPInterfaces
+{
+    // 先收集弱引用快照，回调销毁对象后不会再访问失效指针。
+    inline TArray<TWeakObjectPtr<UObject>> Collect(UObject* Context, TSubclassOf<UInterface> InterfaceClass)
+    {
+        TArray<TWeakObjectPtr<UObject>> Objects;
+        if (!IsValid(Context)) return Objects;
+        TArray<AActor*> Actors;
+        TArray<UUserWidget*> Widgets;
+        UGameplayStatics::GetAllActorsWithInterface(Context, InterfaceClass, Actors);
+        UWidgetBlueprintLibrary::GetAllWidgetsWithInterface(Context, Widgets, InterfaceClass, false);
+        for (AActor* Actor : Actors) Objects.Add(Actor);
+        for (UUserWidget* Widget : Widgets) Objects.Add(Widget);
+        return Objects;
+    }
+}
 
- // 函数接口调用
+// 调用无参数接口事件，原生包装函数负责继续触发蓝图事件。
 #define CALL_INTERFACE_EVENT(InterfaceClass, EventName) \
-TArray<AActor*> AllActors; \
-TArray<UUserWidget*> AllWidgets; \
-\
-/* 获取所有继承接口的对象 */ \
-UGameplayStatics::GetAllActorsWithInterface(this, U##InterfaceClass::StaticClass(), AllActors); \
-UWidgetBlueprintLibrary::GetAllWidgetsWithInterface(this, AllWidgets, U##InterfaceClass::StaticClass(), false); \
-\
-TArray<UObject*> AllObject(AllActors); \
-AllObject.Append((const TArray<UObject*>&) AllWidgets); \
-\
-for (UObject* object : AllObject) \
-{ \
-    I##InterfaceClass* IF = Cast<I##InterfaceClass>(object); \
-    if (!IF) \
+do { \
+    const auto InterfaceObjects = XQPInterfaces::Collect(this, U##InterfaceClass::StaticClass()); \
+    for (const auto& WeakObject : InterfaceObjects) \
     { \
-        /* 直接调用蓝图中的函数 */ \
-        IF->Execute_##EventName(object); \
-        continue; \
+        UObject* Object = WeakObject.Get(); \
+        if (!IsValid(Object)) continue; \
+        if (I##InterfaceClass* Interface = Cast<I##InterfaceClass>(Object)) Interface->EventName(Object); \
+        else I##InterfaceClass::Execute_##EventName(Object); \
     } \
-    \
-    IF->EventName(object); \
-} \
+} while (false)
 
-// 支持带参数的接口调用
+// 调用带参数接口事件，不对不同TArray元素类型进行强制转换。
 #define CALL_INTERFACE_EVENT_PARAM(InterfaceClass, EventName, ...) \
-TArray<AActor*> AllActors; \
-TArray<UUserWidget*> AllWidgets; \
-\
-/* 获取所有继承接口的对象 */ \
-UGameplayStatics::GetAllActorsWithInterface(this, U##InterfaceClass::StaticClass(), AllActors); \
-UWidgetBlueprintLibrary::GetAllWidgetsWithInterface(this, AllWidgets, U##InterfaceClass::StaticClass(), false); \
-\
-TArray<UObject*> AllObject(AllActors); \
-AllObject.Append((const TArray<UObject*>&) AllWidgets); \
-\
-for (UObject* object : AllObject) \
-{ \
-    I##InterfaceClass* IF = Cast<I##InterfaceClass>(object); \
-    if (!IF) \
+do { \
+    const auto InterfaceObjects = XQPInterfaces::Collect(this, U##InterfaceClass::StaticClass()); \
+    for (const auto& WeakObject : InterfaceObjects) \
     { \
-        /* 直接调用蓝图中的函数，支持参数传递 */ \
-        IF->Execute_##EventName(object, __VA_ARGS__); \
-        continue; \
+        UObject* Object = WeakObject.Get(); \
+        if (!IsValid(Object)) continue; \
+        if (I##InterfaceClass* Interface = Cast<I##InterfaceClass>(Object)) Interface->EventName(Object, __VA_ARGS__); \
+        else I##InterfaceClass::Execute_##EventName(Object, __VA_ARGS__); \
     } \
-    \
-    IF->EventName(object, __VA_ARGS__); \
-} \
+} while (false)

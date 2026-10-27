@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
@@ -8,7 +8,7 @@
 #include "ClassicGameData.generated.h"
 
 /**
- * ������Ϸ��Ŀ����
+ * 经典游戏条目数据
  */
 UCLASS()
 class XIANGQIPRO_API UClassicGameData : public UObject
@@ -23,8 +23,9 @@ public:
 
 	FText ItemText;
 
-	UTexture2D* Icon;
-
+	UPROPERTY()
+	TObjectPtr<UTexture2D> Icon = nullptr;
+	// 保存经典模式列表项的数据与点击委托。
 	void Init(int32 InIndex, FText InItemText, UTexture2D* InIcon, FOnClassicGameListItemClicked CallBackFunc);
-	
+
 };

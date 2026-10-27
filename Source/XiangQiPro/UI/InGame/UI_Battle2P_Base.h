@@ -29,7 +29,7 @@ class XIANGQIPRO_API UUI_Battle2P_Base : public UUserWidget
 
 private:
 
-	AXQPGameStateBase* GameState;
+	TWeakObjectPtr<AXQPGameStateBase> GameState;
 
 public:
 
@@ -65,11 +65,11 @@ public:
 	UImage* Image_RoundMark_P2;
 
 public:
-
+	// 构造界面并初始化控件与事件绑定。
 	virtual void NativeConstruct() override;
-
+	// 更新界面每帧状态。
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
-
+	// 刷新双方得分控件。
 	void UpdateScore(int32 score1, int32 score2);
 
 	// 设置是否为AI回合
@@ -78,14 +78,14 @@ public:
 	// 显示游戏结束
 	UFUNCTION(BlueprintImplementableEvent)
 	void ShowGameOver(EChessColor winner);
-
+	// 广播重开事件并清空棋谱显示。
 	UFUNCTION(BlueprintCallable)
 	void ExecGamePlayAgain();
-	
+
 	// 增加落子历史记录
 	void AddOperatingRecord(EPlayerTag player, TWeakObjectPtr<AChesses> targetChess, FChessMove2P move);
-
+	// 将棋子移动转换为基本中文棋谱。
 	FString GetMoveNotation(TWeakObjectPtr<AChesses> targetChess, FChessMove2P move);
-
+	// 增强版：考虑同列多个相同棋子的情况
 	FString GetEnhancedMoveNotation(TWeakObjectPtr<AChesses> targetChess, FChessMove2P move);
 };

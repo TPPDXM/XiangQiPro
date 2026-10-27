@@ -4,6 +4,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/DataTable.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "ProModeLibrary.generated.h"
 
@@ -37,6 +38,7 @@ class XIANGQIPRO_API UProModeLibrary : public UBlueprintFunctionLibrary
 
 public:
 
-	static TArray<FProModeInfo*> GetProModeInfos();
-	
+	// 获取模式数据的独立副本。
+	static TArray<FProModeInfo> GetProModeInfos();
+
 };

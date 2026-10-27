@@ -3,12 +3,14 @@
 
 #include "Chess_Jiang.h"
 
+// 初始化默认属性和组件。
 AChess_Jiang::AChess_Jiang() : Super()
 {
 	MyType = EChessType::JIANG;
 	MyRealType = EChessType::JIANG;
 }
 
+// 初始化将帅名称和阵营材质。
 void AChess_Jiang::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2P> board2P)
 {
 	Super::Init(color, pos, board2P);
@@ -31,12 +33,14 @@ void AChess_Jiang::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBo
 	}
 }
 
+// 播放棋子被吃效果，并处理派生棋子的结束逻辑。
 void AChess_Jiang::Defeated()
 {
 	Super::Defeated();
-	GameState->NotifyGameOver(MyColor == EChessColor::BLACKCHESS ? EChessColor::REDCHESS : EChessColor::BLACKCHESS); // 通知游戏状态，游戏获胜
+	if (GameState.IsValid()) GameState->NotifyGameOver(MyColor == EChessColor::BLACKCHESS ? EChessColor::REDCHESS : EChessColor::BLACKCHESS); // 通知游戏状态，游戏获胜
 }
 
+// 生成选中棋子的合法走法并显示提示。
 void AChess_Jiang::GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObjectPtr<AChesses> target)
 {
 	Super::GenerateMove2P(board2P, target);

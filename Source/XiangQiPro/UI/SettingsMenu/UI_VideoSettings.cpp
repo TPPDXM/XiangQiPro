@@ -6,6 +6,7 @@
 #include <Kismet/KismetSystemLibrary.h>
 #include <XiangQiPro/Util/Logger.h>
 
+// 构造界面并初始化控件与事件绑定。
 void UUI_VideoSettings::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -18,8 +19,10 @@ void UUI_VideoSettings::NativeConstruct()
 	}
 }
 
+// 填充窗口模式并选中当前设置。
 void UUI_VideoSettings::InitDisplayMode()
 {
+	if (!IsValid(UserSettings) || !IsValid(DisplayMode)) return;
 	for (const FString& displayMode : DisplayModeList)
 	{
 		DisplayMode->AddOption(displayMode);
@@ -29,8 +32,10 @@ void UUI_VideoSettings::InitDisplayMode()
 	DisplayMode->SetSelectedIndex(WindowMode.Find(UserSettings->GetFullscreenMode()));
 }
 
+// 填充分辨率列表并选中当前设置。
 void UUI_VideoSettings::InitResolution()
 {
+	if (!IsValid(UserSettings) || !IsValid(Resolution)) return;
 	Resolutions.Empty();
 	UKismetSystemLibrary::GetSupportedFullscreenResolutions(Resolutions);
 	for (const FIntPoint& resolution : Resolutions)
@@ -47,8 +52,10 @@ void UUI_VideoSettings::InitResolution()
 	Resolution->SetSelectedIndex(Resolutions.Find(UserSettings->GetScreenResolution()));
 }
 
+// 填充垂直同步选项并同步当前设置。
 void UUI_VideoSettings::InitVsync()
 {
+	if (!IsValid(UserSettings) || !IsValid(VSyncMode)) return;
 	for (const FString& vsyncMode : VsyncModeList)
 	{
 		VSyncMode->AddOption(vsyncMode);
@@ -56,8 +63,10 @@ void UUI_VideoSettings::InitVsync()
 	VSyncMode->SetSelectedIndex(UserSettings->IsVSyncEnabled());
 }
 
+// 初始化分辨率缩放滑条和百分比。
 void UUI_VideoSettings::InitResolutionRatio()
 {
+	if (!IsValid(UserSettings) || !IsValid(ResolutionRatioSlider) || !IsValid(ResolutionRatioText)) return;
 	float CurrentScaleNormalized, CurrentScaleValue, MinScaleValue, MaxScaleValue;
 
 	UserSettings->GetResolutionScaleInformationEx(CurrentScaleNormalized, CurrentScaleValue, MinScaleValue, MaxScaleValue);

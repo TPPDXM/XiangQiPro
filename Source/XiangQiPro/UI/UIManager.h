@@ -20,14 +20,17 @@ class XIANGQIPRO_API UUIManager : public UGameInstanceSubsystem
 
 private:
 
-	UUserWidget* BasicUI;
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> BasicUI;
 
 	TWeakObjectPtr<UUserWidget> PauseUI;
 
+	UPROPERTY(Transient)
 	TSubclassOf<UUserWidget> PauseWidgetClass;
 
-	TArray<UUserWidget*> ui_stack;
-
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UUserWidget>> ui_stack;
+	// 初始化默认属性和组件。
 	UUIManager() : BasicUI(nullptr), PauseUI(nullptr), ui_stack() {};
 
 	/*
@@ -39,10 +42,15 @@ private:
 
 public:
 
+    // 切关前移除所有界面并释放强引用。
+    void ResetUI();
+    // 子系统结束时清理界面栈。
+    virtual void Deinitialize() override;
+	// 设置基础界面和暂停界面来源，并清空显示栈。
 	void Init(UUserWidget* InBasicUI);
-
+	// 设置基础界面和暂停界面来源，并清空显示栈。
 	void Init(UUserWidget* InBasicUI, UUserWidget* InPauseUI);
-
+	// 设置基础界面和暂停界面来源，并清空显示栈。
 	UFUNCTION(BlueprintCallable, Category = "UIManager")
 	void Init(UUserWidget* InBasicUI, TSubclassOf<UUserWidget> InPauseWidgetClass);
 
@@ -63,5 +71,5 @@ public:
 	// 结束正在显示的UserWidget实例, 当仅剩基础界面显示时尝试添加暂停界面到屏幕
 	UFUNCTION(BlueprintCallable, Category = "UIManager")
 	void FinishUI();
-	
+
 };

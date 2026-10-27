@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+ï»¿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
@@ -18,7 +18,7 @@ class UUIManager;
 class UImage;
 
 /**
- * ×ª³¡ÓÃ½¥±äUserWidget
+ * è½¬åœºç”¨æ¸å˜UserWidget
  */
 UCLASS()
 class XIANGQIPRO_API UUI_TransitionScreen : public UUserWidget
@@ -33,7 +33,7 @@ private:
 
 	FDoOnce<void()> Reverse;
 
-	UUIManager* UIManager;
+	TWeakObjectPtr<UUIManager> UIManager;
 
 	FVector2D FadeAlpha;
 
@@ -59,51 +59,51 @@ public:
 	UImage* Image_Background;
 
 protected:
-
+	// æ„é€ ç•Œé¢å¹¶åˆå§‹åŒ–æ§ä»¶ä¸äº‹ä»¶ç»‘å®šã€‚
 	virtual void NativeConstruct() override;
-
+	// ç§»é™¤ç•Œé¢æ—¶æ¸…ç†å®šæ—¶å™¨å’Œå›è°ƒã€‚
 	virtual void NativeDestruct() override;
 
 public:
-
+	// æ›´æ–°ç•Œé¢æ¯å¸§çŠ¶æ€ã€‚
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 	/**
-	* @brief ³õÊ¼»¯×ª³¡ÆÁÄ»
-	* @param InUIManager ÓÃ»§½çÃæ¹ÜÀíÆ÷
-	* @param FromAlpha ³õÊ¼Í¸Ã÷¶È
-	* @param ToAlpha ½áÊøÍ¸Ã÷¶È
-	* @param InFadeTime µ­»¯Ê±¼ä
-	* @param InFadeColor µ­»¯ÑÕÉ«
-	* @param InStayTime µ­»¯Í£ÁôÊ±¼ä
-	* @param bInReverse µ¹·Å»Ö¸´
-	* @return Á½ÊıÖ®ºÍ
+	* @brief åˆå§‹åŒ–è½¬åœºå±å¹•
+	* @param InUIManager ç”¨æˆ·ç•Œé¢ç®¡ç†å™¨
+	* @param FromAlpha åˆå§‹é€æ˜åº¦
+	* @param ToAlpha ç»“æŸé€æ˜åº¦
+	* @param InFadeTime æ·¡åŒ–æ—¶é—´
+	* @param InFadeColor æ·¡åŒ–é¢œè‰²
+	* @param InStayTime æ·¡åŒ–åœç•™æ—¶é—´
+	* @param bInReverse å€’æ”¾æ¢å¤
+	* @return ä¸¤æ•°ä¹‹å’Œ
 	*/
 	void Init(UUIManager* InUIManager, float FromAlpha, float ToAlpha, float InFadeTime, FLinearColor InFadeColor, float InStayTime = 0, bool bInReverse = false);
 
 	/**
-	* @brief ³õÊ¼»¯×ª³¡ÆÁÄ»
-	* @param InUIManager ÓÃ»§½çÃæ¹ÜÀíÆ÷
-	* @param FromAlpha ³õÊ¼Í¸Ã÷¶È
-	* @param ToAlpha ½áÊøÍ¸Ã÷¶È
-	* @param InFadeTime µ­»¯Ê±¼ä
-	* @param InFadeColor µ­»¯ÑÕÉ«
-	* @param InDelegate µ­»¯½áÊø»Øµ÷
-	* @param InStayTime µ­»¯Í£ÁôÊ±¼ä
-	* @param bInReverse µ¹·Å»Ö¸´
+	* @brief åˆå§‹åŒ–è½¬åœºå±å¹•
+	* @param InUIManager ç”¨æˆ·ç•Œé¢ç®¡ç†å™¨
+	* @param FromAlpha åˆå§‹é€æ˜åº¦
+	* @param ToAlpha ç»“æŸé€æ˜åº¦
+	* @param InFadeTime æ·¡åŒ–æ—¶é—´
+	* @param InFadeColor æ·¡åŒ–é¢œè‰²
+	* @param InDelegate æ·¡åŒ–ç»“æŸå›è°ƒ
+	* @param InStayTime æ·¡åŒ–åœç•™æ—¶é—´
+	* @param bInReverse å€’æ”¾æ¢å¤
 	*/
 	void Init(UUIManager* InUIManager, float FromAlpha, float ToAlpha, float InFadeTime, FLinearColor InFadeColor, FOnFadeFinished InDelegate, float InStayTime = 0, bool bInReverse = false);
-
+	// é…ç½®è¿‡æ¸¡é€æ˜åº¦ã€æ—¶é•¿ã€é¢œè‰²å’Œç»“æŸé€šçŸ¥ã€‚
 	UFUNCTION(BlueprintCallable)
 	UUI_TransitionScreen* Init(UUIManager* InUIManager, float FromAlpha, float ToAlpha, float InFadeTime, FLinearColor InFadeColor, FOnFadeFinishedDynamic InDelegate, float InStayTime = 0, bool bInReverse = false);
-
+	// è®¾ç½®è¿‡æ¸¡åŠ¨ç”»çš„è¿›åº¦é€šçŸ¥ã€‚
 	UFUNCTION(BlueprintCallable)
 	void SetOnFadingDelegate(FOnFadingDelegate InDelegate);
 
-	/* ½áÊøµ­»¯Í£Áô»Øµ÷ */
+	/* ç»“æŸæ·¡åŒ–åœç•™å›è°ƒ */
 	UFUNCTION()
 	void EndStay();
-
+	// å®Œæˆè¿‡æ¸¡å¹¶æ‰§è¡Œç»“æŸå›è°ƒã€‚
 	void EndFade();
-	
+
 };

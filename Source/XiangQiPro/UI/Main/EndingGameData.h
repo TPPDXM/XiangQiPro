@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
@@ -8,7 +8,7 @@
 #include "EndingGameData.generated.h"
 
 /**
- * �оֹؿ���Ŀ���ݶ���
+ * 残局关卡条目数据对象
  */
 UCLASS()
 class XIANGQIPRO_API UEndingGameData : public UObject
@@ -19,12 +19,12 @@ public:
 
 	int32 Index = 0;
 
-	int32* UserSelectedIndex;
+	TWeakObjectPtr<class UUI_Introduce_Ending> SelectionOwner;
 
 	FOnEndingGameListItemClicked OnItemClickedDelegate;
 
 	FString Title;
+	// 保存关卡数据和选择来源的弱引用。
+	void Init(int32 InIndex, UUI_Introduce_Ending* InSelectionOwner, FOnEndingGameListItemClicked CallBackFunc);
 
-	void Init(int32 InIndex, int32* InUserSelectedIndex, FOnEndingGameListItemClicked CallBackFunc);
-	
 };

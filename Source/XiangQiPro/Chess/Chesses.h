@@ -41,14 +41,14 @@ protected:
 	FString MyName;
 
 	// 棋子颜色(阵营)
-	EChessColor MyColor;
+	EChessColor MyColor = EChessColor::REDCHESS;
 
-	EChessColor MyRealColor;
+	EChessColor MyRealColor = EChessColor::REDCHESS;
 
 	// 棋子类型
-	EChessType MyType;
+	EChessType MyType = EChessType::EMPTY;
 
-	EChessType MyRealType;
+	EChessType MyRealType = EChessType::EMPTY;
 
 	// 棋子当前的简化坐标
 	Position Pos;
@@ -56,7 +56,7 @@ protected:
 	// 目标移动的位置
 	Position TargetPos;
 
-	AXQPGameStateBase* GameState;
+	TWeakObjectPtr<AXQPGameStateBase> GameState;
 
 	TWeakObjectPtr<UChessBoard2P> Board2P;
 
@@ -70,14 +70,15 @@ protected:
 
 	bool bDead = false;
 
-	UCurveFloat* CF_ChessMove;
+	UPROPERTY()
+	TObjectPtr<UCurveFloat> CF_ChessMove = nullptr;
 
 public:
 	// Sets default values for this pawn's properties
 	AChesses();
-
+	// 初始化棋子身份、棋盘引用和动画回调。
 	virtual void Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2P> board2P);
-	 
+
 	// 棋子静态网格体组件
 	UPROPERTY(EditAnywhere)
 	UStaticMeshComponent* ChessMesh;
@@ -104,21 +105,21 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
+	// 离开场景时停止本对象的运行逻辑。
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
+	// 响应重开事件并清理上一局状态。
 	virtual void GamePlayAgain(UObject* OwnerObject) override;
 
-public:	
+public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	
+
 	// 点击事件处理函数
 	virtual void NotifyActorOnClicked(FKey ButtonPressed = EKeys::LeftMouseButton) override;
-
+	// 触摸结束时处理棋子选择。
 	virtual void NotifyActorOnInputTouchEnd(const ETouchIndex::Type FingerIndex) override;
 
 	// 鼠标悬停
@@ -126,7 +127,7 @@ public:
 
 	// 鼠标离开
 	virtual void NotifyActorEndCursorOver() override;
-
+	// 触摸开始时显示棋子反馈。
 	virtual void NotifyActorOnInputTouchBegin(const ETouchIndex::Type FingerIndex) override;
 
 	// 游戏结束事件
@@ -145,13 +146,13 @@ public:
 	// 获取棋子颜色类型
 	UFUNCTION(BlueprintPure, Category = "Chess")
 	EChessColor GetColor() const;
-
+	// 修改棋子阵营并更新局面修订号。
 	void SetColor(EChessColor InColor);
 
 	// 获取棋子类型
 	UFUNCTION(BlueprintPure, Category = "Chess")
 	EChessType GetType() const;
-
+	// 修改棋子类型并更新局面修订号。
 	void SetType(EChessType InType);
 
 	// 获取简化坐标
@@ -159,14 +160,14 @@ public:
 
 	// 获取是否阵亡
 	bool IsDead() const;
-
+	// 根据玩法与阵营更新棋子的可选状态。
 	void UpdateSelectable();
-
+	// 生成选中棋子的合法走法并显示提示。
 	virtual void GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObjectPtr<AChesses> target);
 
 	// 应用棋子移动
 	virtual void ApplyMove(FChessMove2P Move);
-
+	// 播放落子动画，缺失曲线时直接完成落子。
 	virtual void PlayMoveAnim();
 
 	/*
@@ -177,7 +178,7 @@ public:
 	* @param T 曲线位置百分比
 	*/
 	FVector CalculateParabolicPosition(const FVector& Start, const FVector& Vertex, const FVector& End, float T);
-	
+
 	// 切换至真实身份，兵不厌诈游戏使用
 	void SwitchToRealIdentity();
 };

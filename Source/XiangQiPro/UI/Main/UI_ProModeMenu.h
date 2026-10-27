@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
@@ -7,7 +7,7 @@
 #include "UI_ProModeMenu.generated.h"
 
 /**
- * 
+ *
  */
 UCLASS()
 class XIANGQIPRO_API UUI_ProModeMenu : public UUserWidget
@@ -20,6 +20,7 @@ public:
 	class UTileView* ModeList;
 
 public:
+	// 构造界面并初始化控件与事件绑定。
 	virtual void NativeConstruct() override;
-	
+
 };

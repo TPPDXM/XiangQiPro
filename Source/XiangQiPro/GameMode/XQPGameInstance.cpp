@@ -1,50 +1,54 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+ï»¿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "XQPGameInstance.h"
 #include "../UI/XQP_HUD.h"
 
+// åˆå§‹åŒ–é»˜è®¤å±æ€§å’Œç»„ä»¶ã€‚
 UXQPGameInstance::UXQPGameInstance()
 {
 }
 
+// æ³¨å†Œå…³å¡åŠ è½½äº‹ä»¶å¹¶è·å–UIå­ç³»ç»Ÿã€‚
 void UXQPGameInstance::Init()
 {
 	Super::Init();
 
 	ULogger::Log(TEXT("UXQPGameInstance::Init: Game initializing..."));
 
-	UIManager = GetSubsystem<UUIManager>(); // »ñÈ¡UIManagerÊµÀı
+	UIManager = GetSubsystem<UUIManager>(); // è·å–UIManagerå®ä¾‹
 	if (!UIManager)
 	{
 		ULogger::LogError(TEXT("UXQPGameInstance::Init: Can't get UIManager instance!"));
 	}
 
 	FirstLoad = FDoOnce<void(FLoadingScreenAttributes&)>([this](FLoadingScreenAttributes& LoadingScreen) {
-		// µÚÒ»´Î¼ÓÔØ
+		// ç¬¬ä¸€æ¬¡åŠ è½½
 		if (FirstLoadingWidget != nullptr)
 		{
 			CurrentWidget = CreateWidget<UI_TransitionScreen>(this, FirstLoadingWidget);
 
 			if (UI_TransitionScreen* Widget = Cast<UI_TransitionScreen>(CurrentWidget))
 			{
-				Widget->Init(nullptr, 0, 1, 1, FLinearColor::White);	// ³õÊ¼»¯µ­»¯UI
+				Widget->Init(nullptr, 0, 1, 1, FLinearColor::White);	// åˆå§‹åŒ–æ·¡åŒ–UI
 			}
-			LoadingScreen.WidgetLoadingScreen = CurrentWidget->TakeWidget();
+			if (IsValid(CurrentWidget)) LoadingScreen.WidgetLoadingScreen = CurrentWidget->TakeWidget();
 		}
 		else
 		{
 			ULogger::LogError(TEXT("UXQPGameInstance::Init: FirstLoadingWidget is nullptr!"));
 		}});
 
-	//PreLoadMap£¬¿ªÊ¼¼ÓÔØmap
+	//PreLoadMapï¼Œå¼€å§‹åŠ è½½map
 	FCoreUObjectDelegates::PreLoadMap.AddUObject(this, &UXQPGameInstance::BeginLoadMap);
-	//PostLoadMapWithWorld£¬ ¼ÓÔØÍê³Éºó
+	//PostLoadMapWithWorldï¼Œ åŠ è½½å®Œæˆå
 	FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UXQPGameInstance::EndLoadMap);
 }
 
+// å¼€å§‹åŠ è½½å…³å¡æ—¶é…ç½®è¿‡æ¸¡ç•Œé¢ã€‚
 void UXQPGameInstance::BeginLoadMap(const FString& MapName)
 {
+	if (IsValid(UIManager)) UIManager->ResetUI();
 	ULogger::Log(TEXT("Begin loading map..."));
 	bIsLoadingLevel = true;
 
@@ -52,26 +56,26 @@ void UXQPGameInstance::BeginLoadMap(const FString& MapName)
 
 	LoadingScreen.bMoviesAreSkippable = true;
 
-	LoadingScreen.WidgetLoadingScreen = FLoadingScreenAttributes::NewTestLoadingScreenWidget(); // movie²»´æÔÚÊ±£¬ÏÔÊ¾µÄwidget
-	
+	LoadingScreen.WidgetLoadingScreen = FLoadingScreenAttributes::NewTestLoadingScreenWidget(); // movieä¸å­˜åœ¨æ—¶ï¼Œæ˜¾ç¤ºçš„widget
+
 	if (FirstLoad.IsExecutable())
 	{
 		LoadingScreen.bWaitForManualStop = false;
 		LoadingScreen.bAutoCompleteWhenLoadingCompletes = true;
-		LoadingScreen.MinimumLoadingScreenDisplayTime = 2.f; // movie×îÉÙ²¥·ÅÊ±¼ä
-		FirstLoad.Execute(LoadingScreen); // Ö´ĞĞµÚÒ»´Î¼ÓÔØ(¿ªÆÁ¼ÓÔØ)µÄ½çÃæÏÔÊ¾
+		LoadingScreen.MinimumLoadingScreenDisplayTime = 2.f; // movieæœ€å°‘æ’­æ”¾æ—¶é—´
+		FirstLoad.Execute(LoadingScreen); // æ‰§è¡Œç¬¬ä¸€æ¬¡åŠ è½½(å¼€å±åŠ è½½)çš„ç•Œé¢æ˜¾ç¤º
 	}
 	else
 	{
 		LoadingScreen.bWaitForManualStop = false;
 		LoadingScreen.bAllowEngineTick = false;
 		LoadingScreen.bAutoCompleteWhenLoadingCompletes = true;
-		LoadingScreen.MinimumLoadingScreenDisplayTime = 5.f; // movie×îÉÙ²¥·ÅÊ±¼ä
-		// ·ÇµÚÒ»´Î¼ÓÔØ
+		LoadingScreen.MinimumLoadingScreenDisplayTime = 5.f; // movieæœ€å°‘æ’­æ”¾æ—¶é—´
+		// éç¬¬ä¸€æ¬¡åŠ è½½
 		if (LoadingWidget != nullptr)
 		{
 			CurrentWidget = CreateWidget<UI_LoadingScreen>(this, LoadingWidget);
-			LoadingScreen.WidgetLoadingScreen = CurrentWidget->TakeWidget();
+			if (IsValid(CurrentWidget)) LoadingScreen.WidgetLoadingScreen = CurrentWidget->TakeWidget();
 		}
 		else
 		{
@@ -79,27 +83,31 @@ void UXQPGameInstance::BeginLoadMap(const FString& MapName)
 		}
 	}
 
-	GetMoviePlayer()->SetupLoadingScreen(LoadingScreen); // Ìí¼Óµ½ÆÁÄ»
+	if (GetMoviePlayer()) GetMoviePlayer()->SetupLoadingScreen(LoadingScreen); // æ·»åŠ åˆ°å±å¹•
 }
 
+// å…³å¡åŠ è½½ç»“æŸååœæ­¢åŠ è½½ç”»é¢ã€‚
 void UXQPGameInstance::EndLoadMap(UWorld* LoadedWorld)
 {
 	ULogger::Log(TEXT("End load map"));
 	bIsLoadingLevel = false;
-	GetMoviePlayer()->StopMovie();
-	
+	if (GetMoviePlayer()) GetMoviePlayer()->StopMovie();
+
 }
 
+// åœæ­¢å½“å‰åŠ è½½å½±ç‰‡ã€‚
 void UXQPGameInstance::StopMovie()
 {
-	GetMoviePlayer()->StopMovie();
+	if (GetMoviePlayer()) GetMoviePlayer()->StopMovie();
 }
 
+// è®¾ç½®ä¸‹ä¸€å±€ä½¿ç”¨çš„ç©æ³•ã€‚
 void UXQPGameInstance::SetGameMode(EXQPGameMode InGameMode)
 {
 	MyGameMode = InGameMode;
 }
 
+// è·å–å½“å‰ç©æ³•ã€‚
 EXQPGameMode UXQPGameInstance::GetGameMode() const
 {
 	return MyGameMode;

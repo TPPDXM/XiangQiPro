@@ -1,69 +1,30 @@
 ﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
-
 #include "EndingLibrary.h"
-#include "XiangQiPro/Util/ObjectManager.h"
-#include "XiangQiPro/Util/Logger.h"
+#include "DataTableAccess.h"
 
-#define DATATABLE_ENDING_PATH TEXT("/Script/Engine.DataTable'/Game/DataTable/ChessGenerationInfos.ChessGenerationInfos'")
+namespace
+{
+    constexpr const TCHAR* EndingTablePath = TEXT("/Game/DataTable/ChessGenerationInfos.ChessGenerationInfos");
+}
 
+// 获取关卡总数，数据表缺失时返回0。
 int32 UEndingLibrary::GetEndingGameNum()
 {
-    FChessGenerationInfo Infos;
-    auto DataTable = OM::GetObject<UDataTable>(DATATABLE_ENDING_PATH);
-
-    TArray<FName> rowName = DataTable->GetRowNames();
-    return rowName.Num();
+    const UDataTable* Table = UObjectManager::GetObject<UDataTable>(EndingTablePath);
+    return IsValid(Table) ? Table->GetRowNames().Num() : 0;
 }
 
+// 返回指定关卡的棋子生成数据，越界或空表不再读取负数索引。
 TArray<FChessGenerationInfo> UEndingLibrary::GetChessGenerateInfo(int32 Index)
 {
-    FChessGenerationInfo Infos;
-    auto DataTable = OM::GetObject<UDataTable>(DATATABLE_ENDING_PATH);
-
-    TArray<FName> rowName = DataTable->GetRowNames();
-
-    if (Index < 0 || Index >= rowName.Num())
-    {
-        ULogger::LogError(TEXT("UEndingLibrary::GetChessGenerateInfo"), TEXT("Get generate information index out of bounds!"));
-        Index = rowName.Num() - 1;
-    }
-
-    FString ContextString;
-    auto TableData = DataTable->FindRow<FChessGenerationInfos>(rowName[Index], ContextString, false);
-    if (TableData)
-    {
-        return TableData->Infos;
-    }
-    else
-    {
-        ULogger::LogError(TEXT("UEndingLibrary::GetChessGenerateInfo"), "Can't find row by name!");
-        return TArray<FChessGenerationInfo>();
-    }
+    const auto Row = XQPDataTables::ReadRow<FChessGenerationInfos>(EndingTablePath, Index);
+    return Row.IsSet() ? Row->Infos : TArray<FChessGenerationInfo>();
 }
 
+// 获取指定关卡标题，非法索引返回空文本。
 FString UEndingLibrary::GetEndingGameTitle(int32 Index)
 {
-    FChessGenerationInfo Infos;
-    auto DataTable = OM::GetObject<UDataTable>(DATATABLE_ENDING_PATH);
-
-    TArray<FName> rowName = DataTable->GetRowNames();
-
-    if (Index < 0 || Index >= rowName.Num())
-    {
-        ULogger::LogError(TEXT("UEndingLibrary::GetChessGenerateInfo"), TEXT("Get generate information index out of bounds!"));
-        Index = rowName.Num() - 1;
-    }
-
-    FString ContextString;
-    auto TableData = DataTable->FindRow<FChessGenerationInfos>(rowName[Index], ContextString, false);
-    if (TableData)
-    {
-        return TableData->Title;
-    }
-    else
-    {
-        ULogger::LogError(TEXT("UEndingLibrary::GetChessGenerateInfo"), "Can't find row by name!");
-        return FString();
-    }
+    const auto Row = XQPDataTables::ReadRow<FChessGenerationInfos>(EndingTablePath, Index);
+    return Row.IsSet() ? Row->Title : FString();
 }

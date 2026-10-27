@@ -57,13 +57,13 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
+	// 创建主界面并交给UI管理器。
 	void InitUI();
-
+	// 设置并播放场景背景音乐。
 	void InitAudio();
-
+	// 视口大小改变时更新画面比例。
 	void OnViewportResized(FViewport* Viewport, uint32 Param);
-
+	// 按视口宽高比调整相机胶片尺寸。
 	void UpdateFilmbackAspectRatio();
 
 	// 更新相机聚焦
@@ -102,7 +102,7 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
 	class USceneComponent* SceneRoot;
 
-	AXQP_HUD* HUD;
+	TWeakObjectPtr<AXQP_HUD> HUD;
 
 	// 鼠标位置变量
 	float CurrentMouseX = 0.0f;
@@ -123,6 +123,8 @@ private:
 
 	// 添加鼠标输入处理函数
 	void SetupMouseInput();
+	// 处理鼠标移动
 	void HandleMouseMovement(float DeltaTime);
+	// 计算基础角度
 	void CalculateBaseAngles();
 };

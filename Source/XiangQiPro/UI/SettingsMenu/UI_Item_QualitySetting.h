@@ -41,12 +41,12 @@ public:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* QualityText;
-
+	// 构造界面并初始化控件与事件绑定。
 	virtual void NativeConstruct() override;
-
+	// 接收列表数据并刷新复用条目的显示。
 	virtual void NativeOnListItemObjectSet(UObject* ListItemObject) override;
-
+	// 将用户选择应用到对应的画质选项。
 	UFUNCTION()
 	void OnSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType);
-	
+
 };

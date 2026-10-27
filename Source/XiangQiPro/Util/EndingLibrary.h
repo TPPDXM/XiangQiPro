@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
@@ -23,9 +23,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FIntPoint Pos;
 
+	// 构造空的棋子生成信息。
 	FChessGenerationInfo() : Class(nullptr), Color(EChessColor::REDCHESS), Pos(Position(0, 0))
 	{ }
 
+	// 根据棋子类、阵营和坐标建立生成信息。
 	FChessGenerationInfo(TSubclassOf<AChesses> InClass, EChessColor InColor, Position InPos) : Class(InClass), Color(InColor), Pos(InPos)
 	{ }
 };
@@ -54,7 +56,7 @@ public:
 };
 
 /**
- * �оֿ�
+ * 残局库
  */
 UCLASS()
 class XIANGQIPRO_API UEndingLibrary : public UBlueprintFunctionLibrary
@@ -62,13 +64,13 @@ class XIANGQIPRO_API UEndingLibrary : public UBlueprintFunctionLibrary
 	GENERATED_BODY()
 
 public:
-
+	// 获取关卡总数，数据表缺失时返回0。
 	UFUNCTION(BlueprintPure)
 	static int32 GetEndingGameNum();
-
+	// 返回指定关卡的棋子生成数据，越界或空表不再读取负数索引。
 	UFUNCTION(BlueprintPure)
 	static TArray<FChessGenerationInfo> GetChessGenerateInfo(int32 Index);
-
+	// 获取指定关卡标题，非法索引返回空文本。
 	UFUNCTION(BlueprintPure)
 	static FString GetEndingGameTitle(int32 Index);
 };

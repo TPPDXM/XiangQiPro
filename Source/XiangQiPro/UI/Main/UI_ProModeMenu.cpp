@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "UI_ProModeMenu.h"
@@ -7,16 +7,19 @@
 #include "XiangQiPro/Util/ProModeLibrary.h"
 #include "ProModeData.h"
 
+// 构造界面并初始化控件与事件绑定。
 void UUI_ProModeMenu::NativeConstruct()
 {
 	Super::NativeConstruct();
+	if (!IsValid(ModeList)) return;
+	ModeList->ClearListItems();
 	auto Arr = UProModeLibrary::GetProModeInfos();
 	for (const auto& info : Arr)
 	{
-		UProModeData* item = NewObject<UProModeData>();
+		UProModeData* item = NewObject<UProModeData>(this);
 		if (item)
 		{
-			item->Init(info->Title, info->Covers, info->GameModeID);
+			item->Init(info.Title, info.Covers, info.GameModeID);
 			ModeList->AddItem(item);
 		}
 	}

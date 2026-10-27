@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+ï»¿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "Camera2PActor.h"
@@ -6,37 +6,39 @@
 #include "../UI/XQP_HUD.h"
 #include "../Util/Logger.h"
 
+// åˆå§‹åŒ–é»˜è®¤å±æ€§å’Œç»„ä»¶ã€‚
 ACamera2PActor::ACamera2PActor()
 {
 
-	// ´´½¨µ¯»É±Û×é¼ş
+	// åˆ›å»ºå¼¹ç°§è‡‚ç»„ä»¶
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
-	SpringArm->TargetArmLength = 90.0f; // ÉãÏñ»ú¾àÀë
-	SpringArm->bUsePawnControlRotation = false; // ÖØÒª£º²»Ê¹ÓÃPawn¿ØÖÆĞı×ª
-	SpringArm->bEnableCameraLag = true; // ÆôÓÃÉãÏñ»úÑÓ³Ù
-	SpringArm->CameraLagSpeed = 3.0f; // ÑÓ³ÙËÙ¶È
-	SpringArm->bDoCollisionTest = false; // Åö×²¼ì²â£¨¿ÉÑ¡£©
+	SpringArm->TargetArmLength = 90.0f; // æ‘„åƒæœºè·ç¦»
+	SpringArm->bUsePawnControlRotation = false; // é‡è¦ï¼šä¸ä½¿ç”¨Pawnæ§åˆ¶æ—‹è½¬
+	SpringArm->bEnableCameraLag = true; // å¯ç”¨æ‘„åƒæœºå»¶è¿Ÿ
+	SpringArm->CameraLagSpeed = 3.0f; // å»¶è¿Ÿé€Ÿåº¦
+	SpringArm->bDoCollisionTest = false; // ç¢°æ’æ£€æµ‹ï¼ˆå¯é€‰ï¼‰
 	RootComponent = SpringArm;
 
-	// ÉèÖÃµ¯»É±ÛĞı×ªÏŞÖÆ
+	// è®¾ç½®å¼¹ç°§è‡‚æ—‹è½¬é™åˆ¶
 	SpringArm->SetRelativeRotation(FRotator(-40.0f, 0.0f, 0.0f));
 
-	// ´´½¨ÉãÏñ»ú×é¼ş
+	// åˆ›å»ºæ‘„åƒæœºç»„ä»¶
 	GameCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
 	GameCamera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 
-	// ´´½¨ÒôÆµ×é¼ş
+	// åˆ›å»ºéŸ³é¢‘ç»„ä»¶
 	BattleAudio = CreateDefaultSubobject<UAudioComponent>(TEXT("BattleAudio"));
 	BattleAudio->SetupAttachment(GameCamera);
 
-	// ³õÊ¼»¯±äÁ¿
+	// åˆå§‹åŒ–å˜é‡
 	bIsRotatingCamera = false;
 	TargetRotation = FRotator::ZeroRotator;
 
-	// ×Ô¶¯¿ØÖÆÍæ¼Ò
+	// è‡ªåŠ¨æ§åˆ¶ç©å®¶
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 }
 
+// è¿›å…¥åœºæ™¯ååˆå§‹åŒ–æœ¬å¯¹è±¡ä¾èµ–ã€‚
 void ACamera2PActor::BeginPlay()
 {
 	Super::BeginPlay();
@@ -45,29 +47,32 @@ void ACamera2PActor::BeginPlay()
 	InitAudio();
 }
 
+// ç¦»å¼€åœºæ™¯æ—¶åœæ­¢æœ¬å¯¹è±¡çš„è¿è¡Œé€»è¾‘ã€‚
 void ACamera2PActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
 }
 
+// åˆå§‹åŒ–ç›¸æœºçš„ç›®æ ‡æ—‹è½¬ã€‚
 void ACamera2PActor::InitCamera()
 {
-	// ³õÊ¼»¯Ä¿±êĞı×ªÎªµ±Ç°Ğı×ª
+	// åˆå§‹åŒ–ç›®æ ‡æ—‹è½¬ä¸ºå½“å‰æ—‹è½¬
 	TargetRotation = SpringArm->GetRelativeRotation();
 }
 
+// è®¾ç½®å¹¶æ’­æ”¾åœºæ™¯èƒŒæ™¯éŸ³ä¹ã€‚
 void ACamera2PActor::InitAudio()
 {
-	BattleAudio->SetSound(BattleMusic); // ÉèÖÃÒôÆµ×ÊÔ´
-	BattleAudio->Play(); // ¿ªÊ¼²¥·Å±³¾°ÒôÀÖ
+	BattleAudio->SetSound(BattleMusic); // è®¾ç½®éŸ³é¢‘èµ„æº
+	BattleAudio->Play(); // å¼€å§‹æ’­æ”¾èƒŒæ™¯éŸ³ä¹
 }
 
-// Èç¹ûĞèÒªÃ¿Ö¡¸üĞÂ£¬¿ÉÒÔÖØĞ´Tickº¯Êı
+// å¦‚æœéœ€è¦æ¯å¸§æ›´æ–°ï¼Œå¯ä»¥é‡å†™Tickå‡½æ•°
 void ACamera2PActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// Æ½»¬Ó¦ÓÃĞı×ª
+	// å¹³æ»‘åº”ç”¨æ—‹è½¬
 	if (!TargetRotation.Equals(SpringArm->GetRelativeRotation()))
 	{
 		FRotator CurrentRotation = SpringArm->GetRelativeRotation();
@@ -75,7 +80,7 @@ void ACamera2PActor::Tick(float DeltaTime)
 		SpringArm->SetRelativeRotation(NewRotation);
 	}
 
-	// Æ½»¬²åÖµËõ·Å
+	// å¹³æ»‘æ’å€¼ç¼©æ”¾
 	if (!FMath::IsNearlyEqual(SpringArm->TargetArmLength, TargetArmLength))
 	{
 		float CurrentLength = SpringArm->TargetArmLength;
@@ -84,46 +89,51 @@ void ACamera2PActor::Tick(float DeltaTime)
 	}
 }
 
+// å“åº”æ¸¸æˆæš‚åœäº‹ä»¶ã€‚
 void ACamera2PActor::GamePause(UObject* OwnerObject)
 {
-	// ÆÁ±ÎÊäÈë
+	// å±è”½è¾“å…¥
 	DisableInput(GetController<APlayerController>());
 	IIF_GameState::GamePause(OwnerObject);
 }
 
+// å“åº”æ¸¸æˆæ¢å¤äº‹ä»¶ã€‚
 void ACamera2PActor::GameResume(UObject* OwnerObject)
 {
-	// ÆôÓÃÊäÈë
+	// å¯ç”¨è¾“å…¥
 	EnableInput(GetController<APlayerController>());
 	IIF_GameState::GameResume(OwnerObject);
 }
 
+// ç»‘å®šé¼ æ ‡ã€è§¦æ‘¸å’Œç›¸æœºè¾“å…¥äº‹ä»¶ã€‚
 void ACamera2PActor::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
+	if (!IsValid(PlayerInputComponent)) return;
 
-	// °ó¶¨Êó±ê°´¼üÊÂ¼ş
+	// ç»‘å®šé¼ æ ‡æŒ‰é”®äº‹ä»¶
 	PlayerInputComponent->BindAction("CameraRotate", IE_Pressed, this, &ACamera2PActor::OnMouseRightButtonPressed);
 	PlayerInputComponent->BindAction("CameraRotate", IE_Released, this, &ACamera2PActor::OnMouseRightButtonReleased);
 
-	// °ó¶¨Êó±êÖáÊÂ¼ş
+	// ç»‘å®šé¼ æ ‡è½´äº‹ä»¶
 	PlayerInputComponent->BindAxis("MouseX", this, &ACamera2PActor::OnMouseX);
 	PlayerInputComponent->BindAxis("MouseY", this, &ACamera2PActor::OnMouseY);
 
-	// °ó¶¨Êó±ê¹öÂÖÊäÈë
+	// ç»‘å®šé¼ æ ‡æ»šè½®è¾“å…¥
 	PlayerInputComponent->BindAxis("MouseWheel", this, &ACamera2PActor::OnMouseWheel);
 
-	// °ó¶¨´¥ÃşÊäÈë
+	// ç»‘å®šè§¦æ‘¸è¾“å…¥
 	PlayerInputComponent->BindTouch(IE_Pressed, this, &ACamera2PActor::OnTouchBegin);
 	PlayerInputComponent->BindTouch(IE_Repeat, this, &ACamera2PActor::OnTouchMove);
 	PlayerInputComponent->BindTouch(IE_Released, this, &ACamera2PActor::OnTouchEnd);
 }
 
+// å¼€å§‹ç›¸æœºæ—‹è½¬å¹¶æš‚æ—¶å…³é—­æ£‹å­ç‚¹å‡»ã€‚
 void ACamera2PActor::OnMouseRightButtonPressed()
 {
 	bIsRotatingCamera = true;
 
-	// ÏÔÊ¾Êó±ê¹â±ê²¢Ëø¶¨µ½ÊÓ¿Ú
+	// æ˜¾ç¤ºé¼ æ ‡å…‰æ ‡å¹¶é”å®šåˆ°è§†å£
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
 		PC->bShowMouseCursor = false;
@@ -132,11 +142,12 @@ void ACamera2PActor::OnMouseRightButtonPressed()
 	}
 }
 
+// åœæ­¢ç›¸æœºæ—‹è½¬å¹¶æ¢å¤æ£‹å­ç‚¹å‡»ã€‚
 void ACamera2PActor::OnMouseRightButtonReleased()
 {
 	bIsRotatingCamera = false;
 
-	// »Ö¸´Êó±ê¹â±ê
+	// æ¢å¤é¼ æ ‡å…‰æ ‡
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
 		PC->bShowMouseCursor = true;
@@ -145,51 +156,56 @@ void ACamera2PActor::OnMouseRightButtonReleased()
 	}
 }
 
+// æ ¹æ®é¼ æ ‡æ°´å¹³ä½ç§»æ›´æ–°ç›¸æœºåèˆªã€‚
 void ACamera2PActor::OnMouseX(float Value)
 {
 	if (bIsRotatingCamera && FMath::Abs(Value) > 0.0f)
 	{
-		// ÈÆZÖáĞı×ª£¨Yaw£©
+		// ç»•Zè½´æ—‹è½¬ï¼ˆYawï¼‰
 		TargetRotation.Yaw += Value * RotationSpeed;
 	}
 }
 
+// æ ¹æ®é¼ æ ‡å‚ç›´ä½ç§»æ›´æ–°ç›¸æœºä¿¯ä»°ã€‚
 void ACamera2PActor::OnMouseY(float Value)
 {
 	if (bIsRotatingCamera && FMath::Abs(Value) > 0.0f)
 	{
-		// ÈÆXÖáĞı×ª£¨Pitch£©£¬²¢ÏŞÖÆ½Ç¶È
+		// ç»•Xè½´æ—‹è½¬ï¼ˆPitchï¼‰ï¼Œå¹¶é™åˆ¶è§’åº¦
 		float NewPitch = TargetRotation.Pitch + Value * RotationSpeed;
 		TargetRotation.Pitch = FMath::Clamp(NewPitch, MinPitchAngle, MaxPitchAngle);
 	}
 }
 
-// Êó±ê¹öÂÖËõ·Å´¦Àíº¯Êı
+// é¼ æ ‡æ»šè½®ç¼©æ”¾å¤„ç†å‡½æ•°
 void ACamera2PActor::OnMouseWheel(float Value)
 {
 	if (FMath::Abs(Value) > 0.0f)
 	{
-		// ¼ÆËãËõ·ÅÔöÁ¿£¨¹öÂÖÏòÉÏÎªÕıÖµ£¬µ«ÎÒÃÇÒªËõĞ¡¾àÀë£¬ËùÒÔÈ¡¸º£©
+		// è®¡ç®—ç¼©æ”¾å¢é‡ï¼ˆæ»šè½®å‘ä¸Šä¸ºæ­£å€¼ï¼Œä½†æˆ‘ä»¬è¦ç¼©å°è·ç¦»ï¼Œæ‰€ä»¥å–è´Ÿï¼‰
 		float ZoomDelta = Value * MouseWheelZoomSensitivity;
 
-		// Ó¦ÓÃËõ·Å
+		// åº”ç”¨ç¼©æ”¾
 		TargetArmLength = FMath::Clamp(TargetArmLength - ZoomDelta, MinZoomDistance, MaxZoomDistance);
 
-		// ¿ÉÑ¡£ºÌí¼ÓËõ·ÅĞ§¹û·´À¡
+		// å¯é€‰ï¼šæ·»åŠ ç¼©æ”¾æ•ˆæœåé¦ˆ
 		// UE_LOG(LogTemp, Warning, TEXT("Mouse Wheel: %.2f, New Target Length: %.2f"), Value, TargetArmLength);
 	}
 }
 
+// è®°å½•è§¦æ‘¸èµ·ç‚¹å¹¶è¯†åˆ«å•æŒ‡æˆ–åŒæŒ‡æ“ä½œã€‚
 void ACamera2PActor::OnTouchBegin(ETouchIndex::Type FingerIndex, FVector Location)
 {
+	APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+	if (!IsValid(PC)) return;
 	if (FingerIndex == ETouchIndex::Touch1)
 	{
-		// µ¥Ö¸´¥Ãş¿ªÊ¼
+		// å•æŒ‡è§¦æ‘¸å¼€å§‹
 		float LocationX, LocationY;
-		bool bIsCurrentlyPressed; // Õâ¸ö²ÎÊı±íÊ¾´¥Ãşµãµ±Ç°ÊÇ·ñ±»°´ÏÂ
+		bool bIsCurrentlyPressed; // è¿™ä¸ªå‚æ•°è¡¨ç¤ºè§¦æ‘¸ç‚¹å½“å‰æ˜¯å¦è¢«æŒ‰ä¸‹
 
-		// Ê¹ÓÃÕıÈ·µÄGetInputTouchStateº¯ÊıÇ©Ãû
-		GetWorld()->GetFirstPlayerController()->GetInputTouchState(
+		// ä½¿ç”¨æ­£ç¡®çš„GetInputTouchStateå‡½æ•°ç­¾å
+		PC->GetInputTouchState(
 			FingerIndex,
 			LocationX,
 			LocationY,
@@ -206,19 +222,19 @@ void ACamera2PActor::OnTouchBegin(ETouchIndex::Type FingerIndex, FVector Locatio
 	}
 	else if (FingerIndex == ETouchIndex::Touch2)
 	{
-		// Ë«Ö¸´¥Ãş¿ªÊ¼
+		// åŒæŒ‡è§¦æ‘¸å¼€å§‹
 		float FirstFingerX, FirstFingerY, SecondFingerX, SecondFingerY;
 		bool bFirstPressed, bSecondPressed;
 
-		// ¼ì²éÁ½¸ö´¥ÃşµãÊÇ·ñ¶¼ÓĞĞ§
-		GetWorld()->GetFirstPlayerController()->GetInputTouchState(
+		// æ£€æŸ¥ä¸¤ä¸ªè§¦æ‘¸ç‚¹æ˜¯å¦éƒ½æœ‰æ•ˆ
+		PC->GetInputTouchState(
 			ETouchIndex::Touch1,
 			FirstFingerX,
 			FirstFingerY,
 			bFirstPressed
 		);
 
-		GetWorld()->GetFirstPlayerController()->GetInputTouchState(
+		PC->GetInputTouchState(
 			ETouchIndex::Touch2,
 			SecondFingerX,
 			SecondFingerY,
@@ -236,21 +252,24 @@ void ACamera2PActor::OnTouchBegin(ETouchIndex::Type FingerIndex, FVector Locatio
 	}
 }
 
+// å¤„ç†è§¦æ‘¸ç§»åŠ¨ï¼Œæ›´æ–°æ—‹è½¬æˆ–ç¼©æ”¾ã€‚
 void ACamera2PActor::OnTouchMove(ETouchIndex::Type FingerIndex, FVector Location)
 {
+	APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+	if (!IsValid(PC)) return;
 	if (bIsTwoFingerTouchActive)
 	{
-		// ´¦ÀíË«Ö¸ÊÖÊÆ£¨Ëõ·Å£©
+		// å¤„ç†åŒæŒ‡æ‰‹åŠ¿ï¼ˆç¼©æ”¾ï¼‰
 		HandleTwoFingerGesture();
 	}
 	else if (bIsSingleTouchActive && FingerIndex == ETouchIndex::Touch1)
 	{
-		// ´¦Àíµ¥Ö¸»¬¶¯£¨Ğı×ª£©
+		// å¤„ç†å•æŒ‡æ»‘åŠ¨ï¼ˆæ—‹è½¬ï¼‰
 		float CurrentX, CurrentY;
 		bool bIsPressed;
 
-		// »ñÈ¡µ±Ç°´¥Ãşµã×´Ì¬
-		GetWorld()->GetFirstPlayerController()->GetInputTouchState(
+		// è·å–å½“å‰è§¦æ‘¸ç‚¹çŠ¶æ€
+		PC->GetInputTouchState(
 			FingerIndex,
 			CurrentX,
 			CurrentY,
@@ -261,14 +280,14 @@ void ACamera2PActor::OnTouchMove(ETouchIndex::Type FingerIndex, FVector Location
 		{
 			FVector2D CurrentTouchLocation(CurrentX, CurrentY);
 
-			// ¼ÆËã»¬¶¯ÔöÁ¿
+			// è®¡ç®—æ»‘åŠ¨å¢é‡
 			FVector2D Delta = CurrentTouchLocation - PreviousTouchLocation;
 
-			// Ó¦ÓÃĞı×ª£¨YÖá·´Ïò£¬ÒòÎªÆÁÄ»×ø±êYÖáÏòÏÂ£©
+			// åº”ç”¨æ—‹è½¬ï¼ˆYè½´åå‘ï¼Œå› ä¸ºå±å¹•åæ ‡Yè½´å‘ä¸‹ï¼‰
 			float NewYaw = TargetRotation.Yaw + Delta.X * RotationSensitivity * 0.1f;
 			float NewPitch = TargetRotation.Pitch - Delta.Y * RotationSensitivity * 0.1f;
 
-			// ÏŞÖÆ¸©Ñö½Ç
+			// é™åˆ¶ä¿¯ä»°è§’
 			NewPitch = FMath::Clamp(NewPitch, MinPitchAngle, MaxPitchAngle);
 
 			TargetRotation = FRotator(NewPitch, NewYaw, 0.0f);
@@ -278,8 +297,11 @@ void ACamera2PActor::OnTouchMove(ETouchIndex::Type FingerIndex, FVector Location
 	}
 }
 
+// ç»“æŸè§¦æ‘¸å¹¶åŒæ­¥å‰©ä½™æ‰‹æŒ‡çŠ¶æ€ã€‚
 void ACamera2PActor::OnTouchEnd(ETouchIndex::Type FingerIndex, FVector Location)
 {
+	APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+	if (!IsValid(PC)) return;
 	float DummyX, DummyY;
 	bool bIsPressed;
 
@@ -287,14 +309,14 @@ void ACamera2PActor::OnTouchEnd(ETouchIndex::Type FingerIndex, FVector Location)
 	{
 		bIsSingleTouchActive = false;
 
-		// ¼ì²éµÚ¶şÖ¸ÊÇ·ñÈÔÈ»ÓĞĞ§
-		GetWorld()->GetFirstPlayerController()->GetInputTouchState(ETouchIndex::Touch2, DummyX, DummyY, bIsPressed);
+		// æ£€æŸ¥ç¬¬äºŒæŒ‡æ˜¯å¦ä»ç„¶æœ‰æ•ˆ
+		PC->GetInputTouchState(ETouchIndex::Touch2, DummyX, DummyY, bIsPressed);
 		if (bIsPressed)
 		{
 			bIsTwoFingerTouchActive = true;
 
-			// ¸üĞÂµÚ¶şÖ¸Î»ÖÃ
-			GetWorld()->GetFirstPlayerController()->GetInputTouchState(
+			// æ›´æ–°ç¬¬äºŒæŒ‡ä½ç½®
+			PC->GetInputTouchState(
 				ETouchIndex::Touch2,
 				SecondFingerLocation.X,
 				SecondFingerLocation.Y,
@@ -306,14 +328,14 @@ void ACamera2PActor::OnTouchEnd(ETouchIndex::Type FingerIndex, FVector Location)
 	{
 		bIsTwoFingerTouchActive = false;
 
-		// ¼ì²éµÚÒ»Ö¸ÊÇ·ñÈÔÈ»ÓĞĞ§
-		GetWorld()->GetFirstPlayerController()->GetInputTouchState(ETouchIndex::Touch1, DummyX, DummyY, bIsPressed);
+		// æ£€æŸ¥ç¬¬ä¸€æŒ‡æ˜¯å¦ä»ç„¶æœ‰æ•ˆ
+		PC->GetInputTouchState(ETouchIndex::Touch1, DummyX, DummyY, bIsPressed);
 		if (bIsPressed)
 		{
 			bIsSingleTouchActive = true;
 
-			// ¸üĞÂµÚÒ»Ö¸Î»ÖÃ
-			GetWorld()->GetFirstPlayerController()->GetInputTouchState(
+			// æ›´æ–°ç¬¬ä¸€æŒ‡ä½ç½®
+			PC->GetInputTouchState(
 				ETouchIndex::Touch1,
 				PreviousTouchLocation.X,
 				PreviousTouchLocation.Y,
@@ -323,17 +345,19 @@ void ACamera2PActor::OnTouchEnd(ETouchIndex::Type FingerIndex, FVector Location)
 	}
 }
 
-// ÊµÏÖ
+// å®ç°
 bool ACamera2PActor::IsValidTwoFingerGesture()
 {
+	APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+	if (!IsValid(PC)) return false;
 	if (!bIsTwoFingerTouchActive) return false;
 
 	float FirstX, FirstY, SecondX, SecondY;
 	bool bFirstPressed, bSecondPressed;
 
-	GetWorld()->GetFirstPlayerController()->GetInputTouchState(
+	PC->GetInputTouchState(
 		ETouchIndex::Touch1, FirstX, FirstY, bFirstPressed);
-	GetWorld()->GetFirstPlayerController()->GetInputTouchState(
+	PC->GetInputTouchState(
 		ETouchIndex::Touch2, SecondX, SecondY, bSecondPressed);
 
 	if (!bFirstPressed || !bSecondPressed)
@@ -342,7 +366,7 @@ bool ACamera2PActor::IsValidTwoFingerGesture()
 		return false;
 	}
 
-	// ¼ì²éÁ½Ö¸¾àÀëÊÇ·ñÓĞĞ§£¨±ÜÃâ¾àÀëÌ«½üµÄÎó´¥£©
+	// æ£€æŸ¥ä¸¤æŒ‡è·ç¦»æ˜¯å¦æœ‰æ•ˆï¼ˆé¿å…è·ç¦»å¤ªè¿‘çš„è¯¯è§¦ï¼‰
 	float CurrentDistance = FVector2D::Distance(
 		FVector2D(FirstX, FirstY),
 		FVector2D(SecondX, SecondY)
@@ -351,34 +375,37 @@ bool ACamera2PActor::IsValidTwoFingerGesture()
 	return CurrentDistance >= MinPinchDistance;
 }
 
+// æ ¹æ®åŒæŒ‡é—´è·å˜åŒ–ç¼©æ”¾ç›¸æœºã€‚
 void ACamera2PActor::HandleTwoFingerGesture()
 {
+	APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+	if (!IsValid(PC)) return;
 	if (!IsValidTwoFingerGesture()) return;
 
 	float FirstX, FirstY, SecondX, SecondY;
 	bool bFirstPressed, bSecondPressed;
 
-	GetWorld()->GetFirstPlayerController()->GetInputTouchState(
+	PC->GetInputTouchState(
 		ETouchIndex::Touch1, FirstX, FirstY, bFirstPressed);
-	GetWorld()->GetFirstPlayerController()->GetInputTouchState(
+	PC->GetInputTouchState(
 		ETouchIndex::Touch2, SecondX, SecondY, bSecondPressed);
 
 	FVector2D CurrentFirstFinger(FirstX, FirstY);
 	FVector2D CurrentSecondFinger(SecondX, SecondY);
 
-	// ¼ÆËãµ±Ç°Á½Ö¸¾àÀë
+	// è®¡ç®—å½“å‰ä¸¤æŒ‡è·ç¦»
 	float CurrentDistance = FVector2D::Distance(CurrentFirstFinger, CurrentSecondFinger);
 
-	// ¼ÆËãËõ·Å±ÈÀı
+	// è®¡ç®—ç¼©æ”¾æ¯”ä¾‹
 	float ZoomDelta = (CurrentDistance - InitialFingerDistance) * ZoomSensitivity;
 
-	// Ó¦ÓÃËõ·Å
+	// åº”ç”¨ç¼©æ”¾
 	TargetArmLength = FMath::Clamp(TargetArmLength - ZoomDelta, MinZoomDistance, MaxZoomDistance);
 
-	// ¸üĞÂ³õÊ¼¾àÀëÎªµ±Ç°¾àÀë£¬ÊµÏÖÁ¬ĞøËõ·Å
+	// æ›´æ–°åˆå§‹è·ç¦»ä¸ºå½“å‰è·ç¦»ï¼Œå®ç°è¿ç»­ç¼©æ”¾
 	InitialFingerDistance = CurrentDistance;
 
-	// Í¬Ê±¸üĞÂ´æ´¢µÄÎ»ÖÃ
+	// åŒæ—¶æ›´æ–°å­˜å‚¨çš„ä½ç½®
 	FirstFingerLocation = CurrentFirstFinger;
 	SecondFingerLocation = CurrentSecondFinger;
 }

@@ -35,6 +35,7 @@ AChesses::AChesses()
 	CF_ChessMove = OM::GetConstructorObject<UCurveFloat>(PATH_CF_CHESSMOVE);
 }
 
+// 初始化棋子身份、棋盘引用和动画回调。
 void AChesses::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2P> board2P)
 {
 	MyColor = color;
@@ -42,8 +43,8 @@ void AChesses::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2
 	Pos = pos;
 	Board2P = board2P;
 
-	GameState = Cast<GS>(GetWorld()->GetGameState());
-	if (GameState)
+	GameState = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr;
+	if (GameState.IsValid())
 	{
 		//if (GameState->GetBattleType() == EBattleType::P2 || GameState->GetBattleType() == EBattleType::P2_AI)
 		{
@@ -62,22 +63,24 @@ void AChesses::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2
 	TimeLine_ChessMove->AddInterpFloat(CF_ChessMove, FOnTimelineFloatStatic::CreateLambda([WeakThis](float value) {
 		if (WeakThis.IsValid() && WeakThis->Board2P.IsValid())
 		{
-			FVector2D pos = WeakThis->Pos;
-			FVector2D targetPos = WeakThis->TargetPos;
+			const Position pos = WeakThis->Pos;
+			const Position targetPos = WeakThis->TargetPos;
+            if (!WeakThis->Board2P->BoardLocs.IsValidIndex(pos.X) || !WeakThis->Board2P->BoardLocs[pos.X].IsValidIndex(pos.Y) ||
+                !WeakThis->Board2P->BoardLocs.IsValidIndex(targetPos.X) || !WeakThis->Board2P->BoardLocs[targetPos.X].IsValidIndex(targetPos.Y)) return;
 
-			FVector	Start = WeakThis->Board2P->BoardLocs[pos.X][pos.Y];				// 璧峰浣嶇疆
-			FVector End = WeakThis->Board2P->BoardLocs[targetPos.X][targetPos.Y];   // 缁堟浣嶇疆
-			FVector Vertex = (End - Start) / 2 + Start + FVector(0, 0, 5);			// 椤剁偣浣嶇疆
+			FVector	Start = WeakThis->Board2P->BoardLocs[pos.X][pos.Y];				// 起始位置
+			FVector End = WeakThis->Board2P->BoardLocs[targetPos.X][targetPos.Y];   // 目标位置
+			FVector Vertex = (End - Start) / 2 + Start + FVector(0, 0, 5);			// 顶点位置
 
 			FVector result = WeakThis->CalculateParabolicPosition(Start, Vertex, End, value);
 
-			WeakThis->SetActorLocation(result); // 鏇存柊Actor浣嶇疆
+			WeakThis->SetActorLocation(result); // 更新Actor位置
 		}
 		}));
 	TimeLine_ChessMove->SetTimelineFinishedFunc(FOnTimelineEventStatic::CreateLambda([WeakThis]() {
 		if (WeakThis.IsValid())
 		{
-			if (WeakThis->GameState)
+			if (WeakThis->GameState.IsValid())
 			{
 				WeakThis->bAnimationing = false;
 				WeakThis->Pos = WeakThis->TargetPos;
@@ -88,7 +91,7 @@ void AChesses::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2
 
 
 
-	// 鐢ㄦ椂闂磋酱鎺у埗杈圭紭娑堟暎鏁堟灉
+	// 使用时间轴控制消散效果
 	Timeline_Fade->AddInterpFloat(CF_ChessMove, FOnTimelineFloatStatic::CreateLambda([WeakThis](float value) {
 		if (WeakThis.IsValid())
 		{
@@ -100,7 +103,7 @@ void AChesses::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2
 	Timeline_Fade->SetTimelineFinishedFunc(FOnTimelineEventStatic::CreateLambda([WeakThis]() {
 		if (WeakThis.IsValid())
 		{
-			WeakThis->ChessMesh->SetHiddenInGame(true); // 鍚冩帀锛屽皢鍏堕殣钘?
+			WeakThis->ChessMesh->SetHiddenInGame(true); // 棋子被吃后隐藏并销毁
 			WeakThis->Destroy();
 		}
 		}));
@@ -113,15 +116,17 @@ void AChesses::BeginPlay()
 	UpdateSelectable();
 }
 
+// 离开场景时停止本对象的运行逻辑。
 void AChesses::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	// 鍋滄鎵€鏈夋椂闂寸嚎
+	// 停止所有时间轴
 	TimeLine_ChessMove->Stop();
 	Timeline_Fade->Stop();
 
 	Super::EndPlay(EndPlayReason);
 }
 
+// 响应重开事件并清理上一局状态。
 void AChesses::GamePlayAgain(UObject* OwnerObject)
 {
 	Destroy();
@@ -142,6 +147,7 @@ void AChesses::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 }
 
+// 将鼠标点击转换为棋子选择操作。
 void AChesses::NotifyActorOnClicked(FKey ButtonPressed)
 {
 	Super::NotifyActorOnClicked(ButtonPressed);
@@ -152,57 +158,63 @@ void AChesses::NotifyActorOnClicked(FKey ButtonPressed)
 	}
 }
 
+// 鼠标进入时显示棋子描边。
 void AChesses::NotifyActorBeginCursorOver()
 {
 	Super::NotifyActorBeginCursorOver();
-	ChessMesh->SetOverlayMaterial(MI_Stroke); // 娣诲姞鎻忚竟鏉愯川
+	ChessMesh->SetOverlayMaterial(MI_Stroke); // 添加描边材质
 }
 
+// 鼠标离开时清理未选中棋子的描边。
 void AChesses::NotifyActorEndCursorOver()
 {
 	Super::NotifyActorEndCursorOver();
-	if (!bSelected) // 鏈閫変腑
+	if (!bSelected) // 未被选中
 	{
-		ChessMesh->SetOverlayMaterial(nullptr); // 绉婚櫎鎻忚竟鏉愯川
+		ChessMesh->SetOverlayMaterial(nullptr); // 移除描边材质
 	}
 }
 
+// 触摸开始时显示棋子反馈。
 void AChesses::NotifyActorOnInputTouchBegin(const ETouchIndex::Type FingerIndex)
 {
 	Super::NotifyActorOnInputTouchBegin(FingerIndex);
 	if (FingerIndex == ETouchIndex::Touch1)
 		if (!bSelected)
-			ChessMesh->SetOverlayMaterial(MI_Stroke); // 娣诲姞鎻忚竟鏉愯川
+			ChessMesh->SetOverlayMaterial(MI_Stroke); // 添加描边材质
 }
 
+// 结束对局后禁止棋子继续被选择。
 void AChesses::GameOver(UObject* OwnerObject)
 {
-	bSelectable = false; // 绂佹妫嬪瓙琚€変腑
+	bSelectable = false; // 禁止棋子被选中
 	if (bSelected)
 	{
-		bSelected = false; // 绉婚櫎琚€変腑鐘舵€?
-		GameState->DismissSettingPoint2P(); // 娓呴櫎钀藉瓙鐐?
-		ChessMesh->SetOverlayMaterial(nullptr); // 绉婚櫎鎻忚竟鏉愯川
+		bSelected = false; // 移除选中状态
+		if (GameState.IsValid()) GameState->DismissSettingPoint2P(); // 清除落子点
+		ChessMesh->SetOverlayMaterial(nullptr); // 移除描边材质
 	}
 	IIF_GameState::GameOver(OwnerObject);
 }
 
+// 触摸结束时处理棋子选择。
 void AChesses::NotifyActorOnInputTouchEnd(const ETouchIndex::Type FingerIndex)
 {
 	Super::NotifyActorOnInputTouchEnd(FingerIndex);
 
-	// 瀵逛簬瑙︽懜浜嬩欢锛屾垜浠洿鎺ュ鐞嗭紝涓嶅尯鍒嗘墜鎸囩储寮曪紙鎴栬€呭彧澶勭悊绗竴鏍规墜鎸囷級
+	// 只处理第一根手指的点击事件
 	if (FingerIndex == ETouchIndex::Touch1)
 	{
 		HandleClick();
 	}
 }
 
+// 检查回合和对象有效性后处理点击。
 void AChesses::HandleClick()
 {
-	if (GameState)
+	if (GameState.IsValid())
 	{
-		if (GameState->IsMyTurn()) // 鍒ゆ柇鏄惁鍒颁簡鎴戠殑鍥炲悎
+		if (GameState->IsMyTurn()) // 判断是否到了玩家回合
 		{
 			if (!bAnimationing)
 			{
@@ -210,16 +222,16 @@ void AChesses::HandleClick()
 				{
 					if (bSelected)
 					{
-						bSelected = false; // 绉婚櫎琚€変腑鐘舵€?
-						GameState->DismissSettingPoint2P(); // 娓呴櫎钀藉瓙鐐?
-						ChessMesh->SetOverlayMaterial(nullptr); // 绉婚櫎鎻忚竟鏉愯川
+						bSelected = false; // 移除选中状态
+						if (GameState.IsValid()) GameState->DismissSettingPoint2P(); // 清除落子点
+						ChessMesh->SetOverlayMaterial(nullptr); // 移除描边材质
 					}
 					else
 					{
 						if (Board2P.IsValid())
 						{
 							bSelected = true;
-							ChessMesh->SetOverlayMaterial(MI_Stroke); // 娣诲姞鎻忚竟鏉愯川
+							ChessMesh->SetOverlayMaterial(MI_Stroke); // 添加描边材质
 							GenerateMove2P(Board2P, this);
 						}
 						else
@@ -241,125 +253,153 @@ void AChesses::HandleClick()
 	}
 }
 
+// 播放棋子被吃效果，并处理派生棋子的结束逻辑。
 void AChesses::Defeated()
 {
 	if (bDead)
 		return;
 
-	bDead = true;													// 鏍囪闃典骸
-	FadeNiagara->SetActive(true);									// 婵€娲荤矑瀛愭晥鏋?
-	ChessMask->SetHiddenInGame(true);								// 鎻愬墠闅愯棌鎺?
-	ChessMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 鍏抽棴纰版挒浣撶Н
-	ChessMesh->SetOverlayMaterial(nullptr);							// 绉婚櫎鎻忚竟鏉愯川
-	Timeline_Fade->PlayFromStart();									// 鎵ц鍑昏触鏁堟灉鐨勬洸绾?
+	bDead = true;													// 标记阵亡
+	FadeNiagara->SetActive(true);									// 激活粒子效果
+	ChessMask->SetHiddenInGame(true);								// 隐藏棋面贴花
+	ChessMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 关闭碰撞
+	ChessMesh->SetOverlayMaterial(nullptr);							// 移除描边材质
+	Timeline_Fade->PlayFromStart();									// 播放击败效果
 }
 
+// 获取棋子显示名称。
 FString AChesses::GetChessName() const
 {
 	return MyName;
 }
 
+// 获取棋子当前阵营。
 EChessColor AChesses::GetColor() const
 {
 	return MyColor;
 }
 
+// 修改棋子阵营并更新局面修订号。
 void AChesses::SetColor(EChessColor InColor)
 {
+	if (Board2P.IsValid()) Board2P->MarkPositionChanged();
 	MyColor = InColor;
 }
 
+// 获取棋子当前类型。
 EChessType AChesses::GetType() const
 {
 	return MyType;
 }
 
+// 修改棋子类型并更新局面修订号。
 void AChesses::SetType(EChessType InType)
 {
+	if (Board2P.IsValid()) Board2P->MarkPositionChanged();
 	MyType = InType;
 }
 
+// 获取棋子当前的棋盘坐标。
 Position AChesses::GetPosition() const
 {
 	return Pos;
 }
 
+// 获取棋子是否已经被吃。
 bool AChesses::IsDead() const
 {
 	return bDead;
 }
 
+// 根据玩法与阵营更新棋子的可选状态。
 void AChesses::UpdateSelectable()
 {
+	if (!GameState.IsValid()) { bSelectable = false; return; }
 	if (MyColor == EChessColor::BLACKCHESS && (GameState->GetBattleType() == EBattleType::P2_AI || GameState->GetBattleType() == EBattleType::SoloRide))
 	{
-		bSelectable = false; // 妫嬪瓙灞炰簬AI锛屼笉鍙閫変腑
+		bSelectable = false; // AI棋子不可被玩家选中
 	}
 	else
 	{
-		bSelectable = true; // 鐜╁鍙互閫変腑
+		bSelectable = true; // 玩家可以选中
 	}
 }
 
+// 生成选中棋子的合法走法并显示提示。
 void AChesses::GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObjectPtr<AChesses> target)
 {
+	if (!GameState.IsValid() || !board2P.IsValid() || !target.IsValid()) return;
 	for (int32 i = 0; i < 10; i++)
 	{
 		for (int32 j = 0; j < 9; j++)
 		{
-			TWeakObjectPtr<AChesses> captureChess = Board2P->AllChess[i][j];
-			if (captureChess != nullptr && captureChess != target.Get())
+			TWeakObjectPtr<AChesses> captureChess = board2P->GetChess(i, j);
+			if (captureChess.IsValid() && captureChess != target.Get())
 			{
-				captureChess->ChessMesh->SetOverlayMaterial(nullptr); // 绉婚櫎鎻忚竟鏉愯川
-				captureChess->bSelected = false; // 娓呴櫎琚€夋嫨鐘舵€?
+				captureChess->ChessMesh->SetOverlayMaterial(nullptr); // 移除描边材质
+				captureChess->bSelected = false; // 清除选择状态
 			}
 		}
 	}
 
-	// 鑾峰彇鎵€鏈夌Щ鍔ㄦ柟寮?
+	// 获取全部合法走法
 	TArray<FChessMove2P> Moves = board2P->GenerateMovesForChess(Pos.X, Pos.Y, this);
 
 	GameState->ShowSettingPoint2P(Moves, this);
 }
 
+// 更新移动目标并播放落子动画。
 void AChesses::ApplyMove(FChessMove2P Move)
 {
-	TargetPos = Position(Move.to.X, Move.to.Y); // 鑾峰彇绉诲姩鐨勭洰鏍囦綅缃?
+	TargetPos = Position(Move.to.X, Move.to.Y); // 获取目标位置
 
+
+	bSelected = false; // 移除选中状态
+	ChessMesh->SetOverlayMaterial(nullptr); // 移除描边材质
+	if (GameState.IsValid()) GameState->DismissSettingPoint2P(); // 隐藏所有落子点
 	PlayMoveAnim();
-
-	bSelected = false; // 绉婚櫎琚€変腑鐘舵€?
-	ChessMesh->SetOverlayMaterial(nullptr); // 绉婚櫎鎻忚竟鏉愯川
-	GameState->DismissSettingPoint2P(); // 闅愯棌鎵€鏈夎惤瀛愮偣
 }
 
+// 播放落子动画，缺失曲线时直接完成落子。
 void AChesses::PlayMoveAnim()
 {
+    if (!IsValid(CF_ChessMove) || !IsValid(TimeLine_ChessMove))
+    {
+        Pos = TargetPos;
+        bAnimationing = false;
+        if (Board2P.IsValid() && Board2P->BoardLocs.IsValidIndex(Pos.X) && Board2P->BoardLocs[Pos.X].IsValidIndex(Pos.Y))
+            SetActorLocation(Board2P->BoardLocs[Pos.X][Pos.Y]);
+        if (GameState.IsValid()) GameState->OnFinishMove2P(this);
+        return;
+    }
 	bAnimationing = true;
-	TimeLine_ChessMove->PlayFromStart(); // 寮€濮嬫挱鏀剧Щ鍔ㄥ姩鐢?
+	TimeLine_ChessMove->PlayFromStart(); // 播放移动动画
 }
 
+// 使用二次贝塞尔曲线计算移动位置。
 FVector AChesses::CalculateParabolicPosition(const FVector& Start, const FVector& Vertex, const FVector& End, float T)
 {
-	// 澶勭悊鐧惧垎姣斿紓甯?
+	// 限制插值范围
 	if (T < 0)
 		T = 0;
 	if (T > 1)
 		T = 1;
 
-	// 璁＄畻鎺у埗鐐筆1锛屽亣璁炬姏鐗╃嚎瀵圭О锛岄《鐐瑰湪t=0.5
+	// 根据中点高度计算贝塞尔控制点
 	FVector P0 = Start;
 	FVector P2 = End;
 	FVector P1 = 2 * Vertex - 0.5f * P0 - 0.5f * P2;
 
-	// 浜屾璐濆灏旀洸绾垮叕寮?
+	// 二次贝塞尔曲线公式
 	float OneMinusT = 1 - T;
 	FVector Result = (OneMinusT * OneMinusT) * P0 + 2 * OneMinusT * T * P1 + (T * T) * P2;
 	return Result;
 }
 
+// 揭示真实身份并刷新局面与可选状态。
 void AChesses::SwitchToRealIdentity()
 {
+	if (Board2P.IsValid()) Board2P->MarkPositionChanged();
 	MyColor = MyRealColor;
 	MyType = MyRealType;
 	ChessMask->SetVisibility(true);

@@ -8,49 +8,56 @@
 
 #include "XiangQiPro/GameMode/XQPGameStateBase.h"
 
+// 构造界面并初始化控件与事件绑定。
 void UUI_Battle2P_Base::NativeConstruct()
 {
 	Super::NativeConstruct();
-	UpdateCanTick(); 
-	GameState = Cast<GS>(GetWorld()->GetGameState());
+	UpdateCanTick();
+	GameState = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr;
 }
 
+// 更新界面每帧状态。
 void UUI_Battle2P_Base::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 }
 
+// 刷新双方得分控件。
 void UUI_Battle2P_Base::UpdateScore(int32 score1, int32 score2)
 {
-	Text_Score_P1->SetText(FText::FromString(FString::FromInt(score1)));
-	Text_Score_P2->SetText(FText::FromString(FString::FromInt(score2)));
+	if (IsValid(Text_Score_P1)) Text_Score_P1->SetText(FText::FromString(FString::FromInt(score1)));
+	if (IsValid(Text_Score_P2)) Text_Score_P2->SetText(FText::FromString(FString::FromInt(score2)));
 }
 
+// 更新AI思考提示和回合标记。
 void UUI_Battle2P_Base::SetAITurn(bool bAITurn)
 {
 	if (bAITurn)
 	{
-		Text_AIThinking->SetVisibility(ESlateVisibility::Visible); // 轮到AI则提示AI正在思考
-		Image_RoundMark_P1->SetVisibility(ESlateVisibility::Collapsed); // 更新回合标记
-		Image_RoundMark_P2->SetVisibility(ESlateVisibility::Visible);
+		if (IsValid(Text_AIThinking)) Text_AIThinking->SetVisibility(ESlateVisibility::Visible); // 轮到AI则提示AI正在思考
+		if (IsValid(Image_RoundMark_P1)) Image_RoundMark_P1->SetVisibility(ESlateVisibility::Collapsed); // 更新回合标记
+		if (IsValid(Image_RoundMark_P2)) Image_RoundMark_P2->SetVisibility(ESlateVisibility::Visible);
 	}
 	else
 	{
-		Text_AIThinking->SetVisibility(ESlateVisibility::Collapsed); // 隐藏
-		Image_RoundMark_P1->SetVisibility(ESlateVisibility::Visible); // 更新回合标记
-		Image_RoundMark_P2->SetVisibility(ESlateVisibility::Collapsed);
+		if (IsValid(Text_AIThinking)) Text_AIThinking->SetVisibility(ESlateVisibility::Collapsed); // 隐藏
+		if (IsValid(Image_RoundMark_P1)) Image_RoundMark_P1->SetVisibility(ESlateVisibility::Visible); // 更新回合标记
+		if (IsValid(Image_RoundMark_P2)) Image_RoundMark_P2->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
 
+// 广播重开事件并清空棋谱显示。
 void UUI_Battle2P_Base::ExecGamePlayAgain()
 {
     EXEC_PLAYAGAIN();
     SetAITurn(false); // 更新AI回合结束
-    Text_OperatingRecord->SetText(FText());
+    if (IsValid(Text_OperatingRecord)) Text_OperatingRecord->SetText(FText());
 }
 
+// 将当前走法追加到执棋方的棋谱。
 void UUI_Battle2P_Base::AddOperatingRecord(EPlayerTag player, TWeakObjectPtr<AChesses> targetChess, FChessMove2P move)
 {
+	if (!IsValid(Text_OperatingRecord) || !IsValid(Text_Name_P1) || !IsValid(Text_Name_P2) || !targetChess.IsValid()) return;
 	// 获取之前的操作
 	FString text = Text_OperatingRecord->GetText().ToString();
 
@@ -71,11 +78,13 @@ void UUI_Battle2P_Base::AddOperatingRecord(EPlayerTag player, TWeakObjectPtr<ACh
 	}
 
     text.Append(playerName).Append(TEXT(": ")).Append(GetEnhancedMoveNotation(targetChess, move)/* 获取操作 */).Append(TEXT("\n"));
-    Text_OperatingRecord->SetText(FText::FromString(text));
+    if (IsValid(Text_OperatingRecord)) Text_OperatingRecord->SetText(FText::FromString(text));
 }
 
+// 将棋子移动转换为基本中文棋谱。
 FString UUI_Battle2P_Base::GetMoveNotation(TWeakObjectPtr<AChesses> targetChess, FChessMove2P move)
 {
+    if (!targetChess.IsValid() || !move.IsValid()) return FString();
     // 获取棋子名称
     FString chessName = targetChess->GetChessName();
 
@@ -195,7 +204,7 @@ FString UUI_Battle2P_Base::GetMoveNotation(TWeakObjectPtr<AChesses> targetChess,
 // 增强版：考虑同列多个相同棋子的情况
 FString UUI_Battle2P_Base::GetEnhancedMoveNotation(TWeakObjectPtr<AChesses> targetChess, FChessMove2P move)
 {
-    if (!GameState->GetChessBoard2P().IsValid()) return FString(TEXT("无效走法"));
+    if (!GameState.IsValid() || !GameState->GetChessBoard2P().IsValid()) return FString(TEXT("无效走法"));
 
     TWeakObjectPtr<AChesses> movingChess = targetChess;
     if (!movingChess.IsValid()) return FString(TEXT("无效棋子"));
