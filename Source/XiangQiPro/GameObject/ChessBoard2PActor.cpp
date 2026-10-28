@@ -26,6 +26,7 @@ AChessBoard2PActor::AChessBoard2PActor()
 	PrimaryActorTick.bCanEverTick = true;
 
 	ChessBoardMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ChessBoardMeshComponent"));
+    RootComponent = ChessBoardMesh;
 	ChessBoardMesh->SetStaticMesh(OM::GetConstructorObject<UStaticMesh>(PATH_SM_CHESSBOARD_2P));
 }
 
@@ -133,6 +134,26 @@ void AChessBoard2PActor::GenerateChesses()
         Board2P->SetChess(Indexs[i].X, Indexs[i].Y, Chess);
     }
 
+    GenerateSettingPoints();
+}
+
+// 为每个棋盘格生成落子提示Actor。
+void AChessBoard2PActor::GenerateFromPosition(const FChessPosition& PositionData)
+{
+    TSubclassOf<AChesses> Classes[] = {nullptr, AChess_Jiang::StaticClass(), AChess_Shi::StaticClass(), AChess_Xiang::StaticClass(),
+        AChess_Ma::StaticClass(), AChess_Jv::StaticClass(), AChess_Pao::StaticClass(), AChess_Bing::StaticClass()};
+    for (int32 I = 0; I < 90; ++I)
+    {
+        const FChessPiece2P& Piece = PositionData.Squares[I];
+        const uint8 Type = static_cast<uint8>(Piece.Type);
+        if (Type == 0 || Type > 7) continue;
+        const FIntPoint Pos(I / 9, I % 9);
+        AChesses* Chess = SpawnChessAt(Classes[Type], Pos);
+        if (!Chess) continue;
+        Chess->Init(Piece.Color, Pos, Board2P);
+        Chess->FinishSpawning(FTransform(Board2P->BoardLocs[Pos.X][Pos.Y]));
+        Board2P->SetChess(Pos.X, Pos.Y, Chess);
+    }
     GenerateSettingPoints();
 }
 

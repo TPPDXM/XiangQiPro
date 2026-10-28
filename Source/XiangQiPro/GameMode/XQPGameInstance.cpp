@@ -3,6 +3,7 @@
 
 #include "XQPGameInstance.h"
 #include "../UI/XQP_HUD.h"
+#include "XiangQiPro/Network/XQPLANSubsystem.h"
 
 // 初始化默认属性和组件。
 UXQPGameInstance::UXQPGameInstance()
@@ -48,6 +49,11 @@ void UXQPGameInstance::Init()
 // 开始加载关卡时配置过渡界面。
 void UXQPGameInstance::BeginLoadMap(const FString& MapName)
 {
+    if (MapName.Contains(TEXT("/Main")) && GetSubsystem<UXQPLANSubsystem>()->GetState() != EXQPRoomState::Idle)
+    {
+        GetSubsystem<UXQPLANSubsystem>()->LeaveRoom();
+        MyGameMode = EXQPGameMode::Default;
+    }
 	if (IsValid(UIManager)) UIManager->ResetUI();
 	ULogger::Log(TEXT("Begin loading map..."));
 	bIsLoadingLevel = true;

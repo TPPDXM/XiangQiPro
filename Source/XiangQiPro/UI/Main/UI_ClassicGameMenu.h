@@ -20,9 +20,12 @@ public:
     // 根据名称和图标生成菜单条目。
     UFUNCTION(BlueprintCallable)
     void InitializeList(const TArray<FString>& Items, const TArray<UTexture2D*>& Icons);
-    // 选中指定索引的已生成列表项。
+    // 选中指定索引，条目尚未生成时先保存逻辑选择。
     UFUNCTION(BlueprintCallable)
     void SetSelection(int32 Index);
+    // 条目延迟生成时只初始化一次，之后不覆盖玩家当前选中的模式。
+    UFUNCTION(BlueprintCallable)
+    void EnsureInitialSelection();
     // 清除所有已生成列表项的选中状态。
     UFUNCTION(BlueprintCallable)
     void ClearSelection();
@@ -38,6 +41,11 @@ public:
 
     UPROPERTY(BlueprintReadOnly)
     int32 SelectedIndex = -1;
+    UPROPERTY(EditDefaultsOnly, Category="Classic Game")
+    TSubclassOf<class UUI_LANLobby> LANIntroductionClass;
+    // 由原菜单选择事件的第三个分支调用，与其他简介共用IntroduceLayout。
+    UFUNCTION(BlueprintCallable)
+    void ShowLANIntroduction();
 
 private:
     // 更新列表选择并通知对应业务。

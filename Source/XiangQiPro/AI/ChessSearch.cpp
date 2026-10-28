@@ -30,8 +30,8 @@ namespace
 }
 
 // 初始化一次搜索，内存由线程安全共享指针管理。
-FChessSearch::FChessSearch(const FChessPosition& InPosition, EChessColor InColor, int32 InDepth, double InSeconds)
-    : Board(InPosition), Color(InColor), MaxDepth(FMath::Clamp(InDepth, 1, 12)), TimeBudget(FMath::Max(0.01, InSeconds)), InitialPositionKey(InPosition.Hash(InColor))
+FChessSearch::FChessSearch(const FChessPosition& InPosition, EChessColor InColor, int32 InDepth, double InSeconds, FChessLearning InLearning)
+    : Board(InPosition), Learning(MoveTemp(InLearning)), Color(InColor), MaxDepth(FMath::Clamp(InDepth, 1, 12)), TimeBudget(FMath::Max(0.01, InSeconds)), InitialPositionKey(InPosition.Hash(InColor))
 {
 }
 
@@ -64,6 +64,7 @@ void FChessSearch::OrderMoves(TArray<FChessMove2P>& Moves, const FChessMove2P& P
         Move.score = SameMove(Move, Preferred) ? 10000000 : Victim != EChessType::EMPTY ?
             1000000 + FChessPosition::PieceValue(Victim) * 16 - FChessPosition::PieceValue(Board.Get(Move.from).Type) :
             History[static_cast<uint8>(Side)][Move.from.X * 9 + Move.from.Y][Move.to.X * 9 + Move.to.Y];
+        if (Side == EChessColor::REDCHESS) Move.score += Learning.MovePriority(Board, Move);
     }
     // 高价值吃子和已验证的主变化优先搜索。
     Moves.Sort([](const FChessMove2P& A, const FChessMove2P& B) { return A.score > B.score; });
@@ -115,7 +116,7 @@ int32 FChessSearch::Negamax(int32 Depth, int32 Alpha, int32 Beta, EChessColor Si
     if (Depth <= 0) return Quiescence(Alpha, Beta, Side, Ply, 8);
     TArray<FChessMove2P> Moves = Board.GenerateLegalMoves(Side);
     if (Moves.IsEmpty()) return -MateScore + Ply; // 中国象棋困毙也判负
-    if (Ply >= MaxPly - 1) return Board.Evaluate(Side);
+    if (Ply >= MaxPly - 1) return Evaluate(Side);
 
     const int32 OriginalAlpha = Alpha;
     const FTableEntry Cached = Table[Key & (TableSize - 1)];
@@ -137,8 +138,10 @@ int32 FChessSearch::Negamax(int32 Depth, int32 Alpha, int32 Beta, EChessColor Si
     FChessMove2P BestMove;
     for (const FChessMove2P& Move : Moves)
     {
+        // 将历史失误作为根走法的有限代价；同步平移子节点窗口保持剪枝一致。
+        const int32 LearnedPenalty = Ply == 0 && Side == EChessColor::BLACKCHESS ? Learning.AvoidancePenalty(Board, Move) : 0;
         const FChessPiece2P Captured = Board.MakeMove(Move);
-        const int32 Score = -Negamax(Depth - 1, -Beta, -Alpha, FChessPosition::Opponent(Side), Ply + 1);
+        const int32 Score = -Negamax(Depth - 1, -Beta - LearnedPenalty, -Alpha - LearnedPenalty, FChessPosition::Opponent(Side), Ply + 1) - LearnedPenalty;
         Board.UndoMove(Move, Captured);
         if (bAborted) break;
         if (Score > BestScore)
@@ -183,7 +186,7 @@ int32 FChessSearch::Quiescence(int32 Alpha, int32 Beta, EChessColor Side, int32 
     TArray<FChessMove2P> Moves = Board.GenerateLegalMoves(Side);
     if (Moves.IsEmpty()) return -MateScore + Ply;
     const bool bInCheck = Board.IsInCheck(Side);
-    const int32 StandPat = Board.Evaluate(Side);
+    const int32 StandPat = Evaluate(Side);
     if (Ply >= MaxPly - 1 || (!bInCheck && Remaining <= 0)) return StandPat;
     if (!bInCheck)
     {
@@ -206,4 +209,11 @@ int32 FChessSearch::Quiescence(int32 Alpha, int32 Beta, EChessColor Side, int32 
     PathContext ^= Key;
     Path.Pop(EAllowShrinking::No);
     return bAborted ? 0 : Alpha;
+}
+
+// 学习影响真实搜索估值，但限制在半个兵以内，保留战术与将杀优先级。
+int32 FChessSearch::Evaluate(EChessColor Side) const
+{
+    const int32 Style = Learning.StyleEvaluation(Board);
+    return Board.Evaluate(Side) + (Side == EChessColor::REDCHESS ? Style : -Style);
 }

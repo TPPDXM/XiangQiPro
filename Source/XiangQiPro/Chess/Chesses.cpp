@@ -2,11 +2,14 @@
 
 
 #include "Chesses.h"
+#include "XiangQiPro/Network/XQPLANSubsystem.h"
+#include "XiangQiPro/GameMode/ProBattleComponent.h"
 
 // Sets default values
 AChesses::AChesses()
 {
-	PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = false;
 
 	UStaticMesh* Mesh = OM::GetConstructorObject<UStaticMesh>(PATH_SM_CHESS);
 
@@ -104,7 +107,8 @@ void AChesses::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2
 		if (WeakThis.IsValid())
 		{
 			WeakThis->ChessMesh->SetHiddenInGame(true); // 棋子被吃后隐藏并销毁
-			WeakThis->Destroy();
+            WeakThis->bProFadeComplete = true;
+            WeakThis->FadeNiagara->Deactivate();
 		}
 		}));
 }
@@ -137,7 +141,138 @@ void AChesses::GamePlayAgain(UObject* OwnerObject)
 void AChesses::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+    if (!Board2P.IsValid()) return;
+    if (bCaptureApproach)
+    {
+        ProMoveTime += DeltaTime;
+        const float Alpha = FMath::Clamp(ProMoveTime / ProMoveDuration, 0.f, 1.f);
+        SetActorLocation(CaptureApproachLocation(PendingCapture.Get(), Alpha));
+        if (Alpha >= 1.f)
+        {
+            bCaptureApproach = false;
+            bCaptureLanding = true;
+            Pos = TargetPos;
+            ProSupport = PendingCapture;
+            CaptureHoverRemaining = 0.16f;
+            CaptureHoverHeight = GetActorLocation().Z;
+            CaptureHoverOffset = ProSupport.IsValid() ? CaptureHoverHeight - ProSupport->GetActorLocation().Z : 0.f;
+            if (PendingCapture.IsValid()) PendingCapture->Defeated();
+            PendingCapture.Reset();
+        }
+    }
+    else if (bProTravelling)
+    {
+        ProMoveTime += DeltaTime;
+        const float Alpha = FMath::Clamp(ProMoveTime / ProMoveDuration, 0.f, 1.f);
+        const auto Occupant = Board2P->GetChess(TargetPos);
+        AChesses* Victim = Occupant.IsValid() && Occupant->GetColor() != MyColor && !Occupant->IsDead() ? Occupant.Get() : nullptr;
+        FVector Location = CaptureApproachLocation(Victim, Alpha);
+        SetActorLocation(Location);
+    }
+    else if (CaptureHoverRemaining > 0.f)
+    {
+        FVector Location = GetActorLocation();
+        if (ProSupport.IsValid()) CaptureHoverHeight = ProSupport->GetActorLocation().Z + CaptureHoverOffset;
+        Location.Z = CaptureHoverHeight;
+        SetActorLocation(Location);
+        CaptureHoverRemaining = FMath::Max(0.f, CaptureHoverRemaining - DeltaTime);
+        if (CaptureHoverRemaining <= 0.f) ProSupport.Reset();
+    }
+    else if ((bProMode || bCaptureLanding) && Board2P->IsValidPosition(Pos.X, Pos.Y))
+    {
+        FVector Location = GetActorLocation();
+        Location.Z = FMath::FInterpConstantTo(Location.Z, Board2P->BoardLocs[Pos.X][Pos.Y].Z, DeltaTime, 12.f);
+        SetActorLocation(Location);
+        if (bCaptureLanding && FMath::IsNearlyEqual(Location.Z, Board2P->BoardLocs[Pos.X][Pos.Y].Z, 0.01f))
+        {
+            bCaptureLanding = bAnimationing = false;
+            if (GameState.IsValid()) GameState->OnFinishMove2P(this);
+            if (!bProMode && !bDead) SetActorTickEnabled(false);
+        }
+    }
+    if (bDead)
+    {
+        ProDeathTime += DeltaTime;
+        if (bProFadeComplete && FadeNiagara->IsComplete()) Destroy();
+        else if (ProDeathTime > 8.f) { FadeNiagara->DeactivateImmediate(); Destroy(); }
+    }
+}
 
+void AChesses::ClearMoveSelection()
+{
+    bSelected = false;
+    ChessMesh->SetOverlayMaterial(nullptr);
+}
+
+void AChesses::EnableProMode()
+{
+    bProMode = true;
+    PrimaryActorTick.bCanEverTick = true;
+    SetActorTickEnabled(true);
+    UpdateSelectable();
+    if (!bSelectable) ChessMesh->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
+}
+
+FVector AChesses::CaptureApproachLocation(AChesses* Victim, float Alpha) const
+{
+    const FVector End = Board2P->BoardLocs[TargetPos.X][TargetPos.Y];
+    if (IsValid(Victim))
+    {
+        const float BottomOffset = GetActorLocation().Z - (ChessMesh->Bounds.Origin.Z - ChessMesh->Bounds.BoxExtent.Z);
+        const float HoverZ = Victim->GetSurfaceZ() + BottomOffset + 0.25f;
+        FVector Location = FMath::Lerp(ProMoveStart, End, Alpha);
+        Location.Z = FMath::Lerp(ProMoveStart.Z, HoverZ, FMath::SmoothStep(0.f, 0.35f, Alpha));
+        return Location;
+    }
+    FVector Location = FMath::Lerp(ProMoveStart, End, Alpha);
+    Location.Z += FMath::Sin(Alpha * PI) * 1.8f;
+    return Location;
+}
+
+float AChesses::GetSurfaceZ() const
+{
+    return ChessMesh->Bounds.Origin.Z + ChessMesh->Bounds.BoxExtent.Z;
+}
+
+void AChesses::BeginProMove(const FChessMove2P& Move, float Duration)
+{
+    TargetPos = Move.to;
+    bProTravelling = bAnimationing = true;
+    ProMoveTime = 0.f;
+    ProMoveDuration = FMath::Max(0.01f, Duration);
+    ProMoveStart = GetActorLocation();
+    ProSupport.Reset();
+    CaptureHoverRemaining = 0.f;
+    bSelected = false;
+    ChessMesh->SetOverlayMaterial(nullptr);
+    TimeLine_ChessMove->Stop();
+    ChessMesh->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
+}
+
+void AChesses::ArriveProMove(FIntPoint Destination, AChesses* Captured)
+{
+    bProTravelling = bAnimationing = false;
+    Pos = TargetPos = Destination;
+    ProSupport = Captured;
+    FVector Location = Board2P->BoardLocs[Pos.X][Pos.Y];
+    if (IsValid(Captured))
+    {
+        const float BottomOffset = GetActorLocation().Z - (ChessMesh->Bounds.Origin.Z - ChessMesh->Bounds.BoxExtent.Z);
+        Location.Z = Captured->GetSurfaceZ() + BottomOffset + 0.25f;
+        CaptureHoverRemaining = 0.16f;
+        CaptureHoverHeight = Location.Z;
+        CaptureHoverOffset = Location.Z - Captured->GetActorLocation().Z;
+    }
+    SetActorLocation(Location);
+    ChessMesh->SetCollisionResponseToChannel(ECC_Visibility, bSelectable ? ECR_Block : ECR_Ignore);
+}
+
+void AChesses::StopProMove()
+{
+    bProTravelling = bAnimationing = false;
+    bSelectable = bSelected = false;
+    ChessMesh->SetOverlayMaterial(nullptr);
+    ChessMesh->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 }
 
 // Called to bind functionality to input
@@ -256,8 +391,12 @@ void AChesses::HandleClick()
 // 播放棋子被吃效果，并处理派生棋子的结束逻辑。
 void AChesses::Defeated()
 {
+    SetActorTickEnabled(true);
 	if (bDead)
 		return;
+
+    bCaptureApproach = bCaptureLanding = bProTravelling = bAnimationing = false;
+    TimeLine_ChessMove->Stop();
 
 	bDead = true;													// 标记阵亡
 	FadeNiagara->SetActive(true);									// 激活粒子效果
@@ -315,6 +454,13 @@ bool AChesses::IsDead() const
 void AChesses::UpdateSelectable()
 {
 	if (!GameState.IsValid()) { bSelectable = false; return; }
+    if (GameState->IsLANGame())
+    {
+        // 选择权限与本机执棋颜色一致，避免在自己的回合选到对方棋子。
+        const auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
+        bSelectable = Room->GetLocalColor() == MyColor;
+        return;
+    }
 	if (MyColor == EChessColor::BLACKCHESS && (GameState->GetBattleType() == EBattleType::P2_AI || GameState->GetBattleType() == EBattleType::SoloRide))
 	{
 		bSelectable = false; // AI棋子不可被玩家选中
@@ -343,7 +489,13 @@ void AChesses::GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObject
 	}
 
 	// 获取全部合法走法
-	TArray<FChessMove2P> Moves = board2P->GenerateMovesForChess(Pos.X, Pos.Y, this);
+    TArray<FChessMove2P> Moves;
+    if (GameState->IsProBattle())
+    {
+        GameState->ProBattle->SelectedType = MyType;
+        Moves = GameState->ProBattle->GenerateMoves(this);
+    }
+    else Moves = board2P->GenerateMovesForChess(Pos.X, Pos.Y, this);
 
 	GameState->ShowSettingPoint2P(Moves, this);
 }
@@ -357,7 +509,15 @@ void AChesses::ApplyMove(FChessMove2P Move)
 	bSelected = false; // 移除选中状态
 	ChessMesh->SetOverlayMaterial(nullptr); // 移除描边材质
 	if (GameState.IsValid()) GameState->DismissSettingPoint2P(); // 隐藏所有落子点
-	PlayMoveAnim();
+    if (PendingCapture.IsValid())
+    {
+        // 非烽火弈棋子统一速度；吃子与普通移动共用同一行程时长。
+        ProMoveStart = GetActorLocation(); ProMoveTime = 0.f;
+        ProMoveDuration = FMath::Max(0.65f, FVector2D(TargetPos - Pos).Size() / 4.f);
+        bCaptureApproach = bAnimationing = true;
+        SetActorTickEnabled(true);
+    }
+    else PlayMoveAnim();
 }
 
 // 播放落子动画，缺失曲线时直接完成落子。
@@ -373,6 +533,8 @@ void AChesses::PlayMoveAnim()
         return;
     }
 	bAnimationing = true;
+	const float Duration = FMath::Max(0.65f, FVector2D(TargetPos - Pos).Size() / 4.f);
+	TimeLine_ChessMove->SetPlayRate(TimeLine_ChessMove->GetTimelineLength() / Duration);
 	TimeLine_ChessMove->PlayFromStart(); // 播放移动动画
 }
 

@@ -13,6 +13,7 @@
 
 class UStaticMeshComponent;
 class UChessBoard2P;
+struct FChessPosition;
 
 UCLASS()
 class XIANGQIPRO_API AChessBoard2PActor : public AActor, public IIF_GameState, public IIF_EndingGame
@@ -53,6 +54,8 @@ public:
 
 	// 生成棋子Actor并保存到ChessBoard2P
 	void GenerateChesses();
+    // 恢复连战棋盘时直接创建棋子，不重播历史走法。
+    void GenerateFromPosition(const FChessPosition& Position);
 	// 为每个棋盘格生成落子提示Actor。
 	void GenerateSettingPoints();
 

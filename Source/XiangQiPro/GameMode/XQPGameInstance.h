@@ -9,6 +9,7 @@
 #include "MoviePlayer.h"
 
 #include "CoreMinimal.h"
+#include "ProBattleTypes.h"
 #include "Engine/GameInstance.h"
 #include "XQPGameInstance.generated.h"
 
@@ -19,7 +20,10 @@ enum class EXQPGameMode : uint8
 	AI2P = 1,
 	Ending = 2,
 	SoloRide = 3,
-	GuessWho = 4
+	GuessWho = 4,
+    LAN = 5,
+    ProBattleAI = 6,
+    ProBattleLAN = 7
 };
 
 /**
@@ -44,7 +48,10 @@ public:
 	UXQPGameInstance();
 
 	UPROPERTY(BlueprintReadWrite)
-	uint8 AIDifficulty;
+	uint8 AIDifficulty = 1;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Pro Battle")
+    FProBattleSettings ProSettings;
 
 	UPROPERTY()
 	UUserWidget* CurrentWidget;

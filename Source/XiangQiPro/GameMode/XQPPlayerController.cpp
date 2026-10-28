@@ -4,6 +4,7 @@
 #include "XQPPlayerController.h"
 #include "XiangQiPro/Util/Logger.h"
 #include "XiangQiPro/UI/UIManager.h"
+#include "XQPGameStateBase.h"
 
 // 进入场景后初始化本对象依赖。
 void AXQPPlayerController::BeginPlay()
@@ -34,6 +35,7 @@ void AXQPPlayerController::OnEscapePressed()
 	ULogger::Log(TEXT("AXQPPlayerController::OnEscapePressed"));
 	if (UUIManager* UIManager = GetGameInstance()->GetSubsystem<UUIManager>())
 	{
+		// 图标和Esc共用菜单栈；GameState在联机模式下不会暂停棋盘。
 		UIManager->FinishUI();
 	}
 }

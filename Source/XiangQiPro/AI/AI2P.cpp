@@ -2,6 +2,8 @@
 
 #include "AI2P.h"
 #include "XiangQiPro/GameObject/ChessBoard2P.h"
+#include "XiangQiPro/SaveGame/PlayerProfileSubsystem.h"
+#include "XiangQiPro/GameMode/XQPGameStateBase.h"
 
 // 固定快照在游戏线程内生成，后台任务只接触自己的值类型数据。
 TSharedPtr<FChessSearch, ESPMode::ThreadSafe> UAI2P::CreateSearch(TWeakObjectPtr<UChessBoard2P> Board, EChessColor Color, EAI2PDifficulty Difficulty)
@@ -13,7 +15,19 @@ TSharedPtr<FChessSearch, ESPMode::ThreadSafe> UAI2P::CreateSearch(TWeakObjectPtr
     static constexpr double Seconds[] = {0.15, 0.6, 2.0, 5.0};
     const int32 Index = FMath::Clamp(static_cast<int32>(Difficulty), 0, 3);
     CurrentBoard = Board;
-    ActiveSearch = MakeShared<FChessSearch, ESPMode::ThreadSafe>(Board->CreateSnapshot(), Color, Depths[Index], Seconds[Index]);
+    FChessLearning Learning;
+    int32 Depth = Depths[Index];
+    double Budget = Seconds[Index];
+    const AXQPGameStateBase* State = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr;
+    if (State && State->bEnableMachineLearning)
+    {
+        UPlayerProfileSubsystem* Profile = GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>();
+        Learning = Profile->LearningSnapshot();
+        const int32 Wins = Profile->GetCurrentStreak();
+        Depth = FMath::Min(12, Depth + Wins / 2 + FMath::Min(2, Learning.Observations / 100));
+        Budget = FMath::Min(8.0, Budget * (1.0 + 0.45 * Wins) + FMath::Min(1.5, Learning.Observations * 0.005));
+    }
+    ActiveSearch = MakeShared<FChessSearch, ESPMode::ThreadSafe>(Board->CreateSnapshot(), Color, Depth, Budget, MoveTemp(Learning));
     return ActiveSearch;
 }
 

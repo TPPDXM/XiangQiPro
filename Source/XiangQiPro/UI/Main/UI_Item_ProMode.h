@@ -28,6 +28,8 @@ public:
 
 public:
 	virtual void NativeConstruct() override;
+    UFUNCTION(BlueprintCallable) void OpenModeIntroduction();
+    UPROPERTY(EditDefaultsOnly) TSubclassOf<class UUI_ProModeSetup> SetupClass;
 
 	virtual void NativeOnListItemObjectSet(UObject* ListItemObject) override;
 	

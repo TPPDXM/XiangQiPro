@@ -20,6 +20,7 @@ class XIANGQIPRO_API UUI_Main_Base : public UUserWidget
 
 public:
 
+
 	UPROPERTY(BlueprintReadOnly)
 	TObjectPtr<ACameraMainActor> MainCamera;
 

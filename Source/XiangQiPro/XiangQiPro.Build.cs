@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+ï»¿// Copyright Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
 
@@ -14,10 +14,13 @@ public class XiangQiPro : ModuleRules
 			"Engine", 
 			"InputCore", 
 			"EnhancedInput",
+            "UMG",
+            "Sockets",
+            "Networking",
             "Niagara",
             "MoviePlayer",
-            "Json",           // Ìí¼Ó JSON Ö§³Ö
-            "JsonUtilities"   // Ìí¼Ó JSON ¹¤¾ßÖ§³Ö
+            "Json",           // æ·»åŠ  JSON æ”¯æŒ
+            "JsonUtilities"   // æ·»åŠ  JSON å·¥å…·æ”¯æŒ
              });
 
 
@@ -27,7 +30,7 @@ public class XiangQiPro : ModuleRules
             "SlateCore"
         });
 
-        // ÆôÓÃÒì³£´¦Àí(tryÓï¾ä)
+        // å¯ç”¨å¼‚å¸¸å¤„ç†(tryè¯­å¥)
         bEnableExceptions = true;
 
         // Uncomment if you are using Slate UI

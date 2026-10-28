@@ -5,10 +5,13 @@
 #include "../GameMode/XQPGameStateBase.h"
 #include "../UI/XQP_HUD.h"
 #include "../Util/Logger.h"
+#include "XiangQiPro/GameMode/XQPGameInstance.h"
+#include "XiangQiPro/Network/XQPLANSubsystem.h"
 
 // 初始化默认属性和组件。
 ACamera2PActor::ACamera2PActor()
 {
+    PrimaryActorTick.bCanEverTick = true;
 
 	// 创建弹簧臂组件
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
@@ -58,6 +61,38 @@ void ACamera2PActor::InitCamera()
 {
 	// 初始化目标旋转为当前旋转
 	TargetRotation = SpringArm->GetRelativeRotation();
+    // 黑方从自己的底线观察棋盘；保留已有的拖拽和缩放控制。
+    const auto* GI = GetGameInstance<UXQPGameInstance>();
+    if (GI && (GI->GetGameMode() == EXQPGameMode::LAN || GI->GetGameMode() == EXQPGameMode::ProBattleLAN) && GI->GetSubsystem<UXQPLANSubsystem>()->GetLocalColor() == EChessColor::BLACKCHESS)
+    {
+        TargetRotation.Yaw += 180.f;
+        SpringArm->SetRelativeRotation(TargetRotation);
+    }
+    HomeRotation = TargetRotation;
+}
+
+void ACamera2PActor::PlayProResultCamera()
+{
+    bProResultCamera = true;
+    bIsRotatingCamera = bIsSingleTouchActive = bIsTwoFingerTouchActive = false;
+    TargetRotation = HomeRotation;
+    TargetRotation.Pitch = -58.f;
+    TargetRotation.Roll = 0.f;
+    TargetArmLength = FMath::Clamp(135.f, MinZoomDistance, MaxZoomDistance);
+    OnMouseRightButtonReleased();
+    DisableInput(GetController<APlayerController>());
+}
+
+void ACamera2PActor::GamePlayAgain(UObject* OwnerObject)
+{
+    if (const auto* State = GetWorld()->GetGameState<AXQPGameStateBase>(); State && State->IsProBattle())
+    {
+        bProResultCamera = false;
+        TargetRotation = HomeRotation;
+        TargetArmLength = 90.f;
+        EnableInput(GetController<APlayerController>());
+    }
+    IIF_GameState::GamePlayAgain(OwnerObject);
 }
 
 // 设置并播放场景背景音乐。
@@ -101,7 +136,7 @@ void ACamera2PActor::GamePause(UObject* OwnerObject)
 void ACamera2PActor::GameResume(UObject* OwnerObject)
 {
 	// 启用输入
-	EnableInput(GetController<APlayerController>());
+    if (!bProResultCamera) EnableInput(GetController<APlayerController>());
 	IIF_GameState::GameResume(OwnerObject);
 }
 

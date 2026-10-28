@@ -58,9 +58,7 @@ void USoloRideMode::OnFinishMove()
 
     if (horseMoves.Num() <= 0)
     {
-#define this GS.Get()
-        EXEC_ONSOLORIDEDEFEAT(SoloRideScore); // 执行失败事件
-#undef this
+        GS->NotifyGameOver(EChessColor::BLACKCHESS);
         return;
     }
 
@@ -72,9 +70,7 @@ void USoloRideMode::OnFinishMove()
         {
             GS->SetBattleTurn(EPlayerTag::P2);
             GS->ApplyMove2P(GS->GetChessBoard2P()->GetChess(move.from), move); // 吃掉玩家的马
-#define this GS.Get()
-            EXEC_ONSOLORIDEDEFEAT(SoloRideScore); // 执行失败事件
-#undef this
+            GS->NotifyGameOver(EChessColor::BLACKCHESS);
             return;
         }
     }

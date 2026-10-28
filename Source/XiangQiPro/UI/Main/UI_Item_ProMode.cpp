@@ -7,10 +7,27 @@
 #include "ProModeData.h"
 #include "XiangQiPro/Util/Logger.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
+#include "UI_ProModeSetup.h"
+#include "XiangQiPro/UI/UIManager.h"
+#include "Components/Button.h"
 
 void UUI_Item_ProMode::NativeConstruct()
 {
 	Super::NativeConstruct();
+    if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("ItemBtn"))))
+    {
+        Button->OnClicked.Clear();
+        Button->OnClicked.AddUniqueDynamic(this, &UUI_Item_ProMode::OpenModeIntroduction);
+    }
+}
+
+void UUI_Item_ProMode::OpenModeIntroduction()
+{
+    if (!SetupClass) return;
+    auto* Setup = CreateWidget<UUI_ProModeSetup>(GetOwningPlayer(), SetupClass);
+    if (!Setup) return;
+    Setup->SetMode(GameModeID);
+    GetGameInstance()->GetSubsystem<UUIManager>()->AddUI(Setup, false);
 }
 
 void UUI_Item_ProMode::NativeOnListItemObjectSet(UObject* ListItemObject)

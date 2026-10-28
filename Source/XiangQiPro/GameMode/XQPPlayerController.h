@@ -24,5 +24,4 @@ public:
 	// 切换顶层界面或暂停菜单。
 	UFUNCTION()
 	void OnEscapePressed();
-
 };

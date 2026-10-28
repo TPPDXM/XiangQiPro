@@ -70,6 +70,22 @@ protected:
 
 	bool bDead = false;
 
+    bool bProMode = false;
+    bool bProTravelling = false;
+    bool bProFadeComplete = false;
+    float ProMoveTime = 0.f;
+    float ProMoveDuration = 1.f;
+    float ProDeathTime = 0.f;
+    FVector ProMoveStart = FVector::ZeroVector;
+    TWeakObjectPtr<AChesses> ProSupport;
+    TWeakObjectPtr<AChesses> PendingCapture;
+    bool bCaptureApproach = false;
+    bool bCaptureLanding = false;
+    float CaptureHoverRemaining = 0.f;
+    float CaptureHoverHeight = 0.f;
+    float CaptureHoverOffset = 0.f;
+    FVector CaptureApproachLocation(AChesses* Victim, float Alpha) const;
+
 	UPROPERTY()
 	TObjectPtr<UCurveFloat> CF_ChessMove = nullptr;
 
@@ -160,6 +176,15 @@ public:
 
 	// 获取是否阵亡
 	bool IsDead() const;
+    void EnableProMode();
+    void PrepareCapture(AChesses* Victim) { PendingCapture = Victim; }
+    void BeginProMove(const FChessMove2P& Move, float Duration);
+    void ArriveProMove(FIntPoint Destination, AChesses* Captured);
+    void StopProMove();
+    bool IsProMoving() const { return bProTravelling; }
+    bool IsSelectedForMove() const { return bSelected; }
+    void ClearMoveSelection();
+    float GetSurfaceZ() const;
 	// 根据玩法与阵营更新棋子的可选状态。
 	void UpdateSelectable();
 	// 生成选中棋子的合法走法并显示提示。

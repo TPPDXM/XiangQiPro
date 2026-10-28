@@ -2,6 +2,7 @@
 
 
 #include "UIManager.h"
+#include "Components/UI_CommonDialog.h"
 #include <XiangQiPro/Util/Logger.h>
 #include <Kismet/GameplayStatics.h>
 #include <Blueprint/WidgetBlueprintLibrary.h>
@@ -78,6 +79,7 @@ void UUIManager::RemoveUI(UUserWidget* TargetUI)
 		return;
 	}
 
+	if (TargetUI == PauseUI.Get()) EXEC_GAMERESUME();
 	ui_stack[Index]->RemoveFromParent(); // 从屏幕中移除
 	ui_stack.RemoveAt(Index); // 从栈中移除
 
@@ -89,6 +91,17 @@ void UUIManager::RemoveUI(UUserWidget* TargetUI)
 	{
 		SetUIVisibility(ui_stack.Top(), true); // 重新显示上一层UI
 	}
+}
+
+void UUIManager::CloseOverlays()
+{
+    while (!ui_stack.IsEmpty()) RemoveUI(ui_stack.Last());
+}
+
+void UUIManager::CloseDialogs(UUserWidget* Except)
+{
+    for (int32 Index = ui_stack.Num() - 1; Index >= 0; --Index)
+        if (ui_stack[Index] != Except && ui_stack[Index]->IsA<UUI_CommonDialog>()) RemoveUI(ui_stack[Index]);
 }
 
 // 关闭顶层界面或打开暂停菜单。

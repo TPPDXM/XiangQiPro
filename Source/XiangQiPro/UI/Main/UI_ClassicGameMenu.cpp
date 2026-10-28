@@ -6,6 +6,10 @@
 #include "ClassicGameData.h"
 #include "Components/ListView.h"
 #include "Components/TextBlock.h"
+#include "UI_LANLobby.h"
+#include "XiangQiPro/UI/UIManager.h"
+#include "Components/CanvasPanel.h"
+#include "Components/CanvasPanelSlot.h"
 
 // 构造界面并初始化控件与事件绑定。
 void UUI_ClassicGameMenu::NativeConstruct()
@@ -54,6 +58,19 @@ void UUI_ClassicGameMenu::OnListItemClicked(UUI_Item_ClassicGame* ClickedItem)
     OnSelectedChange(SelectedIndex);
 }
 
+void UUI_ClassicGameMenu::ShowLANIntroduction()
+{
+    UCanvasPanel* Frame = Cast<UCanvasPanel>(GetWidgetFromName(TEXT("IntroduceLayout")));
+    if (!Frame || !LANIntroductionClass) return;
+    // 只实例化已保存的UMG页面，嵌入方式与人机/残局简介相同。
+    UUI_LANLobby* Page = CreateWidget<UUI_LANLobby>(GetGameInstance(), LANIntroductionClass);
+    if (!Page) return;
+    Frame->ClearChildren();
+    UCanvasPanelSlot* ContentSlot = Frame->AddChildToCanvas(Page);
+    ContentSlot->SetAnchors(FAnchors(0, 0, 1, 1));
+    ContentSlot->SetOffsets(FMargin(0));
+}
+
 // 选中指定索引的已生成列表项。
 void UUI_ClassicGameMenu::SetSelection(int32 Index)
 {
@@ -64,6 +81,26 @@ void UUI_ClassicGameMenu::SetSelection(int32 Index)
         Entry->SetSelected(true);
         OnListItemClicked(Entry);
     }
+    else
+    {
+        // 列表尚未生成对应的Slate条目时，也先保存逻辑选择并切换内容。
+        ClearSelection();
+        SelectedIndex = Index;
+        OnSelectedChange(Index);
+    }
+}
+
+void UUI_ClassicGameMenu::EnsureInitialSelection()
+{
+    if (SelectedIndex < 0)
+    {
+        SetSelection(0);
+        return;
+    }
+    // 后续条目生成或窗口重排只恢复选中样式，不重新跳回默认页面。
+    if (DataObjList.IsValidIndex(SelectedIndex))
+        if (auto* Entry = ItemListView->GetEntryWidgetFromItem<UUI_Item_ClassicGame>(DataObjList[SelectedIndex]))
+            Entry->SetSelected(true);
 }
 
 // 清除所有已生成列表项的选中状态。

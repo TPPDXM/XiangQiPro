@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include "ChessPosition.h"
+#include "ChessLearning.h"
 
 // 单次搜索的输出，只在工作线程完成后交给游戏线程读取。
 struct FChessSearchResult
@@ -20,7 +21,7 @@ class XIANGQIPRO_API FChessSearch
 {
 public:
     // 接收游戏线程生成的快照及搜索预算。
-    FChessSearch(const FChessPosition& InPosition, EChessColor InColor, int32 InDepth, double InSeconds);
+    FChessSearch(const FChessPosition& InPosition, EChessColor InColor, int32 InDepth, double InSeconds, FChessLearning InLearning = {});
     // 获取创建请求时的局面键，搜索开始后该值不再改变。
     uint64 GetPositionKey() const { return InitialPositionKey; }
     // 使用迭代加深搜索最佳走法，超时保留上一次完整搜索结果。
@@ -49,8 +50,10 @@ private:
     void OrderMoves(TArray<FChessMove2P>& Moves, const FChessMove2P& Preferred, EChessColor Side);
     // 检查当前搜索路径是否出现重复局面。
     bool IsRepeated(uint64 Key) const;
+    int32 Evaluate(EChessColor Side) const;
 
     FChessPosition Board;
+    FChessLearning Learning;
     EChessColor Color;
     int32 MaxDepth;
     double TimeBudget;

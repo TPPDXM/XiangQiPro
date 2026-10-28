@@ -42,6 +42,10 @@ private:
 
 public:
 
+    UUserWidget* GetBasicUI() const { return BasicUI; }
+    void CloseOverlays();
+    void CloseDialogs(UUserWidget* Except = nullptr);
+
     // 切关前移除所有界面并释放强引用。
     void ResetUI();
     // 子系统结束时清理界面栈。

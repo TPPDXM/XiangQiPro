@@ -15,6 +15,8 @@ class UChessBoard2P;
 class UUI_Battle2P_Base;
 class AChessBoard2PActor;
 class AChesses;
+class UProBattleComponent;
+class UBattleStartComponent;
 
 enum class EChessColor : uint8;
 enum class EAI2PDifficulty : uint8;
@@ -68,6 +70,8 @@ private:
 	int32 score3 = 0;
 
 	bool bGameOver = false;
+    EChessColor WinnerColor = EChessColor::REDCHESS;
+    int32 CurrentEndingIndex = INDEX_NONE;
 
     bool bAIPaused = false;
     bool bMoveInProgress = false;
@@ -77,7 +81,10 @@ private:
     uint64 SearchBoardKey = 0;
     uint64 SearchBoardRevision = 0;
     FChessSearchResult PendingAIResult;
+    bool bApplyingNetworkMove = false;
     TSharedPtr<FChessSearch, ESPMode::ThreadSafe> ActiveSearch;
+    FTimerHandle AIReactionTimer;
+    double AIActAfter = 0;
 
     // 取消当前搜索并使已排队的完成回调失效。
     void CancelAIRequest();
@@ -87,10 +94,18 @@ private:
     void ApplyAIResult(const FChessSearchResult& Result);
     // 统一处理普通胜负和残局通关。
     void Finish2PGame(EChessColor Winner);
-    // 更新双方子力得分显示。
+    // 更新双方局面评估或玩法得分。
     void UpdateScore();
 
 public:
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Pro Battle")
+    TObjectPtr<UProBattleComponent> ProBattle;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Battle")
+    TObjectPtr<UBattleStartComponent> BattleStart;
+    void OnBattleStarted();
+    bool IsProBattle() const;
+    void FinishProBattle(EChessColor Winner);
 
 	UPROPERTY(EditAnywhere)
 	EAI2PDifficulty AIDifficulty;
@@ -173,5 +188,13 @@ public:
 
 	// 游戏结束
 	void NotifyGameOver(EChessColor winner);
+    bool CanApplyNetworkMove() const;
+    void ApplyNetworkMove(const FChessMove2P& Move);
+    EChessColor GetTurnColor() const { return battleTurn == EPlayerTag::P1 ? EChessColor::REDCHESS : EChessColor::BLACKCHESS; }
+    bool IsGameOver() const { return bGameOver; }
+    EChessColor GetWinnerColor() const { return WinnerColor; }
+    int32 GetCurrentEndingIndex() const { return CurrentEndingIndex; }
+    bool IsLANGame() const;
+    FTimerHandle ProResultTimer;
 
 };

@@ -41,6 +41,7 @@ private:
 
 	// 目标移动的棋子
 	TWeakObjectPtr<AChesses> TargetChess;
+    void UpdateSurfaceHeight();
 
 public:
 	// Sets default values for this actor's properties

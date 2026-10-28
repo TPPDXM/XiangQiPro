@@ -7,19 +7,217 @@
 #include "XiangQiPro/Interface/IF_GameState.h"
 
 #include "XiangQiPro/GameMode/XQPGameStateBase.h"
+#include "XiangQiPro/GameMode/BattleStartComponent.h"
+#include "XiangQiPro/GameMode/XQPGameInstance.h"
+#include "XiangQiPro/SaveGame/PlayerProfileSubsystem.h"
+#include "XiangQiPro/Network/XQPLANSubsystem.h"
+#include "Components/Image.h"
+#include "Components/TextBlock.h"
+#include "XiangQiPro/UI/Components/XQPButtonBinding.h"
+#include "XiangQiPro/UI/Components/UI_CommonDialog.h"
+#include "XiangQiPro/GameMode/XQPPlayerController.h"
+#include "XiangQiPro/Util/EndingLibrary.h"
 
-// 构造界面并初始化控件与事件绑定。
 void UUI_Battle2P_Base::NativeConstruct()
 {
-	Super::NativeConstruct();
-	UpdateCanTick();
-	GameState = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr;
+    Super::NativeConstruct();
+    UpdateCanTick();
+    GameState = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr;
+    SetPlayerScoreVisible(true);
+    SetOpponentScoreVisible(!GameState.IsValid() || GameState->GetBattleType() != EBattleType::SoloRide);
+    if (auto* Button = XQPButtonBinding::GetButton(MenuButton))
+        Button->OnClicked.AddUniqueDynamic(this, &UUI_Battle2P_Base::OpenMenu);
+    if (auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>())
+    {
+        Room->OnRoomUpdated.RemoveAll(this);
+        Room->OnRoomUpdated.AddUObject(this, &UUI_Battle2P_Base::HandleRoomUpdated);
+    }
 }
 
-// 更新界面每帧状态。
+void UUI_Battle2P_Base::NativeDestruct()
+{
+    if (GetGameInstance())
+        GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->OnRoomUpdated.RemoveAll(this);
+    Super::NativeDestruct();
+}
+
 void UUI_Battle2P_Base::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
-	Super::NativeTick(MyGeometry, InDeltaTime);
+    Super::NativeTick(MyGeometry, InDeltaTime);
+    if (!GameState.IsValid()) return;
+    const auto* Profile = GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>();
+    const bool LAN = GameState->IsLANGame();
+    auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
+    if (Text_Name_P1)
+        Text_Name_P1->SetText(FText::FromString(LAN ? Room->GetRedName() : Profile->GetPlayerName()));
+    if (Text_Name_P2)
+        Text_Name_P2->SetText(FText::FromString(LAN ? Room->GetBlackName() : TEXT("电子棋友")));
+    if (ModeStatus)
+    {
+        const bool Challenge = GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::AI2P && Profile->bChallengeSelected;
+        ModeStatus->SetVisibility(LAN || Challenge ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+        ModeStatus->SetText(FText::FromString(LAN
+            ? FString::Printf(TEXT("你执%s · %s"), Room->GetLocalColor() == EChessColor::REDCHESS ? TEXT("红方") : TEXT("黑方"),
+                GameState->IsGameOver() ? TEXT("本局结束") :
+                (GameState->GetTurnColor() == EChessColor::REDCHESS ? TEXT("红方回合") : TEXT("黑方回合")))
+            : FString::Printf(TEXT("最高连胜 %d 局"), Profile->GetBestStreak())));
+    }
+    if (LAN)
+    {
+        if (Text_AIThinking) Text_AIThinking->SetVisibility(ESlateVisibility::Collapsed);
+        if (Image_RoundMark_P1)
+            Image_RoundMark_P1->SetVisibility(!GameState->IsGameOver() && GameState->GetTurnColor() == EChessColor::REDCHESS
+                ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+        if (Image_RoundMark_P2)
+            Image_RoundMark_P2->SetVisibility(!GameState->IsGameOver() && GameState->GetTurnColor() == EChessColor::BLACKCHESS
+                ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+    }
+}
+
+void UUI_Battle2P_Base::OpenMenu()
+{
+    if (auto* Controller = Cast<AXQPPlayerController>(GetOwningPlayer())) Controller->OnEscapePressed();
+}
+
+void UUI_Battle2P_Base::ShowBattleStart()
+{
+    if (auto* Ready = GetWidgetFromName(TEXT("BattleReadyOverlay")))
+        Ready->SetVisibility(GameState.IsValid() && !GameState->BattleStart->HasStarted() ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+}
+
+UUI_CommonDialog* UUI_Battle2P_Base::OpenResultDialog()
+{
+    if (!CommonDialogClass) return nullptr;
+    if (!ResultDialog.IsValid()) ResultDialog = CreateWidget<UUI_CommonDialog>(GetOwningPlayer(), CommonDialogClass);
+    auto* Dialog = ResultDialog.Get();
+    if (!Dialog) return nullptr;
+    Dialog->OnPrimaryAction = FSimpleDelegate::CreateUObject(this, &UUI_Battle2P_Base::PlayAgain);
+    Dialog->OnSecondaryAction = FSimpleDelegate::CreateUObject(this, &UUI_Battle2P_Base::ReturnToMainMenu);
+    auto* Manager = GetGameInstance()->GetSubsystem<UUIManager>();
+    // 对方离开或对局结束时，替换尚未确认的认输提示。
+    if (!Dialog->IsInViewport())
+    {
+        // 结算直接显示棋盘，避免暂停菜单的遮罩与弹窗背景叠加。
+        Manager->CloseOverlays();
+        Manager->AddUI(Dialog, false);
+    }
+    else Manager->CloseDialogs(Dialog);
+    return Dialog;
+}
+
+void UUI_Battle2P_Base::ShowMatchResult(EChessColor Winner)
+{
+    if (GameState.IsValid() && GameState->GetBattleType() == EBattleType::SoloRide)
+    {
+        ShowSoloRideResult(GameState->GetScore1());
+        return;
+    }
+    auto* Dialog = OpenResultDialog();
+    if (!Dialog) return;
+    const bool LAN = GameState.IsValid() && GameState->IsLANGame();
+    auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
+    const bool Won = Winner == (LAN ? Room->GetLocalColor() : EChessColor::REDCHESS);
+    if (GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::Ending)
+    {
+        const FString Title = GameState.IsValid() ? UEndingLibrary::GetEndingGameTitle(GameState->GetCurrentEndingIndex()) : FString();
+        const FString Message = Won
+            ? (Title.IsEmpty() ? TEXT("本关挑战成功！") : FString::Printf(TEXT("已通过「%s」"), *Title))
+            : TEXT("本关挑战失败，可以重新挑战。");
+        Dialog->Configure(FText::FromString(Won ? TEXT("残局通关") : TEXT("挑战失败")), FText::FromString(Message),
+            FText::FromString(TEXT("重新挑战")), FText::FromString(TEXT("返回主菜单")), FText::FromString(TEXT("查看棋盘")));
+        RefreshRematchAction();
+        return;
+    }
+    const FString WinnerName = LAN ? (Winner == EChessColor::REDCHESS ? Room->GetRedName() : Room->GetBlackName())
+                                  : (Won ? GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>()->GetPlayerName() : TEXT("电子棋友"));
+    FString Message = FString::Printf(TEXT("%s获胜：%s"), Winner == EChessColor::REDCHESS ? TEXT("红方") : TEXT("黑方"), *WinnerName);
+    if (LAN && Room->DidPeerResign()) Message = TEXT("对方已认输。\n") + Message;
+    else if (LAN && Room->DidLocalResign()) Message = TEXT("你已认输。\n") + Message;
+    Dialog->Configure(FText::FromString(Won ? TEXT("对弈胜利") : TEXT("对弈失败")), FText::FromString(Message),
+        FText::FromString(TEXT("再战")), FText::FromString(TEXT("返回主菜单")), FText::FromString(TEXT("查看棋盘")));
+    RefreshRematchAction();
+}
+
+void UUI_Battle2P_Base::ShowSoloRideResult(int32 Score)
+{
+    if (auto* Dialog = OpenResultDialog())
+        Dialog->Configure(FText::FromString(TEXT("单骑挑战结束")),
+            FText::FromString(FString::Printf(TEXT("本次得分：%d"), Score)),
+            FText::FromString(TEXT("重新挑战")), FText::FromString(TEXT("返回主菜单")), FText::FromString(TEXT("查看棋盘")));
+}
+
+void UUI_Battle2P_Base::ShowCurrentResult()
+{
+    auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
+    if (GameState.IsValid() && GameState->IsLANGame() && Room->GetState() == EXQPRoomState::Disconnected)
+        HandleRoomUpdated();
+    else if (GameState.IsValid() && GameState->IsGameOver()) ShowMatchResult(GameState->GetWinnerColor());
+}
+
+void UUI_Battle2P_Base::HandleRoomUpdated()
+{
+    if (!GameState.IsValid() || !GameState->IsLANGame()) return;
+    auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
+    if (Room->GetState() == EXQPRoomState::Disconnected)
+    {
+        if (auto* Dialog = OpenResultDialog())
+            Dialog->Configure(FText::FromString(Room->GetStatus() == TEXT("对方已离开房间") ? TEXT("对方已离开") : TEXT("联机已中断")), FText::FromString(Room->GetStatus()),
+                FText::GetEmpty(), FText::FromString(TEXT("返回主菜单")), FText::FromString(TEXT("查看棋盘")));
+    }
+    else RefreshRematchAction();
+}
+
+void UUI_Battle2P_Base::RefreshRematchAction()
+{
+    if (!ResultDialog.IsValid() || !ResultDialog->IsInViewport() || !GameState.IsValid()) return;
+    auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
+    if (GameState->IsLANGame())
+    {
+        if (Room->GetState() != EXQPRoomState::Finished) return;
+        const bool Waiting = Room->IsHost() ? !Room->IsPeerReady() : Room->IsLocalReady();
+        const TCHAR* Caption = Room->IsHost() ? (Waiting ? TEXT("等待对方再战") : TEXT("确认再战"))
+                                            : (Waiting ? TEXT("等待对方确认") : TEXT("再战"));
+        ResultDialog->SetPrimaryAction(FText::FromString(Caption), !Waiting);
+    }
+    else
+    {
+        if (GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::Ending)
+        {
+            const bool Won = GameState->GetWinnerColor() == EChessColor::REDCHESS;
+            const bool HasNext = GameState->GetCurrentEndingIndex() + 1 < UEndingLibrary::GetEndingGameNum();
+            ResultDialog->SetPrimaryAction(FText::FromString(Won ? (HasNext ? TEXT("下一关") : TEXT("再来一局")) : TEXT("重新挑战")), true);
+            return;
+        }
+        const auto* Profile = GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>();
+        const bool Challenge = GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::AI2P && Profile->bChallengeSelected;
+        ResultDialog->SetPrimaryAction(FText::FromString(Challenge ? (Profile->HasActiveRun() ? TEXT("下一局") : TEXT("重新挑战")) : TEXT("再战")), true);
+    }
+}
+
+void UUI_Battle2P_Base::PlayAgain()
+{
+    if (!GameState.IsValid() || !GameState->IsGameOver()) return;
+    if (GameState->IsLANGame())
+    {
+        auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
+        if (Room->GetState() != EXQPRoomState::Finished || !Room->HasPeer()) return;
+        if (Room->IsHost()) Room->StartMatch();
+        else Room->SetReady(true);
+        RefreshRematchAction();
+        return;
+    }
+    // 先恢复菜单栈，再重开；AI和连战均由原有重开广播初始化下一局。
+    GetGameInstance()->GetSubsystem<UUIManager>()->CloseOverlays();
+    ResultDialog.Reset();
+    ExecGamePlayAgain();
+}
+
+void UUI_Battle2P_Base::ReturnToMainMenu()
+{
+    if (GameState.IsValid() && GameState->IsLANGame()) GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->LeaveRoom();
+    GetGameInstance<UXQPGameInstance>()->SetGameMode(EXQPGameMode::Default);
+    UGameplayStatics::SetGamePaused(this, false);
+    UGameplayStatics::OpenLevel(this, TEXT("/Game/Map/Main"));
 }
 
 // 刷新双方得分控件。
@@ -27,6 +225,18 @@ void UUI_Battle2P_Base::UpdateScore(int32 score1, int32 score2)
 {
 	if (IsValid(Text_Score_P1)) Text_Score_P1->SetText(FText::FromString(FString::FromInt(score1)));
 	if (IsValid(Text_Score_P2)) Text_Score_P2->SetText(FText::FromString(FString::FromInt(score2)));
+}
+
+void UUI_Battle2P_Base::SetPlayerScoreVisible(bool bVisible)
+{
+    bPlayerScoreVisible = bVisible;
+    if (PlayerScorePanel) PlayerScorePanel->SetVisibility(bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+}
+
+void UUI_Battle2P_Base::SetOpponentScoreVisible(bool bVisible)
+{
+    bOpponentScoreVisible = bVisible;
+    if (OpponentScorePanel) OpponentScorePanel->SetVisibility(bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 }
 
 // 更新AI思考提示和回合标记。
@@ -49,6 +259,7 @@ void UUI_Battle2P_Base::SetAITurn(bool bAITurn)
 // 广播重开事件并清空棋谱显示。
 void UUI_Battle2P_Base::ExecGamePlayAgain()
 {
+    if (GameState.IsValid() && GameState->IsLANGame()) return;
     EXEC_PLAYAGAIN();
     SetAITurn(false); // 更新AI回合结束
     if (IsValid(Text_OperatingRecord)) Text_OperatingRecord->SetText(FText());

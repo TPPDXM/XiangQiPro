@@ -1,4 +1,4 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
@@ -14,6 +14,7 @@ class AXQPGameStateBase;
 class UTextBlock;
 class UImage;
 class UMultiLineEditableTextBox;
+class UUI_CommonDialog;
 
 enum class EPlayerTag : uint8;
 
@@ -53,7 +54,7 @@ public:
 	UTextBlock* Text_AIThinking;
 
 	// 落子历史记录
-	UPROPERTY(EditAnywhere, meta = (BindWidget))
+	UPROPERTY(EditAnywhere, meta = (BindWidgetOptional))
 	UTextBlock* Text_OperatingRecord;
 
 	// 玩家1的回合标记
@@ -67,10 +68,18 @@ public:
 public:
 	// 构造界面并初始化控件与事件绑定。
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 	// 更新界面每帧状态。
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	// 刷新双方得分控件。
 	void UpdateScore(int32 score1, int32 score2);
+    UFUNCTION(BlueprintCallable, Category="Battle|Score")
+    void SetPlayerScoreVisible(bool bVisible);
+    UFUNCTION(BlueprintCallable, Category="Battle|Score")
+    void SetOpponentScoreVisible(bool bVisible);
+    UFUNCTION(BlueprintCallable, Category="Battle")
+    void ShowSoloRideResult(int32 Score);
+    void ShowBattleStart();
 
 	// 设置是否为AI回合
 	void SetAITurn(bool bAITurn);
@@ -78,6 +87,10 @@ public:
 	// 显示游戏结束
 	UFUNCTION(BlueprintImplementableEvent)
 	void ShowGameOver(EChessColor winner);
+	UFUNCTION(BlueprintCallable)
+	virtual void ShowMatchResult(EChessColor Winner);
+	UFUNCTION(BlueprintCallable)
+	void ShowCurrentResult();
 	// 广播重开事件并清空棋谱显示。
 	UFUNCTION(BlueprintCallable)
 	void ExecGamePlayAgain();
@@ -88,4 +101,19 @@ public:
 	FString GetMoveNotation(TWeakObjectPtr<AChesses> targetChess, FChessMove2P move);
 	// 增强版：考虑同列多个相同棋子的情况
 	FString GetEnhancedMoveNotation(TWeakObjectPtr<AChesses> targetChess, FChessMove2P move);
+protected:
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> PlayerScorePanel;
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> OpponentScorePanel;
+    bool bPlayerScoreVisible = true;
+    bool bOpponentScoreVisible = true;
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> ModeStatus;
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UUserWidget> MenuButton;
+    UPROPERTY(EditDefaultsOnly, Category="UI") TSubclassOf<UUI_CommonDialog> CommonDialogClass;
+    TWeakObjectPtr<UUI_CommonDialog> ResultDialog;
+    UUI_CommonDialog* OpenResultDialog();
+    void HandleRoomUpdated();
+    void RefreshRematchAction();
+    void PlayAgain();
+    void ReturnToMainMenu();
+    UFUNCTION() void OpenMenu();
 };

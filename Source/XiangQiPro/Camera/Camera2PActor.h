@@ -44,6 +44,8 @@ private:
     FRotator TargetRotation;
 
     bool bIsRotatingCamera;
+    bool bProResultCamera = false;
+    FRotator HomeRotation;
 
 
 
@@ -123,6 +125,8 @@ protected:
 public:
     // 如果需要每帧更新，可以重写Tick函数
     virtual void Tick(float DeltaTime) override;
+    void PlayProResultCamera();
+    virtual void GamePlayAgain(UObject* OwnerObject) override;
     // 响应游戏暂停事件。
     virtual void GamePause(UObject* OwnerObject) override;
     // 响应游戏恢复事件。

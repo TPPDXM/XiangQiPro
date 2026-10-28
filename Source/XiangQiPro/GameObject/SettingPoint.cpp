@@ -5,6 +5,7 @@
 #include "NiagaraComponent.h"
 #include "NiagaraSystem.h"
 #include "Components/SphereComponent.h"
+#include "EngineUtils.h"
 
 #include "../Chess/Chesses.h"
 #include "../GameObject/ChessBoard2P.h"
@@ -15,7 +16,9 @@
 ASettingPoint::ASettingPoint()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = false;
+    PrimaryActorTick.TickGroup = TG_PostPhysics;
 
 	NS_SettingPoint = OM::GetConstructorObject<UNiagaraSystem>(PATH_NS_SETTINGPOINT);
 
@@ -59,6 +62,20 @@ void ASettingPoint::GamePlayAgain(UObject* OwnerObject)
 void ASettingPoint::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+    if (bActive) UpdateSurfaceHeight();
+}
+
+void ASettingPoint::UpdateSurfaceHeight()
+{
+    FVector Location = DefaultWorldPosition;
+    // 使用实际网格表面，包含短暂停留时的多层棋子和仍可见的消散棋子。
+    for (TActorIterator<AChesses> It(GetWorld()); It; ++It)
+    {
+        if (!It->ChessMesh || It->ChessMesh->bHiddenInGame || It->IsHidden()) continue;
+        if (FVector::DistSquaredXY(It->GetActorLocation(), DefaultWorldPosition) <= 1.f)
+            Location.Z = FMath::Max(Location.Z, It->GetSurfaceZ() + 0.12f);
+    }
+    SetActorLocation(Location);
 }
 
 // 将触摸进入转换为悬停反馈。
@@ -101,7 +118,13 @@ void ASettingPoint::HandleClick(UPrimitiveComponent* TouchedComponent, FKey Butt
 // 切换落子点显示和碰撞响应。
 void ASettingPoint::SetActivate(bool bInActive)
 {
+    if (bActive && bInActive)
+    {
+        UpdateSurfaceHeight();
+        return;
+    }
 	bActive = bInActive;
+    SetActorTickEnabled(bActive);
 	PointNiagara->SetActive(bActive);
 	if (bActive)
 	{
@@ -109,12 +132,7 @@ void ASettingPoint::SetActivate(bool bInActive)
 		PointNiagara->SetHiddenInGame(false);
 		Sphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block); // 开始相应鼠标
 
-		const auto Board = GameState.IsValid() ? GameState->GetChessBoard2P() : nullptr;
-		const auto chess = Board.IsValid() ? Board->GetChess(Position2P) : nullptr;
-		if (chess.IsValid() && !chess->IsDead()) // 可以吃子
-		{
-			SetActorLocation(DefaultWorldPosition + FVector(0, 0, 2.5f)); // 向上偏移,到棋子顶部
-		}
+        UpdateSurfaceHeight();
 	}
 	else
 	{

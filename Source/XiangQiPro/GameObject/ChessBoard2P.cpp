@@ -73,18 +73,24 @@ bool UChessBoard2P::IsLegalMove(TWeakObjectPtr<AChesses> Target, const FChessMov
     return !Snapshot.IsInCheck(Target->GetColor());
 }
 
-// 仅激活已成功生成的落子提示Actor。
+// 按最新走法增删提示，仍合法的点保留显示和粒子状态。
 void UChessBoard2P::ShowSettingPoint2P(TArray<FChessMove2P> Moves, TWeakObjectPtr<AChesses> Target)
 {
     if (!Target.IsValid()) return;
+    TSet<FIntPoint> Destinations;
     for (const FChessMove2P& Move : Moves)
     {
-        if (!Move.IsValid() || !SettingPoints.IsValidIndex(Move.to.X) || !SettingPoints[Move.to.X].IsValidIndex(Move.to.Y)) continue;
-        const auto Point = SettingPoints[Move.to.X][Move.to.Y];
-        if (!Point.IsValid()) continue;
-        Point->SetTargetChess(Target);
-        Point->SetActivate(true);
+        if (Move.IsValid()) Destinations.Add(Move.to);
     }
+    for (int32 X = 0; X < SettingPoints.Num(); ++X)
+        for (int32 Y = 0; Y < SettingPoints[X].Num(); ++Y)
+        {
+            const auto Point = SettingPoints[X][Y];
+            if (!Point.IsValid()) continue;
+            const bool bShow = Destinations.Contains(FIntPoint(X, Y));
+            Point->SetTargetChess(bShow ? Target : TWeakObjectPtr<AChesses>());
+            Point->SetActivate(bShow);
+        }
 }
 
 // 安全隐藏所有现有落子提示。
@@ -133,9 +139,9 @@ void UChessBoard2P::ApplyMove(TWeakObjectPtr<AChesses> Target, FChessMove2P Move
 {
     if (!IsLegalMove(Target, Move)) return;
     const auto Captured = GetChess(Move.to);
+    Target->PrepareCapture(Captured.Get());
     SetChess(Move.to.X, Move.to.Y, Target);
     SetChess(Move.from.X, Move.from.Y, nullptr);
-    if (Captured.IsValid()) Captured->Defeated();
     if (Target.IsValid()) Target->ApplyMove(Move);
 }
 

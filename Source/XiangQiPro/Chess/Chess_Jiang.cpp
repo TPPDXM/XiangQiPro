@@ -37,7 +37,7 @@ void AChess_Jiang::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBo
 void AChess_Jiang::Defeated()
 {
 	Super::Defeated();
-	if (GameState.IsValid()) GameState->NotifyGameOver(MyColor == EChessColor::BLACKCHESS ? EChessColor::REDCHESS : EChessColor::BLACKCHESS); // 通知游戏状态，游戏获胜
+	if (GameState.IsValid() && !GameState->IsProBattle()) GameState->NotifyGameOver(MyColor == EChessColor::BLACKCHESS ? EChessColor::REDCHESS : EChessColor::BLACKCHESS);
 }
 
 // 生成选中棋子的合法走法并显示提示。
