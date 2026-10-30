@@ -85,8 +85,13 @@ void UUI_ProBattle::NativeTick(const FGeometry& Geometry, float DeltaTime)
     UpdateSupply(EnemySegments, Black, Max, FLinearColor(0.16f, 0.65f, 0.88f));
     if (EnemySupplyPanel) EnemySupplyPanel->SetVisibility(State->IsLANGame() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
     if (XQPMobile::IsPortrait(this)) EnemySupplyText->SetVisibility(State->IsLANGame() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
-    if (!XQPMobile::IsPortrait(this)) if (auto* Panel = GetWidgetFromName(TEXT("BlackInfoPanel")))
-        if (auto* PanelSlot = Cast<UCanvasPanelSlot>(Panel->Slot)) PanelSlot->SetSize(FVector2D(400.f, State->IsLANGame() ? 78.f : 142.f));
+    if (!XQPMobile::IsPortrait(this))
+    {
+        for (const FName Name : {FName(TEXT("RedInfoPanel")), FName(TEXT("BlackInfoPanel"))})
+            if (auto* Panel = GetWidgetFromName(Name))
+                if (auto* PanelSlot = Cast<UCanvasPanelSlot>(Panel->Slot))
+                    PanelSlot->SetSize(FVector2D(400.f, Name == TEXT("BlackInfoPanel") && !State->IsLANGame() ? 142.f : 78.f));
+    }
     LocalSupplyText->SetText(FText::FromString(FString::Printf(TEXT("我的粮草  %d / %d%s"), FMath::FloorToInt(Local + 0.0001f), Max, Battle->IsDoubleSupply() ? TEXT("  ·  双倍恢复") : TEXT(""))));
     EnemySupplyText->SetText(FText::FromString(FString::Printf(TEXT("粮草 %d / %d"), FMath::FloorToInt(Black + 0.0001f), Max)));
     UpdateScore(Battle->GetStats(EChessColor::REDCHESS).CaptureScore, Battle->GetStats(EChessColor::BLACKCHESS).CaptureScore);

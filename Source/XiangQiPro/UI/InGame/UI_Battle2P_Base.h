@@ -32,6 +32,9 @@ private:
 
 	TWeakObjectPtr<AXQPGameStateBase> GameState;
 
+    bool bInfoPanelsSwapped = false;
+    void RefreshPlayerInfoLayout();
+
 public:
 
 	// 显示玩家1的名字

@@ -13,6 +13,7 @@
 #include "XiangQiPro/SaveGame/PlayerProfileSubsystem.h"
 #include "XiangQiPro/Network/XQPLANSubsystem.h"
 #include "Components/Image.h"
+#include "Components/CanvasPanelSlot.h"
 #include "Components/TextBlock.h"
 #include "XiangQiPro/UI/Components/XQPButtonBinding.h"
 #include "XiangQiPro/UI/Components/UI_CommonDialog.h"
@@ -25,6 +26,7 @@ void UUI_Battle2P_Base::NativeConstruct()
     Super::NativeConstruct();
     UpdateCanTick();
     GameState = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr;
+    RefreshPlayerInfoLayout();
     const bool Solo = GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::SoloRide;
     SetPlayerScoreVisible(true);
     SetOpponentScoreVisible(!Solo);
@@ -48,6 +50,7 @@ void UUI_Battle2P_Base::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
 {
     Super::NativeTick(MyGeometry, InDeltaTime);
     if (!GameState.IsValid()) return;
+    RefreshPlayerInfoLayout();
     const auto* Profile = GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>();
     const bool LAN = GameState->IsLANGame();
     const bool Solo = GameState->GetBattleType() == EBattleType::SoloRide;
@@ -84,6 +87,33 @@ void UUI_Battle2P_Base::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
         if (Image_RoundMark_P2)
             Image_RoundMark_P2->SetVisibility(!GameState->IsGameOver() && GameState->GetTurnColor() == EChessColor::BLACKCHESS
                 ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+    }
+}
+
+void UUI_Battle2P_Base::RefreshPlayerInfoLayout()
+{
+    const auto* Room = GetGameInstance() ? GetGameInstance()->GetSubsystem<UXQPLANSubsystem>() : nullptr;
+    const bool LocalBlack = GameState.IsValid() && GameState->IsLANGame() && Room &&
+        Room->GetLocalColor() == EChessColor::BLACKCHESS;
+    if (LocalBlack == bInfoPanelsSwapped) return;
+
+    const auto SwapLayout = [](UWidget* Red, UWidget* Black)
+    {
+        auto* RedSlot = Red ? Cast<UCanvasPanelSlot>(Red->Slot) : nullptr;
+        auto* BlackSlot = Black ? Cast<UCanvasPanelSlot>(Black->Slot) : nullptr;
+        if (!RedSlot || !BlackSlot) return false;
+        const FAnchorData RedLayout = RedSlot->GetLayout();
+        RedSlot->SetLayout(BlackSlot->GetLayout());
+        BlackSlot->SetLayout(RedLayout);
+        return true;
+    };
+    // Designer中的红方位置是本地位置：移动端下方、PC端左侧。
+    // 保留阵营对应的姓名与得分，只交换完整名牌的布局。
+    if (SwapLayout(GetWidgetFromName(TEXT("RedInfoPanel")), GetWidgetFromName(TEXT("BlackInfoPanel"))))
+    {
+        // PC的回合标记独立于名牌；移动端标记已包含在名牌内部。
+        SwapLayout(Image_RoundMark_P1, Image_RoundMark_P2);
+        bInfoPanelsSwapped = LocalBlack;
     }
 }
 
