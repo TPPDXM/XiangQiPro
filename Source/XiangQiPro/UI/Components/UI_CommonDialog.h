@@ -1,14 +1,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "XiangQiPro/UI/XQPMobileWidget.h"
+#include "XiangQiPro/Util/ChessInfo.h"
 #include "UI_CommonDialog.generated.h"
 
 class UTextBlock;
+class UBorder;
 
 // 所有对局结果和确认提示共用此资产；调用方提供文案和操作。
 UCLASS()
-class XIANGQIPRO_API UUI_CommonDialog : public UUserWidget
+class XIANGQIPRO_API UUI_CommonDialog : public UXQPMobileWidget
 {
     GENERATED_BODY()
 public:
@@ -23,6 +25,10 @@ public:
     UFUNCTION(BlueprintCallable, Category="Dialog")
     void SetMessage(const FText& Message);
     UFUNCTION(BlueprintCallable, Category="Dialog")
+    void SetMatchOutcome(bool bWon, bool bDraw = false);
+    UFUNCTION(BlueprintCallable, Category="Dialog")
+    void SetMessageFaction(EChessColor Faction);
+    UFUNCTION(BlueprintCallable, Category="Dialog")
     void Dismiss();
 
     FSimpleDelegate OnPrimaryAction;
@@ -34,6 +40,15 @@ private:
     bool bOnlyFade = false;
     UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> DialogTitle;
     UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> DialogMessage;
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UBorder> OutcomeAccent;
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UBorder> MessageFactionPanel;
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> MessageFactionLabel;
+    FSlateFontInfo DefaultTitleFont;
+    FSlateFontInfo DefaultMessageFont;
+    FSlateColor DefaultTitleColor;
+    FSlateColor DefaultMessageColor;
+    bool bAppearanceCached = false;
+    void CacheDefaultAppearance();
     UPROPERTY(meta=(BindWidget)) TObjectPtr<UUserWidget> PrimaryButton;
     UPROPERTY(meta=(BindWidget)) TObjectPtr<UUserWidget> SecondaryButton;
     UPROPERTY(meta=(BindWidget)) TObjectPtr<UUserWidget> DismissButton;

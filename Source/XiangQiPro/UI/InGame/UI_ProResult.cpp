@@ -1,6 +1,7 @@
 #include "UI_ProResult.h"
 #include "Components/TextBlock.h"
 #include "XiangQiPro/GameMode/ProBattleComponent.h"
+#include "XiangQiPro/UI/XQPUIStyle.h"
 
 void UUI_ProResult::NativeConstruct()
 {
@@ -17,6 +18,7 @@ void UUI_ProResult::ShowBattle(const UProBattleComponent* Battle, const FText& R
     Configure(FText::FromString(Draw ? TEXT("烽火弈 · 平局") : Won ? TEXT("烽火弈 · 胜利") : TEXT("烽火弈 · 败北")),
         FText::FromString(FString::Printf(TEXT("%s · 对局时长 %02d:%02d"), Battle->IsTimedOut() ? TEXT("限时结束，按吃子得分结算") : TEXT("对局结束"), Seconds / 60, Seconds % 60)),
         FText::FromString(TEXT("再战")), FText::FromString(TEXT("返回主菜单")), FText::FromString(TEXT("查看棋盘")));
+    SetMatchOutcome(Won, Draw);
     if (RedPlayerName) RedPlayerName->SetText(RedName);
     if (BlackPlayerName) BlackPlayerName->SetText(BlackName);
     const auto Summary = [](const FProBattleStats& Stats)

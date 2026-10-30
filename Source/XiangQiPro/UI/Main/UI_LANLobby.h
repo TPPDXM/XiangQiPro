@@ -1,6 +1,6 @@
 #pragma once
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "XiangQiPro/UI/XQPMobileWidget.h"
 #include "UI_LANLobby.generated.h"
 class UEditableTextBox;
 class UTextBlock;
@@ -10,7 +10,7 @@ class UUI_CommonDialog;
 
 // 联机页面由UMG资产提供，嵌入经典模式原有介绍框。
 UCLASS()
-class XIANGQIPRO_API UUI_LANLobby : public UUserWidget
+class XIANGQIPRO_API UUI_LANLobby : public UXQPMobileWidget
 {
     GENERATED_BODY()
 public:
@@ -24,6 +24,10 @@ private:
     UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UEditableTextBox> Address;
     UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UTextBlock> StatusText;
     UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UTextBlock> PlayersText;
+    UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UTextBlock> RedPlayersText;
+    UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UTextBlock> BlackPlayersText;
+    UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UTextBlock> RedFactionLabel;
+    UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UTextBlock> BlackFactionLabel;
     UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UUI_XQP_ComboBox> RoomSelector;
     UPROPERTY(Transient) TObjectPtr<UComboBoxString> RoomChoice;
     UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UUserWidget> StartButton;

@@ -67,6 +67,7 @@ public:
 	// 获取关卡总数，数据表缺失时返回0。
 	UFUNCTION(BlueprintPure)
 	static int32 GetEndingGameNum();
+    static TArray<FName> GetEndingLevelOrder();
 	// 返回指定关卡的棋子生成数据，越界或空表不再读取负数索引。
 	UFUNCTION(BlueprintPure)
 	static TArray<FChessGenerationInfo> GetChessGenerateInfo(int32 Index);

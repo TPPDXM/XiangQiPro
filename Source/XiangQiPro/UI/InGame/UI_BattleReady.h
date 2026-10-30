@@ -1,12 +1,12 @@
 #pragma once
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "XiangQiPro/UI/XQPMobileWidget.h"
 #include "UI_BattleReady.generated.h"
 class UBackgroundBlur;
 class UTextBlock;
 
 UCLASS()
-class XIANGQIPRO_API UUI_BattleReady : public UUserWidget
+class XIANGQIPRO_API UUI_BattleReady : public UXQPMobileWidget
 {
     GENERATED_BODY()
 public:

@@ -1,9 +1,9 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "XiangQiPro/UI/XQPMobileWidget.h"
 #include "UI_Introduce_Ending.generated.h"
 
 class UListView;
@@ -14,7 +14,7 @@ class UEndingGameData;
  * 残局游戏介绍界面
  */
 UCLASS()
-class XIANGQIPRO_API UUI_Introduce_Ending : public UUserWidget
+class XIANGQIPRO_API UUI_Introduce_Ending : public UXQPMobileWidget
 {
 	GENERATED_BODY()
 

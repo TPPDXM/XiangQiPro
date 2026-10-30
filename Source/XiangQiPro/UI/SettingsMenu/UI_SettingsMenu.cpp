@@ -1,4 +1,5 @@
 #include "UI_SettingsMenu.h"
+#include "XiangQiPro/UI/XQPMobile.h"
 #include "XiangQiPro/UI/UIManager.h"
 #include "XiangQiPro/UI/Components/XQPButtonBinding.h"
 
@@ -15,5 +16,5 @@ void UUI_SettingsMenu::OpenPlayerSettings()
     if (!PlayerSettingsClass)
         return;
     GetGameInstance()->GetSubsystem<UUIManager>()->AddUI(
-        CreateWidget<UUserWidget>(GetGameInstance(), PlayerSettingsClass));
+        XQPMobile::CreateWidget<UUserWidget>(GetGameInstance(), PlayerSettingsClass));
 }

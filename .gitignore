@@ -374,6 +374,11 @@ FodyWeavers.xsd
 /enc_temp_folder
 /Content/Audio
 /Content/Material
+!/Content/Material/
+/Content/Material/*
+!/Content/Material/Scene/
+/Content/Material/Scene/*
+!/Content/Material/Scene/M_MobileTabletop.uasset
 /Content/Mesh
 /Content/Niagara
 /Content/Texture
@@ -381,3 +386,13 @@ FodyWeavers.xsd
 /Content/UMG/Font
 /Docs
 /Source/XiangQiPro/Tests
+/.codex
+/.cursor
+/.gemini
+/.vscode
+/Scripts
+/ThirdParty/EndgamePuzzles
+/.mcp.json
+/Automation_XiangQiPro.sln
+/Automation_XiangQiPro.slnx
+/XiangQiPro.slnx

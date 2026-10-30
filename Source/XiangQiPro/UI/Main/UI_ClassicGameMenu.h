@@ -1,16 +1,16 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "XiangQiPro/UI/XQPMobileWidget.h"
 #include "UI_ClassicGameMenu.generated.h"
 
 /**
  * 经典游戏菜单
  */
 UCLASS()
-class XIANGQIPRO_API UUI_ClassicGameMenu : public UUserWidget
+class XIANGQIPRO_API UUI_ClassicGameMenu : public UXQPMobileWidget
 {
 	GENERATED_BODY()
 
@@ -33,7 +33,7 @@ public:
     UFUNCTION(BlueprintImplementableEvent)
     void OnSelectedChange(int32 Index);
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidgetOptional))
     class UListView* ItemListView;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -46,8 +46,15 @@ public:
     // 由原菜单选择事件的第三个分支调用，与其他简介共用IntroduceLayout。
     UFUNCTION(BlueprintCallable)
     void ShowLANIntroduction();
+    // 移动端详情页返回独立的三模式选择页。
+    bool HandleMobileBack();
 
 private:
+    void ShowMobileSelection();
+    UFUNCTION() void OpenMobileAI();
+    UFUNCTION() void OpenMobileEnding();
+    UFUNCTION() void OpenMobileLAN();
+    UFUNCTION() void MobileBackClicked();
     // 更新列表选择并通知对应业务。
     UFUNCTION()
     void OnListItemClicked(class UUI_Item_ClassicGame* ClickedItem);

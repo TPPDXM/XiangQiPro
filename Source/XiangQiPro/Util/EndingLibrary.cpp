@@ -15,6 +15,12 @@ int32 UEndingLibrary::GetEndingGameNum()
     return IsValid(Table) ? Table->GetRowNames().Num() : 0;
 }
 
+TArray<FName> UEndingLibrary::GetEndingLevelOrder()
+{
+    const UDataTable* Table = UObjectManager::GetObject<UDataTable>(EndingTablePath);
+    return IsValid(Table) ? Table->GetRowNames() : TArray<FName>();
+}
+
 // 返回指定关卡的棋子生成数据，越界或空表不再读取负数索引。
 TArray<FChessGenerationInfo> UEndingLibrary::GetChessGenerateInfo(int32 Index)
 {

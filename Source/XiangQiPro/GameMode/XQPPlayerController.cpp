@@ -5,6 +5,7 @@
 #include "XiangQiPro/Util/Logger.h"
 #include "XiangQiPro/UI/UIManager.h"
 #include "XQPGameStateBase.h"
+#include "XiangQiPro/UI/XQPMobile.h"
 
 // 进入场景后初始化本对象依赖。
 void AXQPPlayerController::BeginPlay()
@@ -14,9 +15,13 @@ void AXQPPlayerController::BeginPlay()
 	// 显示鼠标、启用点击事件、启用滑动事件
 	this->bEnableClickEvents = true;
 	this->bEnableMouseOverEvents = true;
-	this->bShowMouseCursor = true;
+	this->bShowMouseCursor = !XQPMobile::IsPortrait(this);
 	this->bEnableTouchEvents = true;
 	this->bEnableTouchOverEvents = true;
+    FInputModeGameAndUI InputMode;
+    InputMode.SetHideCursorDuringCapture(false);
+    InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    SetInputMode(InputMode);
 }
 
 // 绑定可在暂停期间使用的退出操作。

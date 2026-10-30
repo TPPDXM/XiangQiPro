@@ -124,6 +124,9 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
     board2PActor = InBoard2PActor;
     bGameOver = false;
     CurrentEndingIndex = INDEX_NONE;
+    EndingMoveCount = 0;
+    EndingBestSteps = 0;
+    bEndingRecordBroken = false;
     bMoveInProgress = false;
     bAIPaused = false;
     battleTurn = EPlayerTag::P1;
@@ -211,6 +214,7 @@ void AXQPGameStateBase::ApplyMove2P(TWeakObjectPtr<AChesses> Target, FChessMove2
         return;
     }
     bMoveInProgress = true;
+    if (CurrentEndingIndex != INDEX_NONE && Side == EChessColor::REDCHESS) ++EndingMoveCount;
     if (bEnableMachineLearning)
     {
         UPlayerProfileSubsystem* Profile = GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>();
@@ -342,8 +346,11 @@ void AXQPGameStateBase::Finish2PGame(EChessColor Winner)
         CancelAIRequest();
         DismissSettingPoint2P();
         if (HUD2P.IsValid()) HUD2P->SetAITurn(false);
-        if (USaveGameLibrary::GetEndingGameLevel() + 1 < UEndingLibrary::GetEndingGameNum())
-            USaveGameLibrary::UpdateEndingGameLevelData();
+        const int32 PreviousBest = USaveGameLibrary::GetEndingBestSteps(CurrentEndingIndex);
+        const bool Saved = USaveGameLibrary::SaveEndingBestSteps(CurrentEndingIndex, EndingMoveCount);
+        bEndingRecordBroken = Saved && PreviousBest > 0 && EndingMoveCount < PreviousBest;
+        EndingBestSteps = USaveGameLibrary::GetEndingBestSteps(CurrentEndingIndex);
+        USaveGameLibrary::UpdateEndingGameLevelData();
         EXEC_ONJUESHA();
         return;
     }

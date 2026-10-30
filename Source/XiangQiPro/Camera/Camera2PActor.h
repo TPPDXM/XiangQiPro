@@ -46,6 +46,12 @@ private:
     bool bIsRotatingCamera;
     bool bProResultCamera = false;
     FRotator HomeRotation;
+    bool bPortraitCamera = false;
+    TWeakObjectPtr<class AChessBoard2PActor> MobileBoard;
+    FVector2D LastMobileViewport = FVector2D::ZeroVector;
+    FMargin LastMobileInsets;
+    void FitMobileBoard();
+    void EnablePortraitCamera();
 
 
 

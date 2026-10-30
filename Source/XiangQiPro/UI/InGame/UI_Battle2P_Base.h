@@ -6,7 +6,7 @@
 #include "XiangQiPro/Util/ChessMove.h"
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "XiangQiPro/UI/XQPMobileWidget.h"
 #include "UI_Battle2P_Base.generated.h"
 
 class AChesses;
@@ -24,7 +24,7 @@ typedef UUI_Battle2P_Base UI_Battle2P_Base;
  * 双人对战主界面
  */
 UCLASS()
-class XIANGQIPRO_API UUI_Battle2P_Base : public UUserWidget
+class XIANGQIPRO_API UUI_Battle2P_Base : public UXQPMobileWidget
 {
 	GENERATED_BODY()
 
@@ -50,7 +50,7 @@ public:
 	UPROPERTY(EditAnywhere, meta = (BindWidget))
 	UTextBlock* Text_Score_P2;
 
-	UPROPERTY(EditAnywhere, meta = (BindWidget))
+	UPROPERTY(EditAnywhere, meta = (BindWidgetOptional))
 	UTextBlock* Text_AIThinking;
 
 	// 落子历史记录
@@ -58,11 +58,11 @@ public:
 	UTextBlock* Text_OperatingRecord;
 
 	// 玩家1的回合标记
-	UPROPERTY(EditAnywhere, meta = (BindWidget))
+	UPROPERTY(EditAnywhere, meta = (BindWidgetOptional))
 	UImage* Image_RoundMark_P1;
 
 	// 玩家2的回合标记
-	UPROPERTY(EditAnywhere, meta = (BindWidget))
+	UPROPERTY(EditAnywhere, meta = (BindWidgetOptional))
 	UImage* Image_RoundMark_P2;
 
 public:

@@ -18,7 +18,7 @@ private:
     UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> Countdown;
     UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> LocalSupplyText;
     UPROPERTY(meta=(BindWidget)) TObjectPtr<UWidget> LocalSupplyPanel;
-    UPROPERTY(meta=(BindWidget)) TObjectPtr<UWidget> EnemySupplyPanel;
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> EnemySupplyPanel;
     UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> EnemySupplyText;
     UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> DoubleSupplyBanner;
     UPROPERTY(Transient) TArray<TObjectPtr<UProgressBar>> LocalSegments;

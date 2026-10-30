@@ -1,7 +1,8 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "UI_ClassicGameMenu.h"
+#include "XiangQiPro/UI/XQPMobile.h"
 #include "UI_Item_ClassicGame.h"
 #include "ClassicGameData.h"
 #include "Components/ListView.h"
@@ -10,13 +11,55 @@
 #include "XiangQiPro/UI/UIManager.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
+#include "XiangQiPro/UI/Components/XQPButtonBinding.h"
 
 // 构造界面并初始化控件与事件绑定。
 void UUI_ClassicGameMenu::NativeConstruct()
 {
     Super::NativeConstruct();
-
+    if (GetWidgetFromName(TEXT("ModeSelectionPage")))
+    {
+        const auto FindButton = [this](const TCHAR* Name)
+        {
+            auto* Button = XQPButtonBinding::GetButton(Cast<UUserWidget>(GetWidgetFromName(Name)));
+            if (Button) Button->OnClicked.Clear();
+            return Button;
+        };
+        if (auto* Button = FindButton(TEXT("ClassicAIButton"))) Button->OnClicked.AddUniqueDynamic(this, &UUI_ClassicGameMenu::OpenMobileAI);
+        if (auto* Button = FindButton(TEXT("ClassicEndingButton"))) Button->OnClicked.AddUniqueDynamic(this, &UUI_ClassicGameMenu::OpenMobileEnding);
+        if (auto* Button = FindButton(TEXT("ClassicLANButton"))) Button->OnClicked.AddUniqueDynamic(this, &UUI_ClassicGameMenu::OpenMobileLAN);
+        if (auto* Button = FindButton(TEXT("WB_Btn_Quit"))) Button->OnClicked.AddUniqueDynamic(this, &UUI_ClassicGameMenu::MobileBackClicked);
+        ShowMobileSelection();
+    }
 }
+
+void UUI_ClassicGameMenu::ShowMobileSelection()
+{
+    if (auto* Selection = GetWidgetFromName(TEXT("ModeSelectionPage")))
+        Selection->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+    if (auto* Detail = Cast<UCanvasPanel>(GetWidgetFromName(TEXT("IntroduceLayout"))))
+    {
+        Detail->ClearChildren();
+        Detail->SetVisibility(ESlateVisibility::Collapsed);
+    }
+    SelectedIndex = -1;
+    XQPButtonBinding::SetCaption(Cast<UUserWidget>(GetWidgetFromName(TEXT("WB_Btn_Quit"))), FText::FromString(TEXT("返回主界面")));
+}
+
+bool UUI_ClassicGameMenu::HandleMobileBack()
+{
+    if (!GetWidgetFromName(TEXT("ModeSelectionPage")) || SelectedIndex < 0) return false;
+    ShowMobileSelection();
+    return true;
+}
+
+void UUI_ClassicGameMenu::MobileBackClicked()
+{
+    if (!HandleMobileBack()) GetGameInstance()->GetSubsystem<UUIManager>()->RemoveUI(this);
+}
+void UUI_ClassicGameMenu::OpenMobileAI() { SetSelection(0); }
+void UUI_ClassicGameMenu::OpenMobileEnding() { SetSelection(1); }
+void UUI_ClassicGameMenu::OpenMobileLAN() { SetSelection(2); }
 
 // 根据名称和图标生成菜单条目。
 void UUI_ClassicGameMenu::InitializeList(const TArray<FString>& Items, const TArray<UTexture2D*>& Icons)
@@ -63,7 +106,7 @@ void UUI_ClassicGameMenu::ShowLANIntroduction()
     UCanvasPanel* Frame = Cast<UCanvasPanel>(GetWidgetFromName(TEXT("IntroduceLayout")));
     if (!Frame || !LANIntroductionClass) return;
     // 只实例化已保存的UMG页面，嵌入方式与人机/残局简介相同。
-    UUI_LANLobby* Page = CreateWidget<UUI_LANLobby>(GetGameInstance(), LANIntroductionClass);
+    UUI_LANLobby* Page = XQPMobile::CreateWidget<UUI_LANLobby>(GetGameInstance(), LANIntroductionClass);
     if (!Page) return;
     Frame->ClearChildren();
     UCanvasPanelSlot* ContentSlot = Frame->AddChildToCanvas(Page);
@@ -74,6 +117,17 @@ void UUI_ClassicGameMenu::ShowLANIntroduction()
 // 选中指定索引的已生成列表项。
 void UUI_ClassicGameMenu::SetSelection(int32 Index)
 {
+    if (auto* Selection = GetWidgetFromName(TEXT("ModeSelectionPage")))
+    {
+        if (Index < 0 || Index > 2) return;
+        SelectedIndex = Index;
+        Selection->SetVisibility(ESlateVisibility::Collapsed);
+        if (auto* Detail = GetWidgetFromName(TEXT("IntroduceLayout")))
+            Detail->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+        XQPButtonBinding::SetCaption(Cast<UUserWidget>(GetWidgetFromName(TEXT("WB_Btn_Quit"))), FText::FromString(TEXT("返回模式选择")));
+        OnSelectedChange(Index);
+        return;
+    }
     if (!IsValid(ItemListView) || !DataObjList.IsValidIndex(Index)) return;
     UUI_Item_ClassicGame* Entry = ItemListView->GetEntryWidgetFromItem<UUI_Item_ClassicGame>(DataObjList[Index]);
     if (Entry)
@@ -92,6 +146,7 @@ void UUI_ClassicGameMenu::SetSelection(int32 Index)
 
 void UUI_ClassicGameMenu::EnsureInitialSelection()
 {
+    if (GetWidgetFromName(TEXT("ModeSelectionPage"))) return;
     if (SelectedIndex < 0)
     {
         SetSelection(0);

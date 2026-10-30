@@ -4,6 +4,7 @@
 #include "UI_Item_EndingGame.h"
 #include "EndingGameData.h"
 #include "UI_Introduce_Ending.h"
+#include "XiangQiPro/UI/XQPMobile.h"
 
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
@@ -39,6 +40,7 @@ void UUI_Item_EndingGame::NativeOnListItemObjectSet(UObject* ListItemObject)
             LevelText.Append(Title);
         }
 		if (IsValid(IndexText)) IndexText->SetText(FText::FromString(LevelText));
+        SetSelected(false);
 
         if (SelectionOwner.IsValid())
         {
@@ -80,6 +82,17 @@ void UUI_Item_EndingGame::SetSelected(bool bIsSelected)
     brush.OutlineSettings.RoundingType = ESlateBrushRoundingType::Type::FixedRadius; // 轮廓圆角
     brush.OutlineSettings.CornerRadii = FVector4(20, 20, 20, 20); // 圆角角度
     brush.OutlineSettings.Width = 5.f; // 轮廓宽度
+    if (XQPMobile::IsPortrait(this))
+    {
+        brush.OutlineSettings.CornerRadii = FVector4(6, 6, 6, 6);
+        brush.OutlineSettings.Width = .8f;
+        brush.OutlineSettings.Color = bSelected ? FLinearColor(.69f, .53f, .28f, 1.f) : FLinearColor(.35f, .29f, .23f, .65f);
+        brush.TintColor = bSelected ? FLinearColor(.075f, .035f, .03f, .9f) : FLinearColor(.025f, .018f, .02f, .35f);
+        SelectedIndicator->SetColorAndOpacity(FLinearColor::White);
+        SelectedIndicator->SetBrush(brush);
+        IndexText->SetColorAndOpacity(bSelected ? FLinearColor(.82f, .67f, .42f, 1.f) : FLinearColor(.72f, .67f, .59f, 1.f));
+        return;
+    }
     if (bSelected)
     {
         brush.OutlineSettings.Color = SelectedTextColor; // 轮廓颜色

@@ -28,6 +28,7 @@ public:
 
 public:
 	virtual void NativeConstruct() override;
+    void SetModeInfo(const FString& Title, class UTexture2D* Cover, int32 ModeId);
     UFUNCTION(BlueprintCallable) void OpenModeIntroduction();
     UPROPERTY(EditDefaultsOnly) TSubclassOf<class UUI_ProModeSetup> SetupClass;
 

@@ -1,4 +1,4 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #include "CameraMainActor.h"
 #include "CineCameraComponent.h"
@@ -57,6 +57,7 @@ void ACameraMainActor::BeginPlay()
 	// 监听窗口大小变化
 	if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport)
 	{
+		GEngine->GameViewport->Viewport->ViewportResizedEvent.RemoveAll(this);
 		GEngine->GameViewport->Viewport->ViewportResizedEvent.AddUObject(
 			this, &ACameraMainActor::OnViewportResized);
 	}
@@ -72,6 +73,7 @@ void ACameraMainActor::BeginPlay()
 
 	// 计算基础角度（基于当前相机位置和朝向）
 	CalculateBaseAngles();
+
 }
 
 // 创建主界面并交给UI管理器。

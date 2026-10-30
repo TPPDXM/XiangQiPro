@@ -1,10 +1,12 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #include "XQP_HUD.h"
+#include "XiangQiPro/UI/XQPMobile.h"
 #include "XiangQiPro/GameMode/XQPGameStateBase.h"
 #include "XiangQiPro/GameMode/XQPGameInstance.h"
 #include "XiangQiPro/Util/ObjectManager.h"
 #include "InGame/UI_ProBattle.h"
+#include "TimerManager.h"
 
 AXQP_HUD::AXQP_HUD()
 {
@@ -17,7 +19,7 @@ AXQP_HUD::AXQP_HUD()
 void AXQP_HUD::BeginPlay()
 {
 	Super::BeginPlay();
-	InitUI();
+    GetWorldTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this]() { InitUI(); }));
 }
 
 void AXQP_HUD::InitUI()
@@ -37,7 +39,7 @@ void AXQP_HUD::InitUI()
     case EXQPGameMode::ProBattleLAN:
     {
         auto* ProClass = LoadClass<UUI_ProBattle>(nullptr, TEXT("/Game/UMG/Pro/BP_UI_ProBattle.BP_UI_ProBattle_C"));
-        BaseUI = CreateWidget<UUI_ProBattle>(GetWorld(), ProClass);
+        BaseUI = XQPMobile::CreateWidget<UUI_ProBattle>(GetWorld(), ProClass);
         PauseMenuClass = Class_InGamePause;
         if (auto* State = GetWorld()->GetGameState<AXQPGameStateBase>()) State->SetHUD2P(Cast<UUI_Battle2P_Base>(BaseUI));
         break;
@@ -47,7 +49,7 @@ void AXQP_HUD::InitUI()
 	case EXQPGameMode::Ending:
 	case EXQPGameMode::AI2P:
     case EXQPGameMode::LAN:
-		BaseUI = CreateWidget<UI_Battle2P_Base>(GetWorld(), Class_Battle2P_Base);
+		BaseUI = XQPMobile::CreateWidget<UI_Battle2P_Base>(GetWorld(), Class_Battle2P_Base);
 		PauseMenuClass = Class_InGamePause;
 
 		if (AXQPGameStateBase* _GS = Cast<GS>(GetWorld()->GetGameState()))

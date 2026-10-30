@@ -7,7 +7,7 @@
 #include "SaveGameProgress.generated.h"
 
 /**
- * 玩家游戏进度的存档类
+ * 鐜╁娓告垙杩涘害鐨勫瓨妗ｇ被
  */
 UCLASS()
 class XIANGQIPRO_API USaveGameProgress : public USaveGame
@@ -26,5 +26,9 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TArray<int32> UsingSteps;
+
+    // Stable DataTable row names corresponding to the saved positional fields.
+    UPROPERTY(SaveGame)
+    TArray<FName> EndingLevelOrder;
 	
 };

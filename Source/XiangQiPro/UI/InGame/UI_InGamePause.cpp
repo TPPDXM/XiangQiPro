@@ -1,7 +1,8 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "UI_InGamePause.h"
+#include "XiangQiPro/UI/XQPMobile.h"
 #include "XiangQiPro/UI/UIManager.h"
 #include "XiangQiPro/UI/InGame/UI_Battle2P_Base.h"
 #include "XiangQiPro/UI/Components/UI_CommonDialog.h"
@@ -75,14 +76,14 @@ void UUI_InGamePause::LeaveToMainMenu()
         GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->LeaveRoom();
     GetGameInstance<UXQPGameInstance>()->SetGameMode(EXQPGameMode::Default);
     UGameplayStatics::SetGamePaused(this, false);
-    UGameplayStatics::OpenLevel(this, TEXT("/Game/Map/Main"));
+    UXQPGameInstance::OpenGameLevel(this, TEXT("/Game/Map/Main"));
 }
 
 void UUI_InGamePause::AskToResign()
 {
     auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
     if (!CommonDialogClass || Room->GetState() != EXQPRoomState::Playing) return;
-    auto* Dialog = CreateWidget<UUI_CommonDialog>(GetOwningPlayer(), CommonDialogClass);
+    auto* Dialog = XQPMobile::CreateWidget<UUI_CommonDialog>(GetOwningPlayer(), CommonDialogClass);
     if (!Dialog) return;
     ResignDialog = Dialog;
     Dialog->Configure(FText::FromString(TEXT("确认认输")), FText::FromString(TEXT("认输后本局结束，对方获胜。")),

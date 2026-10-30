@@ -10,6 +10,7 @@ void UUI_TransitionScreen::NativeConstruct()
 {
 	Super::NativeConstruct();
 	UpdateCanTick();
+    bFadeFinished = false;
 
 	PlayTransition = FDoOnce<void()>([this]() {
 		if (StayTime > 0 && GetWorld())
@@ -50,8 +51,14 @@ void UUI_TransitionScreen::NativeDestruct()
 void UUI_TransitionScreen::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+    if (bFadeFinished) return;
 	NewFadeTime += InDeltaTime;
-	if (NewFadeTime > FadeTime)
+    NewFadeTime = FMath::Min(NewFadeTime, FadeTime);
+    // Paint the terminal black frame before delegates decide whether to travel.
+    if (IsValid(Image_Background)) Image_Background->SetColorAndOpacity(FLinearColor(FadeColor.R, FadeColor.G, FadeColor.B,
+        FMath::Lerp(FadeAlpha.X, FadeAlpha.Y, NewFadeTime / FadeTime)));
+    OnFadingDelegate.ExecuteIfBound(NewFadeTime / FadeTime);
+	if (NewFadeTime >= FadeTime)
 	{
 		NewFadeTime = FadeTime;
 
@@ -62,10 +69,6 @@ void UUI_TransitionScreen::NativeTick(const FGeometry& MyGeometry, float InDelta
 		}
 	}
 
-	OnFadingDelegate.ExecuteIfBound(NewFadeTime / FadeTime); // 正在淡化回调，传入淡化进度百分比
-
-	if (IsValid(Image_Background)) Image_Background->SetColorAndOpacity(FLinearColor(FadeColor.R, FadeColor.G, FadeColor.B,
-		(FadeAlpha.Y - FadeAlpha.X) * (NewFadeTime / FadeTime) + FadeAlpha.X));
 }
 
 // 配置过渡透明度、时长、颜色和结束通知。
@@ -123,11 +126,13 @@ void UUI_TransitionScreen::EndStay()
 // 完成过渡并执行结束回调。
 void UUI_TransitionScreen::EndFade()
 {
+    if (bFadeFinished) return;
 	if (bReverse && Reverse.IsExecutable())
 	{
 		Reverse.Execute(); // 执行倒放操作
 		return;
 	}
+    bFadeFinished = true;
 	Delegate.ExecuteIfBound();
 	Delegate_DYNAMIC.ExecuteIfBound();
 

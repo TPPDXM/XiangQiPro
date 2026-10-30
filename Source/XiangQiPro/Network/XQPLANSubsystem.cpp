@@ -469,7 +469,7 @@ void UXQPLANSubsystem::OpenBattleMap()
     bLocalReady = bPeerReady = false;
     if (UXQPGameInstance* GI = Cast<UXQPGameInstance>(GetGameInstance()))
         GI->SetGameMode(bProRoom ? EXQPGameMode::ProBattleLAN : EXQPGameMode::LAN);
-    UGameplayStatics::OpenLevel(GetWorld(), TEXT("/Game/Map/Battle2P"));
+    UXQPGameInstance::OpenGameLevel(GetWorld(), TEXT("/Game/Map/Battle2P"));
 }
 void UXQPLANSubsystem::NotifyBoardReady()
 {

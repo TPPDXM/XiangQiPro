@@ -2,6 +2,7 @@
 
 
 #include "UI_Battle2P_Base.h"
+#include "XiangQiPro/UI/XQPMobile.h"
 #include "XiangQiPro/UI/XQP_HUD.h"
 #include "XiangQiPro/Chess/Chesses.h"
 #include "XiangQiPro/Interface/IF_GameState.h"
@@ -17,14 +18,16 @@
 #include "XiangQiPro/UI/Components/UI_CommonDialog.h"
 #include "XiangQiPro/GameMode/XQPPlayerController.h"
 #include "XiangQiPro/Util/EndingLibrary.h"
+#include "XiangQiPro/UI/XQPUIStyle.h"
 
 void UUI_Battle2P_Base::NativeConstruct()
 {
     Super::NativeConstruct();
     UpdateCanTick();
     GameState = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr;
+    const bool Solo = GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::SoloRide;
     SetPlayerScoreVisible(true);
-    SetOpponentScoreVisible(!GameState.IsValid() || GameState->GetBattleType() != EBattleType::SoloRide);
+    SetOpponentScoreVisible(!Solo);
     if (auto* Button = XQPButtonBinding::GetButton(MenuButton))
         Button->OnClicked.AddUniqueDynamic(this, &UUI_Battle2P_Base::OpenMenu);
     if (auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>())
@@ -47,11 +50,21 @@ void UUI_Battle2P_Base::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
     if (!GameState.IsValid()) return;
     const auto* Profile = GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>();
     const bool LAN = GameState->IsLANGame();
+    const bool Solo = GameState->GetBattleType() == EBattleType::SoloRide;
     auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
     if (Text_Name_P1)
         Text_Name_P1->SetText(FText::FromString(LAN ? Room->GetRedName() : Profile->GetPlayerName()));
     if (Text_Name_P2)
-        Text_Name_P2->SetText(FText::FromString(LAN ? Room->GetBlackName() : TEXT("电子棋友")));
+    {
+        Text_Name_P2->SetVisibility(Solo ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+        Text_Name_P2->SetText(Solo ? FText::GetEmpty() : FText::FromString(LAN ? Room->GetBlackName() : TEXT("电子棋友")));
+    }
+    if (Solo)
+    {
+        if (auto* Panel = GetWidgetFromName(TEXT("BlackInfoPanel"))) Panel->SetVisibility(ESlateVisibility::Collapsed);
+        if (Text_AIThinking) Text_AIThinking->SetVisibility(ESlateVisibility::Collapsed);
+        if (Image_RoundMark_P2) Image_RoundMark_P2->SetVisibility(ESlateVisibility::Collapsed);
+    }
     if (ModeStatus)
     {
         const bool Challenge = GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::AI2P && Profile->bChallengeSelected;
@@ -88,7 +101,7 @@ void UUI_Battle2P_Base::ShowBattleStart()
 UUI_CommonDialog* UUI_Battle2P_Base::OpenResultDialog()
 {
     if (!CommonDialogClass) return nullptr;
-    if (!ResultDialog.IsValid()) ResultDialog = CreateWidget<UUI_CommonDialog>(GetOwningPlayer(), CommonDialogClass);
+    if (!ResultDialog.IsValid()) ResultDialog = XQPMobile::CreateWidget<UUI_CommonDialog>(GetOwningPlayer(), CommonDialogClass);
     auto* Dialog = ResultDialog.Get();
     if (!Dialog) return nullptr;
     Dialog->OnPrimaryAction = FSimpleDelegate::CreateUObject(this, &UUI_Battle2P_Base::PlayAgain);
@@ -120,21 +133,27 @@ void UUI_Battle2P_Base::ShowMatchResult(EChessColor Winner)
     if (GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::Ending)
     {
         const FString Title = GameState.IsValid() ? UEndingLibrary::GetEndingGameTitle(GameState->GetCurrentEndingIndex()) : FString();
-        const FString Message = Won
+        FString Message = Won
             ? (Title.IsEmpty() ? TEXT("本关挑战成功！") : FString::Printf(TEXT("已通过「%s」"), *Title))
             : TEXT("本关挑战失败，可以重新挑战。");
+        if (Won && GameState.IsValid())
+        {
+            Message += FString::Printf(TEXT("\n本次 %d 步 · 最少步数纪录 %d 步"), GameState->GetEndingMoveCount(), GameState->GetEndingBestSteps());
+            if (GameState->DidBreakEndingRecord()) Message += TEXT("\n已刷新最少步数纪录！");
+        }
         Dialog->Configure(FText::FromString(Won ? TEXT("残局通关") : TEXT("挑战失败")), FText::FromString(Message),
             FText::FromString(TEXT("重新挑战")), FText::FromString(TEXT("返回主菜单")), FText::FromString(TEXT("查看棋盘")));
+        Dialog->SetMatchOutcome(Won);
         RefreshRematchAction();
         return;
     }
-    const FString WinnerName = LAN ? (Winner == EChessColor::REDCHESS ? Room->GetRedName() : Room->GetBlackName())
-                                  : (Won ? GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>()->GetPlayerName() : TEXT("电子棋友"));
-    FString Message = FString::Printf(TEXT("%s获胜：%s"), Winner == EChessColor::REDCHESS ? TEXT("红方") : TEXT("黑方"), *WinnerName);
-    if (LAN && Room->DidPeerResign()) Message = TEXT("对方已认输。\n") + Message;
-    else if (LAN && Room->DidLocalResign()) Message = TEXT("你已认输。\n") + Message;
+    FString Message = TEXT("本局对弈已结束。");
+    if (LAN && Room->DidPeerResign()) Message = TEXT("对方已认输");
+    else if (LAN && Room->DidLocalResign()) Message = TEXT("你已认输");
     Dialog->Configure(FText::FromString(Won ? TEXT("对弈胜利") : TEXT("对弈失败")), FText::FromString(Message),
         FText::FromString(TEXT("再战")), FText::FromString(TEXT("返回主菜单")), FText::FromString(TEXT("查看棋盘")));
+    Dialog->SetMatchOutcome(Won);
+    Dialog->SetMessageFaction(Winner);
     RefreshRematchAction();
 }
 
@@ -142,7 +161,7 @@ void UUI_Battle2P_Base::ShowSoloRideResult(int32 Score)
 {
     if (auto* Dialog = OpenResultDialog())
         Dialog->Configure(FText::FromString(TEXT("单骑挑战结束")),
-            FText::FromString(FString::Printf(TEXT("本次得分：%d"), Score)),
+            FText::FromString(FString::Printf(TEXT("本次得分：%d 分"), Score)),
             FText::FromString(TEXT("重新挑战")), FText::FromString(TEXT("返回主菜单")), FText::FromString(TEXT("查看棋盘")));
 }
 
@@ -217,7 +236,7 @@ void UUI_Battle2P_Base::ReturnToMainMenu()
     if (GameState.IsValid() && GameState->IsLANGame()) GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->LeaveRoom();
     GetGameInstance<UXQPGameInstance>()->SetGameMode(EXQPGameMode::Default);
     UGameplayStatics::SetGamePaused(this, false);
-    UGameplayStatics::OpenLevel(this, TEXT("/Game/Map/Main"));
+    UXQPGameInstance::OpenGameLevel(this, TEXT("/Game/Map/Main"));
 }
 
 // 刷新双方得分控件。
@@ -231,12 +250,14 @@ void UUI_Battle2P_Base::SetPlayerScoreVisible(bool bVisible)
 {
     bPlayerScoreVisible = bVisible;
     if (PlayerScorePanel) PlayerScorePanel->SetVisibility(bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+    if (Text_Score_P1) Text_Score_P1->SetVisibility(bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 }
 
 void UUI_Battle2P_Base::SetOpponentScoreVisible(bool bVisible)
 {
     bOpponentScoreVisible = bVisible;
     if (OpponentScorePanel) OpponentScorePanel->SetVisibility(bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+    if (Text_Score_P2) Text_Score_P2->SetVisibility(bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 }
 
 // 更新AI思考提示和回合标记。

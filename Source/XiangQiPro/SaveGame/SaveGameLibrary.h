@@ -31,5 +31,9 @@ public:
     static void SetEndingGameLevel_Max(int32);
 
     static void UpdateEndingGameLevelData();
+
+    // 0 means this level has no completed run yet. Steps count red moves only.
+    static int32 GetEndingBestSteps(int32 LevelIndex);
+    static bool SaveEndingBestSteps(int32 LevelIndex, int32 Steps);
 	
 };

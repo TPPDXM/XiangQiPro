@@ -1,10 +1,10 @@
 #pragma once
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "XiangQiPro/UI/XQPMobileWidget.h"
 #include "UI_SettingsMenu.generated.h"
 
 UCLASS()
-class XIANGQIPRO_API UUI_SettingsMenu : public UUserWidget
+class XIANGQIPRO_API UUI_SettingsMenu : public UXQPMobileWidget
 {
     GENERATED_BODY()
 public:

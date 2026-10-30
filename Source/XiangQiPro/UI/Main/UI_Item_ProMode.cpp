@@ -1,7 +1,8 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "UI_Item_ProMode.h"
+#include "XiangQiPro/UI/XQPMobile.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
 #include "ProModeData.h"
@@ -24,7 +25,7 @@ void UUI_Item_ProMode::NativeConstruct()
 void UUI_Item_ProMode::OpenModeIntroduction()
 {
     if (!SetupClass) return;
-    auto* Setup = CreateWidget<UUI_ProModeSetup>(GetOwningPlayer(), SetupClass);
+    auto* Setup = XQPMobile::CreateWidget<UUI_ProModeSetup>(GetOwningPlayer(), SetupClass);
     if (!Setup) return;
     Setup->SetMode(GameModeID);
     GetGameInstance()->GetSubsystem<UUIManager>()->AddUI(Setup, false);
@@ -41,7 +42,12 @@ void UUI_Item_ProMode::NativeOnListItemObjectSet(UObject* ListItemObject)
 		return;
 	}
 
-	ItemText->SetText(FText::FromString(ModeData->GetModeTitle()));										    // 设置Item标题
-	ItemCover->SetBrush(UWidgetBlueprintLibrary::MakeBrushFromTexture(ModeData->GetModeCover(), 256.0, 192.0));  // 设置Item封面
-	GameModeID = ModeData->GetGameModeID();																	// 获取游戏模式ID
+    SetModeInfo(ModeData->GetModeTitle(), ModeData->GetModeCover(), ModeData->GetGameModeID());
+}
+
+void UUI_Item_ProMode::SetModeInfo(const FString& Title, UTexture2D* Cover, int32 ModeId)
+{
+    if (ItemText) ItemText->SetText(FText::FromString(Title));
+    if (ItemCover) ItemCover->SetBrush(UWidgetBlueprintLibrary::MakeBrushFromTexture(Cover, 256.f, 192.f));
+    GameModeID = ModeId;
 }

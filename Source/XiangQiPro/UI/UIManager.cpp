@@ -1,8 +1,10 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "UIManager.h"
+#include "XiangQiPro/UI/XQPMobile.h"
 #include "Components/UI_CommonDialog.h"
+#include "Main/UI_ClassicGameMenu.h"
 #include <XiangQiPro/Util/Logger.h>
 #include <Kismet/GameplayStatics.h>
 #include <Blueprint/WidgetBlueprintLibrary.h>
@@ -107,11 +109,13 @@ void UUIManager::CloseDialogs(UUserWidget* Except)
 // 关闭顶层界面或打开暂停菜单。
 void UUIManager::FinishUI()
 {
+    if (!ui_stack.IsEmpty())
+        if (auto* Classic = Cast<UUI_ClassicGameMenu>(ui_stack.Top()); Classic && Classic->HandleMobileBack()) return;
 	if (ui_stack.IsEmpty())
 	{
 		if (!PauseUI.IsValid() && IsValid(PauseWidgetClass))
 		{
-			PauseUI = CreateWidget<UUserWidget>(GetWorld(), PauseWidgetClass);
+			PauseUI = XQPMobile::CreateWidget<UUserWidget>(GetWorld(), PauseWidgetClass);
 		}
 
 		if (PauseUI.IsValid()) // 仅当暂停界面存在时才允许隐藏基础UI
@@ -151,6 +155,7 @@ void UUIManager::SetUIVisibility(UUserWidget* ui, bool bVisible)
 	if (IsValid(ui))
 	{
 		ui->SetIsEnabled(bVisible);
+		ui->SetVisibility(bVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 		ui->SetColorAndOpacity(bVisible ? FLinearColor(1, 1, 1, 1) : FLinearColor(0, 0, 0, 0));
 	}
 }

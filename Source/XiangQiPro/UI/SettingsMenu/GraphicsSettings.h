@@ -1,9 +1,9 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "XiangQiPro/UI/XQPMobileWidget.h"
 #include "GameFramework/GameUserSettings.h"
 #include "GraphicsSettings.generated.h"
 
@@ -11,7 +11,7 @@
  * 画面设置和视频设置的父类
  */
 UCLASS()
-class XIANGQIPRO_API UGraphicsSettings : public UUserWidget
+class XIANGQIPRO_API UGraphicsSettings : public UXQPMobileWidget
 {
 	GENERATED_BODY()
 

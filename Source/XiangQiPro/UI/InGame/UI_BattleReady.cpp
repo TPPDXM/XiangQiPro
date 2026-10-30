@@ -5,10 +5,13 @@
 #include "XiangQiPro/GameMode/XQPGameStateBase.h"
 #include "XiangQiPro/GameMode/BattleStartComponent.h"
 #include "XiangQiPro/Network/XQPLANSubsystem.h"
+#include "XiangQiPro/UI/XQPUIStyle.h"
 
 void UUI_BattleReady::NativeConstruct()
 {
     Super::NativeConstruct();
+    XQPUIStyle::SetFactionText(RedStatus, EChessColor::REDCHESS);
+    XQPUIStyle::SetFactionText(BlackStatus, EChessColor::BLACKCHESS);
     if (auto* State = GetWorld()->GetGameState<AXQPGameStateBase>())
     {
         State->BattleStart->OnSetupChanged.RemoveAll(this);

@@ -7,6 +7,12 @@
 #include "../Util/Logger.h"
 #include "XiangQiPro/GameMode/XQPGameInstance.h"
 #include "XiangQiPro/Network/XQPLANSubsystem.h"
+#include "XiangQiPro/UI/XQPMobile.h"
+#include "XiangQiPro/GameObject/ChessBoard2PActor.h"
+#include "Components/StaticMeshComponent.h"
+#include "EngineUtils.h"
+#include "Sound/SoundBase.h"
+#include "UObject/ConstructorHelpers.h"
 
 // 初始化默认属性和组件。
 ACamera2PActor::ACamera2PActor()
@@ -32,6 +38,10 @@ ACamera2PActor::ACamera2PActor()
 	// 创建音频组件
 	BattleAudio = CreateDefaultSubobject<UAudioComponent>(TEXT("BattleAudio"));
 	BattleAudio->SetupAttachment(GameCamera);
+    BattleAudio->bAutoActivate = false;
+    BattleAudio->bIsUISound = true;
+    static ConstructorHelpers::FObjectFinder<USoundBase> Music(TEXT("/Game/Audio/BattleMusic"));
+    BattleMusic = Music.Object;
 
 	// 初始化变量
 	bIsRotatingCamera = false;
@@ -46,7 +56,7 @@ void ACamera2PActor::BeginPlay()
 {
 	Super::BeginPlay();
 
-	InitCamera();
+    InitCamera();
 	InitAudio();
 }
 
@@ -59,6 +69,7 @@ void ACamera2PActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 // 初始化相机的目标旋转。
 void ACamera2PActor::InitCamera()
 {
+    bPortraitCamera = XQPMobile::IsPortrait(this);
 	// 初始化目标旋转为当前旋转
 	TargetRotation = SpringArm->GetRelativeRotation();
     // 黑方从自己的底线观察棋盘；保留已有的拖拽和缩放控制。
@@ -69,10 +80,81 @@ void ACamera2PActor::InitCamera()
         SpringArm->SetRelativeRotation(TargetRotation);
     }
     HomeRotation = TargetRotation;
+    if (bPortraitCamera) EnablePortraitCamera();
+}
+
+void ACamera2PActor::EnablePortraitCamera()
+{
+        bPortraitCamera = true;
+        HomeRotation.Pitch = TargetRotation.Pitch = -90.f;
+        HomeRotation.Roll = TargetRotation.Roll = 0.f;
+        SpringArm->bEnableCameraLag = false;
+        SpringArm->bEnableCameraRotationLag = false;
+        SpringArm->SocketOffset = FVector::ZeroVector;
+        SpringArm->TargetOffset = FVector::ZeroVector;
+        GameCamera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
+        GameCamera->bConstrainAspectRatio = false;
+        GameCamera->bOverrideAspectRatioAxisConstraint = true;
+        GameCamera->SetAspectRatioAxisConstraint(AspectRatio_MaintainXFOV);
+        GameCamera->SetProjectionMode(ECameraProjectionMode::Orthographic);
+        GameCamera->bAutoCalculateOrthoPlanes = false;
+        GameCamera->OrthoNearClipPlane = 0.1f;
+        GameCamera->OrthoFarClipPlane = 10000.f;
+        GameCamera->bUpdateOrthoPlanes = false;
+        GameCamera->bUseCameraHeightAsViewTarget = false;
+        // Perspective focus distances from the level must not blur the orthographic board.
+        GameCamera->PostProcessSettings.bOverride_DepthOfFieldScale = true;
+        GameCamera->PostProcessSettings.DepthOfFieldScale = 0.f;
+        // Orthographic gameplay uses a stable exposure instead of physical lens parameters.
+        GameCamera->PostProcessSettings.bOverride_AutoExposureMethod = true;
+        GameCamera->PostProcessSettings.AutoExposureMethod = AEM_Manual;
+        GameCamera->PostProcessSettings.bOverride_AutoExposureApplyPhysicalCameraExposure = true;
+        GameCamera->PostProcessSettings.AutoExposureApplyPhysicalCameraExposure = false;
+        GameCamera->PostProcessSettings.bOverride_BloomIntensity = true;
+        GameCamera->PostProcessSettings.BloomIntensity = .15f;
+        FitMobileBoard();
+}
+
+void ACamera2PActor::FitMobileBoard()
+{
+    const FVector2D Viewport = XQPMobile::ViewportSize(this);
+    if (Viewport.X <= 0 || Viewport.Y <= 0) return;
+    if (!MobileBoard.IsValid())
+    {
+        TActorIterator<AChessBoard2PActor> It(GetWorld());
+        if (It) MobileBoard = *It;
+    }
+    if (!MobileBoard.IsValid() || !MobileBoard->ChessBoardMesh) return;
+    const FBox Bounds = MobileBoard->ChessBoardMesh->Bounds.GetBox();
+    if (!Bounds.IsValid || Bounds.GetExtent().IsNearlyZero()) return;
+    const FVector Center = Bounds.GetCenter() + FVector(0, 0, Bounds.GetExtent().Z + 2.f);
+    const FBox2D Rect = XQPMobile::BoardRect(this);
+    const double Aspect = Viewport.X / Viewport.Y;
+    TargetRotation = HomeRotation;
+    TargetRotation.Pitch = -90.f;
+    SpringArm->SetWorldRotation(TargetRotation);
+    const FVector Right = FRotationMatrix(TargetRotation).GetScaledAxis(EAxis::Y);
+    const FVector Up = FRotationMatrix(TargetRotation).GetScaledAxis(EAxis::Z);
+    const FVector Extent = Bounds.GetExtent();
+    // Project the bounds onto the current camera axes, including the black-side view.
+    const double HalfWidth = FVector::DotProduct(Right.GetAbs(), Extent) + .75f;
+    const double HalfHeight = FVector::DotProduct(Up.GetAbs(), Extent) + .75f;
+    const double OrthoWidth = FMath::Max(2.0 * HalfWidth * Viewport.X / Rect.GetSize().X,
+        2.0 * HalfHeight * Viewport.X / Rect.GetSize().Y);
+    GameCamera->SetOrthoWidth(OrthoWidth);
+    const FVector2D ScreenCenter = Rect.GetCenter() / Viewport;
+    SetActorLocation(Center - Right * ((2.f * ScreenCenter.X - 1.f) * OrthoWidth * .5)
+        - Up * ((1.f - 2.f * ScreenCenter.Y) * OrthoWidth * .5 / Aspect));
+    TargetArmLength = FMath::Max(90.f, Extent.Z + 20.f);
+    GameCamera->OrthoFarClipPlane = FMath::Max(500.f, TargetArmLength + Extent.Z * 2.f + 100.f);
+    SpringArm->TargetArmLength = TargetArmLength;
+    LastMobileViewport = Viewport;
+    LastMobileInsets = XQPMobile::SafeInsets(this);
 }
 
 void ACamera2PActor::PlayProResultCamera()
 {
+    if (bPortraitCamera) { bProResultCamera = true; FitMobileBoard(); return; }
     bProResultCamera = true;
     bIsRotatingCamera = bIsSingleTouchActive = bIsTwoFingerTouchActive = false;
     TargetRotation = HomeRotation;
@@ -89,7 +171,8 @@ void ACamera2PActor::GamePlayAgain(UObject* OwnerObject)
     {
         bProResultCamera = false;
         TargetRotation = HomeRotation;
-        TargetArmLength = 90.f;
+        if (bPortraitCamera) FitMobileBoard();
+        else TargetArmLength = 90.f;
         EnableInput(GetController<APlayerController>());
     }
     IIF_GameState::GamePlayAgain(OwnerObject);
@@ -98,14 +181,21 @@ void ACamera2PActor::GamePlayAgain(UObject* OwnerObject)
 // 设置并播放场景背景音乐。
 void ACamera2PActor::InitAudio()
 {
-	BattleAudio->SetSound(BattleMusic); // 设置音频资源
-	BattleAudio->Play(); // 开始播放背景音乐
+    if (!IsValid(BattleAudio)) return;
+    BattleAudio->SetSound(BattleMusic);
+    if (BattleMusic) BattleAudio->Play();
 }
 
 // 如果需要每帧更新，可以重写Tick函数
 void ACamera2PActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+    if (!bPortraitCamera && XQPMobile::IsPortrait(this)) EnablePortraitCamera();
+    if (bPortraitCamera)
+    {
+        if (!MobileBoard.IsValid() || !LastMobileViewport.Equals(XQPMobile::ViewportSize(this)) || LastMobileInsets != XQPMobile::SafeInsets(this)) FitMobileBoard();
+        return;
+    }
 
 	// 平滑应用旋转
 	if (!TargetRotation.Equals(SpringArm->GetRelativeRotation()))
@@ -166,6 +256,7 @@ void ACamera2PActor::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 // 开始相机旋转并暂时关闭棋子点击。
 void ACamera2PActor::OnMouseRightButtonPressed()
 {
+    if (bPortraitCamera) return;
 	bIsRotatingCamera = true;
 
 	// 显示鼠标光标并锁定到视口
@@ -185,7 +276,7 @@ void ACamera2PActor::OnMouseRightButtonReleased()
 	// 恢复鼠标光标
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
-		PC->bShowMouseCursor = true;
+		PC->bShowMouseCursor = !bPortraitCamera;
 		PC->bEnableClickEvents = true;
 		PC->bEnableMouseOverEvents = true;
 	}
@@ -215,6 +306,7 @@ void ACamera2PActor::OnMouseY(float Value)
 // 鼠标滚轮缩放处理函数
 void ACamera2PActor::OnMouseWheel(float Value)
 {
+    if (bPortraitCamera) return;
 	if (FMath::Abs(Value) > 0.0f)
 	{
 		// 计算缩放增量（滚轮向上为正值，但我们要缩小距离，所以取负）
@@ -231,6 +323,7 @@ void ACamera2PActor::OnMouseWheel(float Value)
 // 记录触摸起点并识别单指或双指操作。
 void ACamera2PActor::OnTouchBegin(ETouchIndex::Type FingerIndex, FVector Location)
 {
+    if (bPortraitCamera) return;
 	APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
 	if (!IsValid(PC)) return;
 	if (FingerIndex == ETouchIndex::Touch1)
@@ -290,6 +383,7 @@ void ACamera2PActor::OnTouchBegin(ETouchIndex::Type FingerIndex, FVector Locatio
 // 处理触摸移动，更新旋转或缩放。
 void ACamera2PActor::OnTouchMove(ETouchIndex::Type FingerIndex, FVector Location)
 {
+    if (bPortraitCamera) return;
 	APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
 	if (!IsValid(PC)) return;
 	if (bIsTwoFingerTouchActive)
@@ -335,6 +429,7 @@ void ACamera2PActor::OnTouchMove(ETouchIndex::Type FingerIndex, FVector Location
 // 结束触摸并同步剩余手指状态。
 void ACamera2PActor::OnTouchEnd(ETouchIndex::Type FingerIndex, FVector Location)
 {
+    if (bPortraitCamera) return;
 	APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
 	if (!IsValid(PC)) return;
 	float DummyX, DummyY;

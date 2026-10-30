@@ -1,4 +1,5 @@
 #include "UI_LANLobby.h"
+#include "XiangQiPro/UI/XQPMobile.h"
 #include "XiangQiPro/Network/XQPLANSubsystem.h"
 #include "Components/EditableTextBox.h"
 #include "Components/TextBlock.h"
@@ -7,10 +8,13 @@
 #include "XiangQiPro/UI/Components/UI_XQP_ComboBox.h"
 #include "XiangQiPro/UI/Components/UI_CommonDialog.h"
 #include "XiangQiPro/UI/UIManager.h"
+#include "XiangQiPro/UI/XQPUIStyle.h"
 
 void UUI_LANLobby::NativeConstruct()
 {
     Super::NativeConstruct();
+    XQPUIStyle::SetFactionText(RedFactionLabel, EChessColor::REDCHESS, true);
+    XQPUIStyle::SetFactionText(BlackFactionLabel, EChessColor::BLACKCHESS, true);
     GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->SelectProMode(bProModeLobby);
     auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
     Room->OnModeMismatch.RemoveAll(this);
@@ -58,10 +62,16 @@ void UUI_LANLobby::NativeTick(const FGeometry& Geometry, float DeltaTime)
     StartButton->SetIsEnabled(LAN->HasPeer() && LAN->IsPeerReady());
     XQPButtonBinding::SetVisibility(ReadyButton, InRoom && !Hosting ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
     ReadyButton->SetIsEnabled(LAN->HasPeer());
-    PlayersText->SetText(FText::FromString(
-        FString::Printf(TEXT("红方：%s    黑方：%s\n%s"), *LAN->GetRedName(), *LAN->GetBlackName(),
-                        Hosting ? (LAN->IsPeerReady() ? TEXT("对方已准备") : TEXT("等待对方准备"))
-                                : (LAN->IsLocalReady() ? TEXT("已准备，等待房主开局") : TEXT("尚未准备")))));
+    const FString ReadyStatus = Hosting ? (LAN->IsPeerReady() ? TEXT("对方已准备") : TEXT("等待对方准备"))
+                                       : (LAN->IsLocalReady() ? TEXT("已准备，等待房主开局") : TEXT("尚未准备"));
+    if (RedPlayersText && BlackPlayersText)
+    {
+        RedPlayersText->SetText(FText::FromString(LAN->GetRedName()));
+        BlackPlayersText->SetText(FText::FromString(LAN->GetBlackName()));
+        if (PlayersText) PlayersText->SetText(FText::FromString(ReadyStatus));
+    }
+    else if (PlayersText)
+        PlayersText->SetText(FText::FromString(FString::Printf(TEXT("红方：%s\n黑方：%s\n%s"), *LAN->GetRedName(), *LAN->GetBlackName(), *ReadyStatus)));
     StatusText->SetText(
         FText::FromString(LAN->GetStatus() + (Hosting ? TEXT("\n房主IP：") + LAN->GetLocalAddress() : FString())));
     // 发现结果改变时才刷新选项，避免每帧重建打断用户选择。
@@ -132,7 +142,7 @@ void UUI_LANLobby::ShowModeMismatch(const FString& Reason)
 {
     if (MismatchDialog.IsValid() && MismatchDialog->IsInViewport()) return;
     auto* DialogClass = LoadClass<UUI_CommonDialog>(nullptr, TEXT("/Game/UMG/Components/BP_UI_CommonDialog.BP_UI_CommonDialog_C"));
-    auto* Dialog = CreateWidget<UUI_CommonDialog>(GetGameInstance(), DialogClass);
+    auto* Dialog = XQPMobile::CreateWidget<UUI_CommonDialog>(GetGameInstance(), DialogClass);
     if (!Dialog) return;
     MismatchDialog = Dialog;
     Dialog->Configure(FText::FromString(TEXT("玩法不匹配")), FText::FromString(Reason), FText::FromString(TEXT("知道了")), FText::GetEmpty());

@@ -1,9 +1,11 @@
 #include "UI_ClassicAISetup.h"
+#include "XiangQiPro/UI/XQPMobile.h"
 #include "XiangQiPro/SaveGame/PlayerProfileSubsystem.h"
 #include "Components/CheckBox.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
 #include "Components/OverlaySlot.h"
+#include "Components/SizeBox.h"
 #include "XiangQiPro/UI/Components/UI_CommonDialog.h"
 #include "XiangQiPro/UI/UIManager.h"
 
@@ -18,7 +20,7 @@ void UUI_ClassicAISetup::NativeConstruct()
     ChallengeSwitch->OnCheckStateChanged.AddUniqueDynamic(this, &UUI_ClassicAISetup::OnChallengeChanged);
     ApplyChallengeSelection(Profile->HasActiveRun());
     SwitchPosition = SwitchTarget;
-    if (SwitchThumb) SwitchThumb->SetRenderTranslation(FVector2D(30.f * SwitchPosition, 0.f));
+    UpdateSwitchThumb();
 }
 
 void UUI_ClassicAISetup::OnChallengeChanged(bool bChecked)
@@ -29,7 +31,7 @@ void UUI_ClassicAISetup::OnChallengeChanged(bool bChecked)
         ChallengeSwitch->SetIsChecked(true);
         if (ChallengeDialog.IsValid() && ChallengeDialog->IsInViewport()) return;
         if (!CommonDialogClass) return;
-        auto* Dialog = CreateWidget<UUI_CommonDialog>(GetOwningPlayer(), CommonDialogClass);
+        auto* Dialog = XQPMobile::CreateWidget<UUI_CommonDialog>(GetOwningPlayer(), CommonDialogClass);
         if (!Dialog) return;
         ChallengeDialog = Dialog;
         GetGameInstance()->GetSubsystem<UUIManager>()->AddUI(Dialog, false);
@@ -66,9 +68,27 @@ void UUI_ClassicAISetup::ApplyChallengeSelection(bool bChecked)
 void UUI_ClassicAISetup::NativeTick(const FGeometry& MyGeometry, float DeltaTime)
 {
     Super::NativeTick(MyGeometry, DeltaTime);
-    if (!SwitchThumb || FMath::IsNearlyEqual(SwitchPosition, SwitchTarget)) return;
-    SwitchElapsed = FMath::Min(SwitchElapsed + DeltaTime, 0.18f);
-    const float T = SwitchElapsed / 0.18f;
-    SwitchPosition = FMath::Lerp(SwitchStart, SwitchTarget, T * T * (3.f - 2.f * T));
-    SwitchThumb->SetRenderTranslation(FVector2D(30.f * SwitchPosition, 0.f));
+    if (!FMath::IsNearlyEqual(SwitchPosition, SwitchTarget))
+    {
+        SwitchElapsed = FMath::Min(SwitchElapsed + DeltaTime, 0.18f);
+        const float T = SwitchElapsed / 0.18f;
+        SwitchPosition = FMath::Lerp(SwitchStart, SwitchTarget, T * T * (3.f - 2.f * T));
+    }
+    UpdateSwitchThumb();
+}
+
+void UUI_ClassicAISetup::UpdateSwitchThumb()
+{
+    if (!SwitchThumb) return;
+    const UWidget* Track = GetWidgetFromName(TEXT("SwitchTrack"));
+    const UWidget* ThumbFrame = SwitchThumb->GetParent();
+    if (!Track || !ThumbFrame) return;
+    float TrackWidth = Track->GetCachedGeometry().GetLocalSize().X;
+    float ThumbWidth = ThumbFrame->GetCachedGeometry().GetLocalSize().X;
+    if (TrackWidth <= 0.f)
+        if (const auto* Box = Cast<USizeBox>(Track)) TrackWidth = Box->GetWidthOverride();
+    if (ThumbWidth <= 0.f)
+        if (const auto* Box = Cast<USizeBox>(ThumbFrame)) ThumbWidth = Box->GetWidthOverride();
+    const float Travel = FMath::Max(0.f, TrackWidth - ThumbWidth);
+    SwitchThumb->SetRenderTranslation(FVector2D(Travel * FMath::Clamp(SwitchPosition, 0.f, 1.f), 0.f));
 }

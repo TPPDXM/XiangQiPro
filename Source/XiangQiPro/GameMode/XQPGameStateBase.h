@@ -72,6 +72,9 @@ private:
 	bool bGameOver = false;
     EChessColor WinnerColor = EChessColor::REDCHESS;
     int32 CurrentEndingIndex = INDEX_NONE;
+    int32 EndingMoveCount = 0;
+    int32 EndingBestSteps = 0;
+    bool bEndingRecordBroken = false;
 
     bool bAIPaused = false;
     bool bMoveInProgress = false;
@@ -194,6 +197,9 @@ public:
     bool IsGameOver() const { return bGameOver; }
     EChessColor GetWinnerColor() const { return WinnerColor; }
     int32 GetCurrentEndingIndex() const { return CurrentEndingIndex; }
+    int32 GetEndingMoveCount() const { return EndingMoveCount; }
+    int32 GetEndingBestSteps() const { return EndingBestSteps; }
+    bool DidBreakEndingRecord() const { return bEndingRecordBroken; }
     bool IsLANGame() const;
     FTimerHandle ProResultTimer;
 

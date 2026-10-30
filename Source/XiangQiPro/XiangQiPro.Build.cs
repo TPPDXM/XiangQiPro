@@ -1,12 +1,18 @@
 ﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
+using System.IO;
 
 public class XiangQiPro : ModuleRules
 {
 	public XiangQiPro(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+
+        if (Target.Platform == UnrealTargetPlatform.Android)
+        {
+            AdditionalPropertiesForReceipt.Add("AndroidPlugin", Path.Combine(ModuleDirectory, "Android", "XQPFullScreen_UPL.xml"));
+        }
 	
 		PublicDependencyModuleNames.AddRange(new string[] { 
 			"Core", 

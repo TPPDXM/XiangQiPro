@@ -1,6 +1,6 @@
 #pragma once
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "XiangQiPro/UI/XQPMobileWidget.h"
 #include "UI_ClassicAISetup.generated.h"
 
 class UCheckBox;
@@ -10,7 +10,7 @@ class UUI_CommonDialog;
 
 // 布局、配色和控件都来自UMG资产，这里只同步开关状态与存档数据。
 UCLASS()
-class XIANGQIPRO_API UUI_ClassicAISetup : public UUserWidget
+class XIANGQIPRO_API UUI_ClassicAISetup : public UXQPMobileWidget
 {
     GENERATED_BODY()
 public:
@@ -24,6 +24,7 @@ private:
     UPROPERTY(EditDefaultsOnly, Category="UI") TSubclassOf<UUI_CommonDialog> CommonDialogClass;
     TWeakObjectPtr<UUI_CommonDialog> ChallengeDialog;
     void ApplyChallengeSelection(bool bChecked);
+    void UpdateSwitchThumb();
     UFUNCTION() void OnChallengeChanged(bool bChecked);
     float SwitchPosition = 0.f;
     float SwitchStart = 0.f;

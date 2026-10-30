@@ -1,10 +1,10 @@
 #pragma once
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "XiangQiPro/UI/XQPMobileWidget.h"
 #include "UI_LANPause.generated.h"
 
 UCLASS()
-class XIANGQIPRO_API UUI_LANPause : public UUserWidget
+class XIANGQIPRO_API UUI_LANPause : public UXQPMobileWidget
 {
     GENERATED_BODY()
 public:

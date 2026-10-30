@@ -23,5 +23,5 @@ void UUI_LANPause::Leave()
     // 发出离房通知后切回主菜单，释放旧连接和端口。
     GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->LeaveRoom();
     GetGameInstance<UXQPGameInstance>()->SetGameMode(EXQPGameMode::Default);
-    UGameplayStatics::OpenLevel(this, TEXT("/Game/Map/Main"));
+    UXQPGameInstance::OpenGameLevel(this, TEXT("/Game/Map/Main"));
 }

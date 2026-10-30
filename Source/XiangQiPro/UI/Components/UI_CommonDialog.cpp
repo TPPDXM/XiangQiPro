@@ -1,10 +1,13 @@
 #include "UI_CommonDialog.h"
 #include "XQPButtonBinding.h"
 #include "XiangQiPro/UI/UIManager.h"
+#include "XiangQiPro/UI/XQPUIStyle.h"
+#include "Components/Border.h"
 
 void UUI_CommonDialog::NativeConstruct()
 {
     Super::NativeConstruct();
+    CacheDefaultAppearance();
     ReplayEntrance();
     if (auto* Button = XQPButtonBinding::GetButton(PrimaryButton))
         Button->OnClicked.AddUniqueDynamic(this, &UUI_CommonDialog::PrimaryClicked);
@@ -41,6 +44,19 @@ void UUI_CommonDialog::NativeTick(const FGeometry& Geometry, float DeltaTime)
 void UUI_CommonDialog::Configure(const FText& Title, const FText& Message, const FText& Primary,
                                 const FText& Secondary, const FText& DismissCaption)
 {
+    CacheDefaultAppearance();
+    if (DialogTitle)
+    {
+        DialogTitle->SetFont(DefaultTitleFont);
+        DialogTitle->SetColorAndOpacity(DefaultTitleColor);
+    }
+    if (DialogMessage)
+    {
+        DialogMessage->SetFont(DefaultMessageFont);
+        DialogMessage->SetColorAndOpacity(DefaultMessageColor);
+    }
+    if (OutcomeAccent) OutcomeAccent->SetVisibility(ESlateVisibility::Collapsed);
+    if (MessageFactionPanel) MessageFactionPanel->SetVisibility(ESlateVisibility::Collapsed);
     if (DialogTitle) DialogTitle->SetText(Title);
     SetMessage(Message);
     SetPrimaryAction(Primary, true);
@@ -60,6 +76,50 @@ void UUI_CommonDialog::SetPrimaryAction(const FText& Caption, bool bEnabled)
 void UUI_CommonDialog::SetMessage(const FText& Message)
 {
     if (DialogMessage) DialogMessage->SetText(Message);
+}
+
+void UUI_CommonDialog::CacheDefaultAppearance()
+{
+    if (bAppearanceCached || !DialogTitle || !DialogMessage) return;
+    DefaultTitleFont = DialogTitle->GetFont();
+    DefaultMessageFont = DialogMessage->GetFont();
+    DefaultTitleColor = DialogTitle->GetColorAndOpacity();
+    DefaultMessageColor = DialogMessage->GetColorAndOpacity();
+    bAppearanceCached = true;
+}
+
+void UUI_CommonDialog::SetMatchOutcome(bool bWon, bool bDraw)
+{
+    CacheDefaultAppearance();
+    const FLinearColor Accent = bDraw ? FLinearColor(.64f, .69f, .75f) : (bWon ? XQPUIStyle::Victory() : XQPUIStyle::Defeat());
+    if (DialogTitle)
+    {
+        FSlateFontInfo Font = DefaultTitleFont;
+        Font.Size += 4;
+        Font.OutlineSettings.OutlineSize = 2;
+        Font.OutlineSettings.OutlineColor = FLinearColor(.025f, .012f, .008f, 1.f);
+        DialogTitle->SetFont(Font);
+        DialogTitle->SetColorAndOpacity(FSlateColor(Accent));
+    }
+    if (OutcomeAccent)
+    {
+        OutcomeAccent->SetBrushColor(Accent);
+        OutcomeAccent->SetVisibility(ESlateVisibility::HitTestInvisible);
+    }
+}
+
+void UUI_CommonDialog::SetMessageFaction(EChessColor Faction)
+{
+    if (MessageFactionLabel)
+    {
+        MessageFactionLabel->SetText(FText::FromString(Faction == EChessColor::REDCHESS ? TEXT("红方胜利") : TEXT("黑方胜利")));
+        XQPUIStyle::SetFactionText(MessageFactionLabel, Faction, true);
+    }
+    if (MessageFactionPanel)
+    {
+        MessageFactionPanel->SetBrushColor(XQPUIStyle::Paper());
+        MessageFactionPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
+    }
 }
 
 void UUI_CommonDialog::Dismiss()

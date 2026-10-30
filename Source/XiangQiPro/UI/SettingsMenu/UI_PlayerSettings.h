@@ -1,12 +1,12 @@
 #pragma once
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "XiangQiPro/UI/XQPMobileWidget.h"
 #include "UI_PlayerSettings.generated.h"
 class UEditableTextBox;
 class UTextBlock;
 
 UCLASS()
-class XIANGQIPRO_API UUI_PlayerSettings : public UUserWidget
+class XIANGQIPRO_API UUI_PlayerSettings : public UXQPMobileWidget
 {
     GENERATED_BODY()
 public:

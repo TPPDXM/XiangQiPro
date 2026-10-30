@@ -38,6 +38,7 @@ private:
 	FVector2D FadeAlpha;
 
 	bool bReverse = false;
+    bool bFadeFinished = false;
 
 	float FadeTime;
 
