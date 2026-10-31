@@ -19,6 +19,8 @@ struct XIANGQIPRO_API FChessPosition
     FChessPiece2P Squares[90] = {};
     bool bVariantRules = false;
     bool bRequireKing = true;
+    // 经典象棋保留照面吃将；烽火弈只允许将帅在己方九宫内逐格移动。
+    bool bFlyingKingCapture = true;
 
     // 判断坐标是否位于10行9列的棋盘内。
     static bool IsInside(Position Pos);

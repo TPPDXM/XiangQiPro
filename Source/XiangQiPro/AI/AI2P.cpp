@@ -27,7 +27,8 @@ TSharedPtr<FChessSearch, ESPMode::ThreadSafe> UAI2P::CreateSearch(TWeakObjectPtr
         Depth = FMath::Min(12, Depth + Wins / 2 + FMath::Min(2, Learning.Observations / 100));
         Budget = FMath::Min(8.0, Budget * (1.0 + 0.45 * Wins) + FMath::Min(1.5, Learning.Observations * 0.005));
     }
-    ActiveSearch = MakeShared<FChessSearch, ESPMode::ThreadSafe>(Board->CreateSnapshot(), Color, Depth, Budget, MoveTemp(Learning));
+    ActiveSearch = MakeShared<FChessSearch, ESPMode::ThreadSafe>(Board->CreateSnapshot(), Color, Depth, Budget,
+        MoveTemp(Learning), Board->GetCheckHistory());
     return ActiveSearch;
 }
 

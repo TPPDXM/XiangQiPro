@@ -25,6 +25,7 @@ void UChessBoard2P::ResetBoard()
     SettingPoints.Reset();
     BoardLocs.Reset();
     sideToMove = EChessColor::REDCHESS;
+    CheckHistory.Reset();
 }
 
 // 初始化固定大小棋盘和世界坐标。
@@ -56,6 +57,7 @@ FChessPosition UChessBoard2P::CreateSnapshot() const
     FChessPosition Snapshot;
     Snapshot.bVariantRules = bVariantRules;
     Snapshot.bRequireKing = bRequireKing;
+    Snapshot.bFlyingKingCapture = bFlyingKingCapture;
     for (int32 X = 0; X < 10; ++X)
         for (int32 Y = 0; Y < 9; ++Y)
             if (const auto Chess = GetChess(X, Y); Chess.IsValid() && !Chess->IsDead())
@@ -138,6 +140,7 @@ void UChessBoard2P::SetChess(int32 X, int32 Y, TWeakObjectPtr<AChesses> Chess)
 void UChessBoard2P::ApplyMove(TWeakObjectPtr<AChesses> Target, FChessMove2P Move)
 {
     if (!IsLegalMove(Target, Move)) return;
+    CheckHistory.Record(CreateSnapshot(), Move);
     const auto Captured = GetChess(Move.to);
     Target->PrepareCapture(Captured.Get());
     SetChess(Move.to.X, Move.to.Y, Target);

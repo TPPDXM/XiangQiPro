@@ -5,6 +5,7 @@
 #include "XiangQiPro/Chess/Chesses.h"
 #include "XiangQiPro/Network/XQPLANSubsystem.h"
 #include "Dom/JsonObject.h"
+#include "Async/Async.h"
 
 UProBattleComponent::UProBattleComponent()
 {
@@ -30,8 +31,11 @@ void UProBattleComponent::Reset()
     Units.Reset();
     bActive = bRunning = bFinished = bDraw = bTimedOut = false;
     Elapsed = AITime = NetworkTime = 0.f;
-    AIActAfter = FMath::FRandRange(1.2f, 2.2f);
+    AIActAfter = 0.f;
     LastAIMove = {};
+    RecentAIMoves.Reset();
+    AISearch.Reset();
+    ++PositionRevision;
     SnapshotSequence = 0;
     LastSnapshot = -1;
     SelectedType = EChessType::EMPTY;
@@ -52,6 +56,8 @@ void UProBattleComponent::Start(const FProBattleSettings& InSettings, bool bInNe
     Settings.MaxSupply = FMath::Clamp(Settings.MaxSupply, 5, 20);
     Settings.InitialSupply = FMath::Clamp(Settings.InitialSupply, 0.f, float(Settings.MaxSupply));
     Settings.SupplyPerSecond = FMath::Clamp(Settings.SupplyPerSecond, 0.1f, 5.f);
+    Settings.AIDifficulty = static_cast<EProAIDifficulty>(FMath::Clamp(static_cast<int32>(Settings.AIDifficulty), 0, 3));
+    AIActAfter = FProBattleAI::Profile(Settings.AIDifficulty).ReactionSeconds;
     bNetwork = bInNetwork;
     bAI = bInAI;
     Supply[0] = Supply[1] = Settings.InitialSupply;
@@ -77,6 +83,7 @@ FChessPosition UProBattleComponent::PositionSnapshot() const
 {
     FChessPosition Board;
     Board.bRequireKing = false;
+    Board.bFlyingKingCapture = false;
     for (const auto& Unit : Units)
         if (Unit.bAlive && !Unit.bMoving) Board.Set(Unit.Square, {Unit.Type, Unit.Color});
     return Board;
@@ -119,8 +126,10 @@ bool UProBattleComponent::TryMove(AChesses* Chess, const FChessMove2P& Move, ECh
     ++Stats[Side].Moves;
     if (bAI && Requester == EChessColor::BLACKCHESS)
     {
-        AIActAfter = Elapsed + FMath::FRandRange(1.2f, 2.2f);
+        AIActAfter = Elapsed + FProBattleAI::Profile(Settings.AIDifficulty).ReactionSeconds;
         LastAIMove = Move;
+        RecentAIMoves.Add(Move);
+        if (RecentAIMoves.Num() > 8) RecentAIMoves.RemoveAt(0);
     }
     Unit.From = Unit.Square;
     Unit.To = Move.to;
@@ -136,6 +145,7 @@ bool UProBattleComponent::TryMove(AChesses* Chess, const FChessMove2P& Move, ECh
 
 void UProBattleComponent::SyncBoard()
 {
+    ++PositionRevision;
     auto* State = Cast<AXQPGameStateBase>(GetOwner());
     if (!State || !State->board2P) return;
     for (auto& Row : State->board2P->AllChess) for (auto& Cell : Row) Cell.Reset();
@@ -231,17 +241,38 @@ void UProBattleComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
         return;
     }
     AITime += DeltaTime;
-    if (bAI && AITime >= 0.10f)
+    if (bAI && AISearch.IsSet() && AISearch->IsReady())
     {
-        AITime = 0.f;
-        const auto Move = FProBattleAI::ChooseMove(PositionSnapshot(), Units, EChessColor::BLACKCHESS,
-            Supply[1], Supply[0], Elapsed, GetRemaining(), LastAIMove, FMath::Rand(), Settings.SupplyPerSecond * (IsDoubleSupply() ? 2.f : 1.f));
-        if (Move.IsValid() && Elapsed >= AIActAfter)
+        const auto Move = AISearch->Get();
+        AISearch.Reset();
+        // 棋子出发/抵达后旧结果失效；提交仍通过正式规则校验。
+        if (SearchRevision == PositionRevision && Elapsed - SearchStartedAt <= .75f && Move.IsValid() && Elapsed >= AIActAfter)
         {
             const int32 Id = Units.IndexOfByPredicate([&](const FProBattleUnit& U)
                 { return U.bAlive && !U.bMoving && U.Square == Move.from && U.Color == EChessColor::BLACKCHESS; });
             if (Actors.IsValidIndex(Id)) TryMove(Actors[Id].Get(), Move, EChessColor::BLACKCHESS);
         }
+    }
+    if (bAI && !AISearch.IsSet() && Elapsed >= AIActAfter && AITime >= FProBattleAI::Profile(Settings.AIDifficulty).ThinkInterval)
+    {
+        AITime = 0.f;
+        SearchRevision = PositionRevision;
+        SearchStartedAt = Elapsed;
+        const auto Board = PositionSnapshot();
+        const auto SnapshotUnits = Units;
+        const auto History = RecentAIMoves;
+        const auto Last = LastAIMove;
+        const auto Difficulty = Settings.AIDifficulty;
+        const float OwnSupply = Supply[1], OpponentSupply = Supply[0], Now = Elapsed, Remaining = GetRemaining();
+        const float Rate = Settings.SupplyPerSecond * (IsDoubleSupply() ? 2.f : 1.f), Cap = Settings.MaxSupply;
+        const int32 Seed = FMath::Rand();
+        // 后台只持有值类型，切关/重开不访问已销毁组件，也不阻塞游戏线程。
+        AISearch.Emplace(Async(EAsyncExecution::ThreadPool,
+            [Board, SnapshotUnits, History, Last, Difficulty, OwnSupply, OpponentSupply, Now, Remaining, Rate, Cap, Seed]()
+            {
+                return FProBattleAI::ChooseMove(Board, SnapshotUnits, EChessColor::BLACKCHESS,
+                    OwnSupply, OpponentSupply, Now, Remaining, Last, Seed, Rate, Difficulty, Cap, &History);
+            }));
     }
     NetworkTime += DeltaTime;
     if (NetworkTime >= 0.05f) { NetworkTime = 0.f; SendSnapshot(); }

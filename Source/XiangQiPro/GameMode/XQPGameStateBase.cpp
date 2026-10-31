@@ -141,6 +141,7 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
     AIDifficulty = static_cast<EAI2PDifficulty>(FMath::Clamp(static_cast<int32>(GI->AIDifficulty), 0, 3));
     board2P->bVariantRules = GI->GetGameMode() == EXQPGameMode::GuessWho || GI->GetGameMode() == EXQPGameMode::SoloRide;
     board2P->bRequireKing = GI->GetGameMode() != EXQPGameMode::SoloRide;
+    board2P->bFlyingKingCapture = !IsProBattle();
     board2P->InitializeBoard(board2PActor);
     board2PActor->Init(board2P);
     switch (GI->GetGameMode())
@@ -313,7 +314,7 @@ void AXQPGameStateBase::ApplyAIResult(const FChessSearchResult& Result)
         RunAI2P(); // 当前棋盘发生变化，重新提交搜索
         return;
     }
-    if (Result.bNoLegalMoves)
+    if (Result.bNoLegalMoves || Result.bRepetitionLimitReached)
     {
         Finish2PGame(EChessColor::REDCHESS);
         return;

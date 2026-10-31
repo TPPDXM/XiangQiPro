@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/ComboBoxString.h"
 #include "XiangQiPro/UI/Components/UI_CommonDialog.h"
 #include "UI_ProModeSetup.generated.h"
 
@@ -21,6 +22,12 @@ private:
     bool bLobbyVisible = false;
     UPROPERTY(meta=(BindWidget)) TObjectPtr<USizeBox> LobbyHost;
     UPROPERTY(EditDefaultsOnly) TSubclassOf<UUI_LANLobby> LobbyClass;
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> DifficultyPanel;
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<class UUI_XQP_ComboBox> DifficultySelector;
+    UPROPERTY(Transient) TObjectPtr<UComboBoxString> DifficultyChoice;
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<class UTextBlock> DifficultyHint;
+    void ShowDifficulty();
+    UFUNCTION() void DifficultyChanged(FString SelectedItem, ESelectInfo::Type SelectionType);
     void StartGame();
     void ToggleLobby();
     void ConfigureMode();

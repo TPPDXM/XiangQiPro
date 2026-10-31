@@ -8,6 +8,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "XiangQiPro/AI/ChessPosition.h"
+#include "XiangQiPro/AI/ChessCheckHistory.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "ChessBoard2P.generated.h"
 
@@ -35,6 +36,7 @@ public:
 
     // 游戏线程内一次性读取棋子类型和阵营，返回独立的纯数据局面。
     FChessPosition CreateSnapshot() const;
+    const FChessCheckHistory& GetCheckHistory() const { return CheckHistory; }
     // 验证走法与当前棋盘一致，并检查完整合法性。
     bool IsLegalMove(TWeakObjectPtr<AChesses> Target, const FChessMove2P& Move) const;
     // 清理上一局Actor及所有棋盘缓存。
@@ -47,6 +49,8 @@ public:
 
     bool bVariantRules = false;
     bool bRequireKing = true;
+    bool bFlyingKingCapture = true;
+    FChessCheckHistory CheckHistory;
 
     TArray<TArray<TWeakObjectPtr<AChesses>>> AllChess;  // 10行9列的棋盘
 

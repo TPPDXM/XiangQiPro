@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Async/Future.h"
 #include "Components/ActorComponent.h"
 #include "ProBattleTypes.h"
 #include "XiangQiPro/AI/ChessPosition.h"
@@ -59,6 +60,11 @@ private:
     float NetworkTime = 0.f;
     float AIActAfter = 0.f;
     FChessMove2P LastAIMove;
+    TArray<FChessMove2P> RecentAIMoves;
+    TOptional<TFuture<FChessMove2P>> AISearch;
+    uint32 PositionRevision = 0;
+    uint32 SearchRevision = 0;
+    float SearchStartedAt = 0.f;
     int32 SnapshotSequence = 0;
     int32 LastSnapshot = -1;
     FChessPosition PositionSnapshot() const;

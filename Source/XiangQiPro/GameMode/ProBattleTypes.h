@@ -4,6 +4,15 @@
 #include "XiangQiPro/Util/ChessInfo.h"
 #include "ProBattleTypes.generated.h"
 
+UENUM(BlueprintType)
+enum class EProAIDifficulty : uint8
+{
+    Easy UMETA(DisplayName = "简单"),
+    Normal UMETA(DisplayName = "普通"),
+    Hard UMETA(DisplayName = "困难"),
+    Expert UMETA(DisplayName = "大师")
+};
+
 USTRUCT(BlueprintType)
 struct FProBattleSettings
 {
@@ -12,6 +21,7 @@ struct FProBattleSettings
     UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 MaxSupply = 10;
     UPROPERTY(EditAnywhere, BlueprintReadWrite) float InitialSupply = 5.f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite) float SupplyPerSecond = 0.8f / 3.f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite) EProAIDifficulty AIDifficulty = EProAIDifficulty::Hard;
 };
 
 USTRUCT(BlueprintType)

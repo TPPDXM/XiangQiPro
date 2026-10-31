@@ -30,8 +30,10 @@ namespace
 }
 
 // 初始化一次搜索，内存由线程安全共享指针管理。
-FChessSearch::FChessSearch(const FChessPosition& InPosition, EChessColor InColor, int32 InDepth, double InSeconds, FChessLearning InLearning)
-    : Board(InPosition), Learning(MoveTemp(InLearning)), Color(InColor), MaxDepth(FMath::Clamp(InDepth, 1, 12)), TimeBudget(FMath::Max(0.01, InSeconds)), InitialPositionKey(InPosition.Hash(InColor))
+FChessSearch::FChessSearch(const FChessPosition& InPosition, EChessColor InColor, int32 InDepth, double InSeconds,
+    FChessLearning InLearning, FChessCheckHistory InCheckHistory)
+    : Board(InPosition), Learning(MoveTemp(InLearning)), CheckHistory(MoveTemp(InCheckHistory)), Color(InColor),
+      MaxDepth(FMath::Clamp(InDepth, 1, 12)), TimeBudget(FMath::Max(0.01, InSeconds)), InitialPositionKey(InPosition.Hash(InColor))
 {
 }
 
@@ -83,6 +85,19 @@ FChessSearchResult FChessSearch::FindBestMove()
     TArray<FChessMove2P> Moves = Board.GenerateLegalMoves(Color);
     Result.bNoLegalMoves = Moves.IsEmpty();
     if (Moves.IsEmpty()) return Result;
+    RestrictedRootMoves.Reset();
+    Moves.RemoveAll([&](const FChessMove2P& Move)
+    {
+        if (!CheckHistory.WouldRepeat(Board, Move)) return false;
+        RestrictedRootMoves.Add(Move);
+        return true;
+    });
+    if (Moves.IsEmpty())
+    {
+        // 唯一选择只剩第三次长将时AI认负，不能停住棋局或提交非法走法。
+        Result.bRepetitionLimitReached = true;
+        return Result;
+    }
     OrderMoves(Moves, {}, Color);
     Result.Move = Moves[0]; // 时间不足时仍保留一个合法走法
     Table.SetNum(TableSize);
@@ -115,6 +130,9 @@ int32 FChessSearch::Negamax(int32 Depth, int32 Alpha, int32 Beta, EChessColor Si
     if (IsRepeated(Key)) return 0;
     if (Depth <= 0) return Quiescence(Alpha, Beta, Side, Ply, 8);
     TArray<FChessMove2P> Moves = Board.GenerateLegalMoves(Side);
+    if (Ply == 0)
+        Moves.RemoveAll([&](const FChessMove2P& Move)
+            { return RestrictedRootMoves.ContainsByPredicate([&](const FChessMove2P& Restricted) { return SameMove(Move, Restricted); }); });
     if (Moves.IsEmpty()) return -MateScore + Ply; // 中国象棋困毙也判负
     if (Ply >= MaxPly - 1) return Evaluate(Side);
 

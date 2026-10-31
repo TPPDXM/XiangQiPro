@@ -70,7 +70,7 @@ bool FChessPosition::CanReach(Position From, Position To) const
     {
     case EChessType::JIANG:
         return (AX + AY == 1 && IsInPalace(To, Piece.Color)) ||
-            (Target.Type == EChessType::JIANG && DY == 0 && CountBetween(From, To) == 0);
+            (bFlyingKingCapture && Target.Type == EChessType::JIANG && DY == 0 && CountBetween(From, To) == 0);
     case EChessType::SHI:
         return AX == 1 && AY == 1 && (IsInPalace(To, Piece.Color) || (bVariantRules && !IsInPalace(From, Piece.Color)));
     case EChessType::XIANG:
@@ -227,6 +227,6 @@ uint64 FChessPosition::Hash(EChessColor Color) const
         Key ^= static_cast<uint8>(Piece.Type) | (Piece.Type == EChessType::EMPTY ? 0 : static_cast<uint8>(Piece.Color) << 4);
         Key *= 1099511628211ull;
     }
-    Key ^= static_cast<uint8>(Color) | (bVariantRules ? 4 : 0) | (bRequireKing ? 8 : 0);
+    Key ^= static_cast<uint8>(Color) | (bVariantRules ? 4 : 0) | (bRequireKing ? 8 : 0) | (bFlyingKingCapture ? 0 : 16);
     return Key;
 }
