@@ -52,6 +52,8 @@ private:
     FMargin LastMobileInsets;
     void FitMobileBoard();
     void EnablePortraitCamera();
+    FVector DesktopBaseTargetOffset = FVector::ZeroVector;
+    void UpdateDesktopOrbit();
 
 
 
@@ -102,6 +104,10 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
     float MaxZoomDistance = 200.0f;
 
+    // 最近距离、水平观察时的环绕半径；俯视或最远距离时归零。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera", meta = (ClampMin = "0"))
+    float CloseOrbitRadius = 32.0f;
+
     // 最小捏合距离，避免误触
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Touch Control")
     float MinPinchDistance = 20.0f;
@@ -111,7 +117,7 @@ public:
     float RotationSpeed = 2.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
-    float MinPitchAngle = -89.9f;
+    float MinPitchAngle = -90.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
     float MaxPitchAngle = -10.0f;

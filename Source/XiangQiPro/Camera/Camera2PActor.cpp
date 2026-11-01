@@ -80,7 +80,24 @@ void ACamera2PActor::InitCamera()
         SpringArm->SetRelativeRotation(TargetRotation);
     }
     HomeRotation = TargetRotation;
+    DesktopBaseTargetOffset = SpringArm->TargetOffset;
+    if (MinPitchAngle <= -89.9f) MinPitchAngle = -90.f;
     if (bPortraitCamera) EnablePortraitCamera();
+    else UpdateDesktopOrbit();
+}
+
+void ACamera2PActor::UpdateDesktopOrbit()
+{
+    const float ZoomRange = MaxZoomDistance - MinZoomDistance;
+    const float Proximity = ZoomRange > KINDA_SMALL_NUMBER
+        ? FMath::Clamp((MaxZoomDistance - SpringArm->TargetArmLength) / ZoomRange, 0.f, 1.f) : 0.f;
+    const FRotator View = SpringArm->GetComponentRotation();
+    const float Elevation = FMath::Clamp(FMath::Abs(FRotator::NormalizeAxis(View.Pitch)), 0.f, 90.f);
+    const float Radius = FMath::Max(0.f, CloseOrbitRadius) * Proximity
+        * FMath::Max(0.f, FMath::Cos(FMath::DegreesToRadians(Elevation)));
+    // 水平径向指向镜头所在的一侧。偏移位于棋盘平面，不随俯角改变高度。
+    const FVector Outward = -FRotator(0.f, View.Yaw, 0.f).Vector();
+    SpringArm->TargetOffset = DesktopBaseTargetOffset + Outward * Radius;
 }
 
 void ACamera2PActor::EnablePortraitCamera()
@@ -201,7 +218,7 @@ void ACamera2PActor::Tick(float DeltaTime)
 	if (!TargetRotation.Equals(SpringArm->GetRelativeRotation()))
 	{
 		FRotator CurrentRotation = SpringArm->GetRelativeRotation();
-		FRotator NewRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, 8.0f);
+		FRotator NewRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, RotationInterpSpeed);
 		SpringArm->SetRelativeRotation(NewRotation);
 	}
 
@@ -212,6 +229,7 @@ void ACamera2PActor::Tick(float DeltaTime)
 		float NewLength = FMath::FInterpTo(CurrentLength, TargetArmLength, DeltaTime, ZoomInterpSpeed);
 		SpringArm->TargetArmLength = NewLength;
 	}
+    UpdateDesktopOrbit();
 }
 
 // 响应游戏暂停事件。

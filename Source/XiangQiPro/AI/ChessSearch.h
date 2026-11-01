@@ -18,13 +18,23 @@ struct FChessSearchResult
     bool bRepetitionLimitReached = false;
 };
 
+// 棋力策略与耗时预算分离，简单档不会因为机器更快而获得大师的战术能力。
+struct FChessSearchStyle
+{
+    int32 CaptureDepth = 8;
+    int32 Inaccuracy = 0;
+    int32 RandomSeed = 0;
+    bool bUseOpeningBook = false;
+    bool bAdvancedSearch = false;
+};
+
 // 每次请求独享搜索状态，唯一跨线程可写数据是原子取消标志。
 class XIANGQIPRO_API FChessSearch
 {
 public:
     // 接收游戏线程生成的快照及搜索预算。
     FChessSearch(const FChessPosition& InPosition, EChessColor InColor, int32 InDepth, double InSeconds,
-        FChessLearning InLearning = {}, FChessCheckHistory InCheckHistory = {});
+        FChessLearning InLearning = {}, FChessCheckHistory InCheckHistory = {}, FChessSearchStyle InStyle = {});
     // 获取创建请求时的局面键，搜索开始后该值不再改变。
     uint64 GetPositionKey() const { return InitialPositionKey; }
     // 使用迭代加深搜索最佳走法，超时保留上一次完整搜索结果。
@@ -50,13 +60,14 @@ private:
     // 延伸吃子局面；被将军时必须搜索所有应将走法。
     int32 Quiescence(int32 Alpha, int32 Beta, EChessColor Side, int32 Ply, int32 Remaining);
     // 按置换表、吃子收益和历史启发排序走法。
-    void OrderMoves(TArray<FChessMove2P>& Moves, const FChessMove2P& Preferred, EChessColor Side);
+    void OrderMoves(TArray<FChessMove2P>& Moves, const FChessMove2P& Preferred, EChessColor Side, int32 Ply);
     // 检查当前搜索路径是否出现重复局面。
     bool IsRepeated(uint64 Key) const;
     int32 Evaluate(EChessColor Side) const;
 
     FChessPosition Board;
     FChessLearning Learning;
+    FChessSearchStyle Style;
     FChessCheckHistory CheckHistory;
     TArray<FChessMove2P> RestrictedRootMoves;
     EChessColor Color;
@@ -71,5 +82,7 @@ private:
     TArray<FTableEntry> Table;
     TArray<uint64> Path;
     int32 History[2][90][90] = {};
+    FChessMove2P Killers[96][2];
+    int32 RootBias[90][90] = {};
     FChessMove2P RootMove;
 };

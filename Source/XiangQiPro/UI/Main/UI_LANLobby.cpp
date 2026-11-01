@@ -38,6 +38,12 @@ void UUI_LANLobby::NativeConstruct()
         RoomChoice->SetSelectedIndex(0);
     }
     RefreshTime = 1.f;
+    XQPButtonBinding::SetCaption(CreateButton, FText::FromString(TEXT("创建房间")));
+    XQPButtonBinding::SetCaption(SearchButton, FText::FromString(TEXT("搜索房间")));
+    XQPButtonBinding::SetCaption(JoinButton, FText::FromString(TEXT("加入房间")));
+    XQPButtonBinding::SetCaption(StartButton, FText::FromString(TEXT("开始对弈")));
+    XQPButtonBinding::SetCaption(ColorButton, FText::FromString(TEXT("交换红黑")));
+    XQPButtonBinding::SetCaption(LeaveButton, FText::FromString(TEXT("离开房间")));
 }
 
 void UUI_LANLobby::NativeTick(const FGeometry& Geometry, float DeltaTime)
@@ -57,6 +63,9 @@ void UUI_LANLobby::NativeTick(const FGeometry& Geometry, float DeltaTime)
     RoomName->SetIsEnabled(!InRoom);
     Address->SetIsEnabled(!InRoom);
     SearchButton->SetIsEnabled(State != EXQPRoomState::Searching);
+    JoinButton->SetIsEnabled(State != EXQPRoomState::Connecting && !Address->GetText().ToString().TrimStartAndEnd().IsEmpty());
+    XQPButtonBinding::SetCaption(SearchButton, FText::FromString(State == EXQPRoomState::Searching ? TEXT("搜索中…") : TEXT("搜索房间")));
+    XQPButtonBinding::SetCaption(ReadyButton, FText::FromString(LAN->IsLocalReady() ? TEXT("取消准备") : TEXT("准备对弈")));
     XQPButtonBinding::SetVisibility(ColorButton, Hosting ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
     XQPButtonBinding::SetVisibility(StartButton, Hosting ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
     StartButton->SetIsEnabled(LAN->HasPeer() && LAN->IsPeerReady());
@@ -72,8 +81,8 @@ void UUI_LANLobby::NativeTick(const FGeometry& Geometry, float DeltaTime)
     }
     else if (PlayersText)
         PlayersText->SetText(FText::FromString(FString::Printf(TEXT("红方：%s\n黑方：%s\n%s"), *LAN->GetRedName(), *LAN->GetBlackName(), *ReadyStatus)));
-    StatusText->SetText(
-        FText::FromString(LAN->GetStatus() + (Hosting ? TEXT("\n房主IP：") + LAN->GetLocalAddress() : FString())));
+    const FString Status = LAN->GetStatus().IsEmpty() ? TEXT("双方连接同一局域网，搜索房间或输入房主 IP 加入。") : LAN->GetStatus();
+    StatusText->SetText(FText::FromString(Status + (Hosting ? TEXT("\n房主 IP：") + LAN->GetLocalAddress() : FString())));
     // 发现结果改变时才刷新选项，避免每帧重建打断用户选择。
     const auto Rooms = LAN->GetRooms();
     FString Signature;
@@ -82,11 +91,18 @@ void UUI_LANLobby::NativeTick(const FGeometry& Geometry, float DeltaTime)
     if (Signature != RoomSignature)
     {
         RoomSignature = Signature;
+        const FString SelectedAddress = Address->GetText().ToString();
         RoomChoice->ClearOptions();
         RoomChoice->AddOption(TEXT("选择房间"));
-        for (const auto& Room : Rooms)
+        int32 SelectedIndex = 0;
+        for (int32 Index = 0; Index < Rooms.Num(); ++Index)
+        {
+            const auto& Room = Rooms[Index];
             RoomChoice->AddOption(Room.Name + TEXT(" · ") + Room.HostName + TEXT(" · ") + Room.Address);
-        RoomChoice->SetSelectedIndex(Rooms.IsEmpty() ? 0 : 1);
+            if (Room.Address == SelectedAddress) SelectedIndex = Index + 1;
+        }
+        // 保留已选房间及手输IP，搜索结果变化不替用户改写连接目标。
+        RoomChoice->SetSelectedIndex(SelectedIndex);
     }
 }
 void UUI_LANLobby::OnCreate()
@@ -100,7 +116,7 @@ void UUI_LANLobby::OnSearch()
 }
 void UUI_LANLobby::OnJoin()
 {
-    GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->JoinRoom(Address->GetText().ToString());
+    GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->JoinRoom(Address->GetText().ToString().TrimStartAndEnd());
 }
 void UUI_LANLobby::OnStart()
 {
@@ -131,10 +147,13 @@ void UUI_LANLobby::OnRoomSelected(FString Item, ESelectInfo::Type Selection)
 void UUI_LANLobby::NativeDestruct()
 {
     // 换到其他经典模式条目时退出未开局的房间，开局切关时保留连接。
-    auto* LAN = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
-    LAN->OnModeMismatch.RemoveAll(this);
-    if (LAN->GetState() != EXQPRoomState::Playing && LAN->GetState() != EXQPRoomState::Finished)
-        LAN->LeaveRoom();
+    if (auto* GI = GetGameInstance())
+        if (auto* LAN = GI->GetSubsystem<UXQPLANSubsystem>())
+        {
+            LAN->OnModeMismatch.RemoveAll(this);
+            if (LAN->GetState() != EXQPRoomState::Playing && LAN->GetState() != EXQPRoomState::Finished)
+                LAN->LeaveRoom();
+        }
     Super::NativeDestruct();
 }
 
