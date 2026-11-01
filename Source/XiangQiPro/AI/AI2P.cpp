@@ -11,11 +11,11 @@ TSharedPtr<FChessSearch, ESPMode::ThreadSafe> UAI2P::CreateSearch(TWeakObjectPtr
     check(IsInGameThread());
     StopThinkingImmediately();
     if (!Board.IsValid() || (Color != EChessColor::REDCHESS && Color != EChessColor::BLACKCHESS)) return nullptr;
-    static constexpr int32 Depths[] = {1, 3, 7, 12};
-    static constexpr double Seconds[] = {0.08, 0.35, 2.5, 7.0};
-    static constexpr int32 CaptureDepths[] = {0, 2, 6, 10};
-    static constexpr int32 Inaccuracies[] = {180, 25, 0, 0};
-    const int32 Index = FMath::Clamp(static_cast<int32>(Difficulty), 0, 3);
+    static constexpr int32 Depths[] = {1, 3, 7, 12, 12};
+    static constexpr double Seconds[] = {0.08, 0.35, 2.5, 7.0, 12.0};
+    static constexpr int32 CaptureDepths[] = {0, 2, 6, 10, 12};
+    static constexpr int32 Inaccuracies[] = {180, 25, 0, 0, 0};
+    const int32 Index = FMath::Clamp(static_cast<int32>(Difficulty), 0, 4);
     CurrentBoard = Board;
     FChessLearning Learning;
     int32 Depth = Depths[Index];
@@ -26,6 +26,8 @@ TSharedPtr<FChessSearch, ESPMode::ThreadSafe> UAI2P::CreateSearch(TWeakObjectPtr
     Style.RandomSeed = FMath::Rand();
     Style.bUseOpeningBook = Index >= 2;
     Style.bAdvancedSearch = Index >= 2;
+    Style.bSelectiveSearch = Index >= 4;
+    Style.bTacticalEvaluation = Index >= 3;
     const AXQPGameStateBase* State = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr;
     if (State && State->bEnableMachineLearning)
     {
@@ -33,12 +35,15 @@ TSharedPtr<FChessSearch, ESPMode::ThreadSafe> UAI2P::CreateSearch(TWeakObjectPtr
         Learning = Profile->LearningSnapshot();
         const int32 Wins = Profile->GetCurrentStreak();
         Depth = FMath::Min(12, Depth + Wins / 2 + FMath::Min(2, Learning.Observations / 100));
-        Budget = FMath::Min(8.0, Budget * (1.0 + 0.45 * Wins) + FMath::Min(1.5, Learning.Observations * 0.005));
+        Budget = FMath::Min(15.0, Budget * (1.0 + 0.45 * Wins) + FMath::Min(1.5, Learning.Observations * 0.005));
         // 连战单独成长；普通对弈始终保留玩家选定的棋力差异。
-        Style.CaptureDepth = FMath::Min(10, Style.CaptureDepth + Wins);
+        // 连战成长不能降低棋圣原有的静态搜索预算。
+        Style.CaptureDepth = FMath::Min(12, Style.CaptureDepth + Wins);
         Style.Inaccuracy = FMath::Max(0, Style.Inaccuracy - Wins * 30);
         Style.bUseOpeningBook |= Wins >= 2;
         Style.bAdvancedSearch |= Wins >= 3;
+        Style.bTacticalEvaluation |= Wins >= 2;
+        Style.bSelectiveSearch |= Wins >= 4;
     }
     ActiveSearch = MakeShared<FChessSearch, ESPMode::ThreadSafe>(Board->CreateSnapshot(), Color, Depth, Budget,
         MoveTemp(Learning), Board->GetCheckHistory(), Style);

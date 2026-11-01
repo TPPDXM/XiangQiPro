@@ -1,4 +1,4 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #include "XQPGameStateBase.h"
 #include "XQPGameInstance.h"
@@ -15,7 +15,7 @@
 #include "XiangQiPro/Util/EndingLibrary.h"
 #include "XiangQiPro/SaveGame/PlayerProfileSubsystem.h"
 #include "XiangQiPro/Network/XQPLANSubsystem.h"
-#include "ProBattleComponent.h"
+#include "FengHuoBattleComponent.h"
 #include "BattleStartComponent.h"
 #include "XiangQiPro/Camera/Camera2PActor.h"
 #include "EngineUtils.h"
@@ -23,7 +23,7 @@
 // 设置默认对战类型和难度。
 AXQPGameStateBase::AXQPGameStateBase() : battleType(EBattleType::P2_AI), AIDifficulty(EAI2PDifficulty::Hard)
 {
-    ProBattle = CreateDefaultSubobject<UProBattleComponent>(TEXT("ProBattle"));
+    FengHuoBattle = CreateDefaultSubobject<UFengHuoBattleComponent>(TEXT("FengHuoBattle"));
     BattleStart = CreateDefaultSubobject<UBattleStartComponent>(TEXT("BattleStart"));
 }
 
@@ -32,15 +32,15 @@ void AXQPGameStateBase::BeginPlay()
 {
     Super::BeginPlay();
     if (const UXQPGameInstance* GI = GetGameInstance<UXQPGameInstance>())
-        AIDifficulty = static_cast<EAI2PDifficulty>(FMath::Clamp(static_cast<int32>(GI->AIDifficulty), 0, 3));
+        AIDifficulty = static_cast<EAI2PDifficulty>(FMath::Clamp(static_cast<int32>(GI->AIDifficulty), 0, 4));
 }
 
 // 离开关卡后旧任务仅会释放自身数据，不能回写GameState。
 void AXQPGameStateBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     bEndingPlay = true;
-    GetWorld()->GetTimerManager().ClearTimer(ProResultTimer);
-    ProBattle->Reset();
+    GetWorld()->GetTimerManager().ClearTimer(FengHuoResultTimer);
+    FengHuoBattle->Reset();
     CancelAIRequest();
     if (IsValid(board2P)) board2P->ResetBoard();
     if (battleType == EBattleType::SoloRide) USoloRideMode::ResetSoloRideData();
@@ -92,9 +92,9 @@ void AXQPGameStateBase::GamePlayAgain(UObject* OwnerObject)
     if (IsLANGame()) return; // 双方准备后由房主统一开新局。
     CancelAIRequest();
     bGameOver = true;
-    GetWorld()->GetTimerManager().ClearTimer(ProResultTimer);
+    GetWorld()->GetTimerManager().ClearTimer(FengHuoResultTimer);
     BattleStart->Stop();
-    ProBattle->Reset();
+    FengHuoBattle->Reset();
     bMoveInProgress = false;
     bAIPaused = false;
     UGameplayStatics::SetGamePaused(this, false);
@@ -115,8 +115,8 @@ void AXQPGameStateBase::GamePlayAgain(UObject* OwnerObject)
 void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2PActor)
 {
     CancelAIRequest();
-    GetWorld()->GetTimerManager().ClearTimer(ProResultTimer);
-    ProBattle->Reset();
+    GetWorld()->GetTimerManager().ClearTimer(FengHuoResultTimer);
+    FengHuoBattle->Reset();
     UXQPGameInstance* GI = GetGameInstance<UXQPGameInstance>();
     if (!IsValid(GI) || !InBoard2PActor.IsValid() || bEndingPlay) return;
     board2P = GI->GetSubsystem<UChessBoard2P>();
@@ -124,7 +124,7 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
     if (!IsValid(board2P) || !IsValid(AI2P)) return;
     board2PActor = InBoard2PActor;
     score1 = score2 = score3 = 0;
-    bUseMoveScores = !IsProBattle() && GI->GetGameMode() != EXQPGameMode::SoloRide && GI->GetGameMode() != EXQPGameMode::GuessWho;
+    bUseMoveScores = !IsFengHuoBattle() && GI->GetGameMode() != EXQPGameMode::SoloRide && GI->GetGameMode() != EXQPGameMode::GuessWho;
     bGameOver = false;
     CurrentEndingIndex = INDEX_NONE;
     EndingMoveCount = 0;
@@ -141,18 +141,18 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
         MyPlayerTag = GI->GetSubsystem<UXQPLANSubsystem>()->GetLocalColor() == EChessColor::REDCHESS ? EPlayerTag::P1 : EPlayerTag::P2;
     }
     else MyPlayerTag = EPlayerTag::P1;
-    AIDifficulty = static_cast<EAI2PDifficulty>(FMath::Clamp(static_cast<int32>(GI->AIDifficulty), 0, 3));
+    AIDifficulty = static_cast<EAI2PDifficulty>(FMath::Clamp(static_cast<int32>(GI->AIDifficulty), 0, 4));
     board2P->bVariantRules = GI->GetGameMode() == EXQPGameMode::GuessWho || GI->GetGameMode() == EXQPGameMode::SoloRide;
     board2P->bRequireKing = GI->GetGameMode() != EXQPGameMode::SoloRide;
-    board2P->bFlyingKingCapture = !IsProBattle();
+    board2P->bFlyingKingCapture = !IsFengHuoBattle();
     board2P->InitializeBoard(board2PActor);
     board2PActor->Init(board2P);
     switch (GI->GetGameMode())
     {
     case EXQPGameMode::Ending:
     {
-        AIDifficulty = EAI2PDifficulty::Normal;
         CurrentEndingIndex = USaveGameLibrary::GetEndingGameLevel();
+        AIDifficulty = static_cast<EAI2PDifficulty>(UEndingLibrary::GetDefenceDifficulty(CurrentEndingIndex));
         EXEC_ONENDINGGAMESTART(CurrentEndingIndex);
         break;
     }
@@ -185,11 +185,12 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
         break;
     }
     }
-    if (IsProBattle()) ProBattle->Start(GI->ProSettings, IsLANGame(), GI->GetGameMode() == EXQPGameMode::ProBattleAI);
+    if (IsFengHuoBattle()) FengHuoBattle->Start(GI->FengHuoSettings, IsLANGame(), GI->GetGameMode() == EXQPGameMode::FengHuoAI);
     BattleStart->BeginSetup();
     if (HUD2P.IsValid()) HUD2P->ResetOperatingRecord();
     if (HUD2P.IsValid()) HUD2P->ShowBattleStart();
-    if (HUD2P.IsValid()) HUD2P->SetAITurn(false);
+    // 恢复连战可能正轮到AI，不能在已启动搜索后又把HUD覆盖成玩家回合。
+    if (HUD2P.IsValid()) HUD2P->SetAITurn(battleTurn == EPlayerTag::AI);
     UpdateScore();
     if (IsLANGame()) GI->GetSubsystem<UXQPLANSubsystem>()->NotifyBoardReady();
     // 恢复时也检查终局，覆盖落子动画或结算前退出的情况。
@@ -204,11 +205,11 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
 // 验证执棋方和走法后锁定动画阶段，避免重复点击导致连续落子。
 void AXQPGameStateBase::ApplyMove2P(TWeakObjectPtr<AChesses> Target, FChessMove2P Move)
 {
-    if (IsProBattle())
+    if (IsFengHuoBattle())
     {
         if (!IsMyTurn() || !Target.IsValid()) return;
-        if (IsLANGame()) GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->SubmitProMove(Move);
-        else ProBattle->TryMove(Target.Get(), Move, EChessColor::REDCHESS);
+        if (IsLANGame()) GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->SubmitFengHuoMove(Move);
+        else FengHuoBattle->TryMove(Target.Get(), Move, EChessColor::REDCHESS);
         return;
     }
     if (!BattleStart->HasStarted() || bGameOver || bEndingPlay || bAIPaused || bMoveInProgress || !IsValid(board2P) || !Target.IsValid()) return;
@@ -275,7 +276,7 @@ void AXQPGameStateBase::OnFinishMove2P(TWeakObjectPtr<AChesses> Target)
 // 在主线程创建快照，后台闭包只持有搜索数据和弱回调目标。
 void AXQPGameStateBase::RunAI2P()
 {
-    if (IsProBattle() || !BattleStart->HasStarted()) return;
+    if (IsFengHuoBattle() || !BattleStart->HasStarted()) return;
     if (bGameOver || bEndingPlay || bAIPaused || bMoveInProgress || battleTurn != EPlayerTag::AI ||
         ActiveSearch.IsValid() || bHasPendingAIResult || !IsValid(AI2P) || !IsValid(board2P)) return;
     ActiveSearch = AI2P->CreateSearch(board2P, EChessColor::BLACKCHESS, AIDifficulty);
@@ -388,17 +389,17 @@ void AXQPGameStateBase::Finish2PGame(EChessColor Winner)
 // 吃将和无合法走法共用同一结算入口。
 void AXQPGameStateBase::NotifyGameOver(EChessColor Winner)
 {
-    if (IsProBattle()) { ProBattle->Finish(Winner); return; }
+    if (IsFengHuoBattle()) { FengHuoBattle->Finish(Winner); return; }
     Finish2PGame(Winner);
 }
 
-bool AXQPGameStateBase::IsProBattle() const
+bool AXQPGameStateBase::IsFengHuoBattle() const
 {
     const auto* GI = GetGameInstance<UXQPGameInstance>();
-    return GI && (GI->GetGameMode() == EXQPGameMode::ProBattleAI || GI->GetGameMode() == EXQPGameMode::ProBattleLAN);
+    return GI && (GI->GetGameMode() == EXQPGameMode::FengHuoAI || GI->GetGameMode() == EXQPGameMode::FengHuoLAN);
 }
 
-void AXQPGameStateBase::FinishProBattle(EChessColor Winner)
+void AXQPGameStateBase::FinishFengHuoBattle(EChessColor Winner)
 {
     if (bGameOver || bEndingPlay) return;
     bGameOver = true;
@@ -406,9 +407,9 @@ void AXQPGameStateBase::FinishProBattle(EChessColor Winner)
     CancelAIRequest();
     DismissSettingPoint2P();
     if (IsLANGame()) GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->NotifyMatchFinished();
-    for (TActorIterator<ACamera2PActor> It(GetWorld()); It; ++It) It->PlayProResultCamera();
+    for (TActorIterator<ACamera2PActor> It(GetWorld()); It; ++It) It->PlayFengHuoResultCamera();
     EXEC_GAMEOVER();
-    GetWorld()->GetTimerManager().SetTimer(ProResultTimer, FTimerDelegate::CreateWeakLambda(this, [this, Winner]()
+    GetWorld()->GetTimerManager().SetTimer(FengHuoResultTimer, FTimerDelegate::CreateWeakLambda(this, [this, Winner]()
     {
         if (HUD2P.IsValid() && bGameOver) HUD2P->ShowMatchResult(Winner);
     }), 1.05f, false);
@@ -418,7 +419,7 @@ void AXQPGameStateBase::FinishProBattle(EChessColor Winner)
 void AXQPGameStateBase::UpdateScore()
 {
     if (battleType == EBattleType::SoloRide) score1 = USoloRideMode::SoloRideScore;
-    else if (!bUseMoveScores && !IsProBattle() && IsValid(board2P))
+    else if (!bUseMoveScores && !IsFengHuoBattle() && IsValid(board2P))
     {
         const FChessPosition Snapshot = board2P->CreateSnapshot();
         score1 = Snapshot.Evaluate(EChessColor::REDCHESS);
@@ -431,7 +432,7 @@ void AXQPGameStateBase::UpdateScore()
 void AXQPGameStateBase::ShowSettingPoint2P(TArray<FChessMove2P> Moves, TWeakObjectPtr<AChesses> Target) const
 {
     if (!IsMyTurn() || !IsValid(board2P) || !Target.IsValid()) return;
-    if (!IsProBattle()) DismissSettingPoint2P();
+    if (!IsFengHuoBattle()) DismissSettingPoint2P();
     board2P->ShowSettingPoint2P(MoveTemp(Moves), Target);
 }
 
@@ -470,10 +471,10 @@ void AXQPGameStateBase::SetHUD2P(TWeakObjectPtr<UUI_Battle2P_Base> InHUD)
 }
 
 // 获取玩家1得分。
-int32 AXQPGameStateBase::GetScore1() const { return IsProBattle() ? ProBattle->GetStats(EChessColor::REDCHESS).CaptureScore : score1; }
+int32 AXQPGameStateBase::GetScore1() const { return IsFengHuoBattle() ? FengHuoBattle->GetStats(EChessColor::REDCHESS).CaptureScore : score1; }
 
 // 获取玩家2得分。
-int32 AXQPGameStateBase::GetScore2() const { return IsProBattle() ? ProBattle->GetStats(EChessColor::BLACKCHESS).CaptureScore : score2; }
+int32 AXQPGameStateBase::GetScore2() const { return IsFengHuoBattle() ? FengHuoBattle->GetStats(EChessColor::BLACKCHESS).CaptureScore : score2; }
 
 // 获取玩家3得分。
 int32 AXQPGameStateBase::GetScore3() const { return score3; }
@@ -482,8 +483,8 @@ int32 AXQPGameStateBase::GetScore3() const { return score3; }
 bool AXQPGameStateBase::IsMyTurn() const
 {
     if (!BattleStart->HasStarted()) return false;
-    if (IsProBattle())
-        return !bGameOver && !bEndingPlay && !bAIPaused && ProBattle->IsRunning() &&
+    if (IsFengHuoBattle())
+        return !bGameOver && !bEndingPlay && !bAIPaused && FengHuoBattle->IsRunning() &&
             (!IsLANGame() || GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->IsBattleReady());
     if (IsLANGame() && !GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->CanLocalMove()) return false;
     return !bGameOver && !bEndingPlay && !bAIPaused && !bMoveInProgress && MyPlayerTag == battleTurn;
@@ -492,7 +493,7 @@ bool AXQPGameStateBase::IsMyTurn() const
 bool AXQPGameStateBase::IsLANGame() const
 {
     const UXQPGameInstance* GI = GetGameInstance<UXQPGameInstance>();
-    return GI && (GI->GetGameMode() == EXQPGameMode::LAN || GI->GetGameMode() == EXQPGameMode::ProBattleLAN);
+    return GI && (GI->GetGameMode() == EXQPGameMode::LAN || GI->GetGameMode() == EXQPGameMode::FengHuoLAN);
 }
 
 bool AXQPGameStateBase::CanApplyNetworkMove() const
@@ -502,7 +503,7 @@ bool AXQPGameStateBase::CanApplyNetworkMove() const
 
 void AXQPGameStateBase::OnBattleStarted()
 {
-    if (!bGameOver && !IsProBattle() && battleTurn == EPlayerTag::AI) RunAI2P();
+    if (!bGameOver && !IsFengHuoBattle() && battleTurn == EPlayerTag::AI) RunAI2P();
 }
 
 void AXQPGameStateBase::ApplyNetworkMove(const FChessMove2P& Move)

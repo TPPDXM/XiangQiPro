@@ -44,7 +44,7 @@ private:
     FRotator TargetRotation;
 
     bool bIsRotatingCamera;
-    bool bProResultCamera = false;
+    bool bFengHuoResultCamera = false;
     FRotator HomeRotation;
     bool bPortraitCamera = false;
     TWeakObjectPtr<class AChessBoard2PActor> MobileBoard;
@@ -143,7 +143,7 @@ protected:
 public:
     // 如果需要每帧更新，可以重写Tick函数
     virtual void Tick(float DeltaTime) override;
-    void PlayProResultCamera();
+    void PlayFengHuoResultCamera();
     // 使用HUD实际剩余区域拟合初始镜头，经典对弈保留场景里的目标距离。
     void FitProBoardToViewport(const FVector2D& ViewportSize, const FBox2D& BoardRect);
     virtual void GamePlayAgain(UObject* OwnerObject) override;

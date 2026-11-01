@@ -1,4 +1,4 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "Camera2PActor.h"
@@ -76,7 +76,7 @@ void ACamera2PActor::InitCamera()
 	TargetRotation = SpringArm->GetRelativeRotation();
     // 黑方从自己的底线观察棋盘；保留已有的拖拽和缩放控制。
     const auto* GI = GetGameInstance<UXQPGameInstance>();
-    if (GI && (GI->GetGameMode() == EXQPGameMode::LAN || GI->GetGameMode() == EXQPGameMode::ProBattleLAN) && GI->GetSubsystem<UXQPLANSubsystem>()->GetLocalColor() == EChessColor::BLACKCHESS)
+    if (GI && (GI->GetGameMode() == EXQPGameMode::LAN || GI->GetGameMode() == EXQPGameMode::FengHuoLAN) && GI->GetSubsystem<UXQPLANSubsystem>()->GetLocalColor() == EChessColor::BLACKCHESS)
     {
         TargetRotation.Yaw += 180.f;
         SpringArm->SetRelativeRotation(TargetRotation);
@@ -107,8 +107,8 @@ void ACamera2PActor::UpdateDesktopOrbit()
 void ACamera2PActor::FitProBoardToViewport(const FVector2D& Viewport, const FBox2D& BoardRect)
 {
     const auto* GI = GetGameInstance<UXQPGameInstance>();
-    if (!GI || (GI->GetGameMode() != EXQPGameMode::ProBattleAI && GI->GetGameMode() != EXQPGameMode::ProBattleLAN) ||
-        bPortraitCamera || bProResultCamera || bDesktopCameraAdjusted || Viewport.X <= 0 || Viewport.Y <= 0 ||
+    if (!GI || (GI->GetGameMode() != EXQPGameMode::FengHuoAI && GI->GetGameMode() != EXQPGameMode::FengHuoLAN) ||
+        bPortraitCamera || bFengHuoResultCamera || bDesktopCameraAdjusted || Viewport.X <= 0 || Viewport.Y <= 0 ||
         !BoardRect.bIsValid || BoardRect.GetSize().X < 80 || BoardRect.GetSize().Y < 80) return;
     if (!SpringArm->GetRelativeRotation().Equals(TargetRotation, .1f)) return;
     if (bDesktopFrameApplied && LastDesktopViewport.Equals(Viewport, 1.f) &&
@@ -243,10 +243,10 @@ void ACamera2PActor::FitMobileBoard()
     LastMobileInsets = XQPMobile::SafeInsets(this);
 }
 
-void ACamera2PActor::PlayProResultCamera()
+void ACamera2PActor::PlayFengHuoResultCamera()
 {
-    if (bPortraitCamera) { bProResultCamera = true; FitMobileBoard(); return; }
-    bProResultCamera = true;
+    if (bPortraitCamera) { bFengHuoResultCamera = true; FitMobileBoard(); return; }
+    bFengHuoResultCamera = true;
     bIsRotatingCamera = bIsSingleTouchActive = bIsTwoFingerTouchActive = false;
     TargetRotation = HomeRotation;
     TargetRotation.Pitch = -58.f;
@@ -258,9 +258,9 @@ void ACamera2PActor::PlayProResultCamera()
 
 void ACamera2PActor::GamePlayAgain(UObject* OwnerObject)
 {
-    if (const auto* State = GetWorld()->GetGameState<AXQPGameStateBase>(); State && State->IsProBattle())
+    if (const auto* State = GetWorld()->GetGameState<AXQPGameStateBase>(); State && State->IsFengHuoBattle())
     {
-        bProResultCamera = false;
+        bFengHuoResultCamera = false;
         TargetRotation = HomeRotation;
         if (bPortraitCamera) FitMobileBoard();
         else
@@ -323,7 +323,7 @@ void ACamera2PActor::GamePause(UObject* OwnerObject)
 void ACamera2PActor::GameResume(UObject* OwnerObject)
 {
 	// 启用输入
-    if (!bProResultCamera) EnableInput(GetController<APlayerController>());
+    if (!bFengHuoResultCamera) EnableInput(GetController<APlayerController>());
 	IIF_GameState::GameResume(OwnerObject);
 }
 

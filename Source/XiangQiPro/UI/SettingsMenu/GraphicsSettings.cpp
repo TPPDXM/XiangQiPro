@@ -2,6 +2,7 @@
 
 
 #include "GraphicsSettings.h"
+#include "XiangQiPro/UI/XQPMobile.h"
 
 // 构造界面并初始化控件与事件绑定。
 void UGraphicsSettings::NativeConstruct()
@@ -17,6 +18,8 @@ void UGraphicsSettings::NativeConstruct()
 void UGraphicsSettings::SaveAndApply()
 {
 	if (!IsValid(UserSettings)) return;
-	UserSettings->SaveSettings();
+	XQPMobile::ApplyNativeResolution(this);
 	UserSettings->ApplySettings(true);
+	XQPMobile::ApplyNativeResolution(this);
+	UserSettings->SaveSettings();
 }

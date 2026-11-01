@@ -5,7 +5,7 @@
 #include "XiangQiPro/GameMode/XQPGameStateBase.h"
 #include "XiangQiPro/GameMode/XQPGameInstance.h"
 #include "XiangQiPro/Util/ObjectManager.h"
-#include "InGame/UI_ProBattle.h"
+#include "InGame/UI_FengHuoBattle.h"
 #include "TimerManager.h"
 
 AXQP_HUD::AXQP_HUD()
@@ -35,11 +35,11 @@ void AXQP_HUD::InitUI()
 	TSubclassOf<UUserWidget> PauseMenuClass;
 	switch (GameInstance->GetGameMode())
 	{
-    case EXQPGameMode::ProBattleAI:
-    case EXQPGameMode::ProBattleLAN:
+    case EXQPGameMode::FengHuoAI:
+    case EXQPGameMode::FengHuoLAN:
     {
-        auto* ProClass = LoadClass<UUI_ProBattle>(nullptr, TEXT("/Game/UMG/Pro/BP_UI_ProBattle.BP_UI_ProBattle_C"));
-        BaseUI = XQPMobile::CreateWidget<UUI_ProBattle>(GetWorld(), ProClass);
+        auto* FengHuoClass = LoadClass<UUI_FengHuoBattle>(nullptr, TEXT("/Game/UMG/FengHuo/BP_UI_FengHuoBattle.BP_UI_FengHuoBattle_C"));
+        BaseUI = XQPMobile::CreateWidget<UUI_FengHuoBattle>(GetWorld(), FengHuoClass);
         PauseMenuClass = Class_InGamePause;
         if (auto* State = GetWorld()->GetGameState<AXQPGameStateBase>()) State->SetHUD2P(Cast<UUI_Battle2P_Base>(BaseUI));
         break;

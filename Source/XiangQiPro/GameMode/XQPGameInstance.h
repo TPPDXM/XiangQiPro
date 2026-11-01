@@ -9,7 +9,7 @@
 #include "MoviePlayer.h"
 
 #include "CoreMinimal.h"
-#include "ProBattleTypes.h"
+#include "FengHuoBattleTypes.h"
 #include "Engine/GameInstance.h"
 #include "XQPGameInstance.generated.h"
 
@@ -22,8 +22,8 @@ enum class EXQPGameMode : uint8
 	SoloRide = 3,
 	GuessWho = 4,
     LAN = 5,
-    ProBattleAI = 6,
-    ProBattleLAN = 7
+    FengHuoAI = 6,
+    FengHuoLAN = 7
 };
 
 /**
@@ -58,8 +58,8 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 	uint8 AIDifficulty = 1;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Pro Battle")
-    FProBattleSettings ProSettings;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FengHuo Battle")
+    FFengHuoSettings FengHuoSettings;
 
 	UPROPERTY(BlueprintReadOnly, Category = "MoviePlayer")
 	bool bIsLoadingLevel = false;

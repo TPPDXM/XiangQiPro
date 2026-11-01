@@ -8,10 +8,22 @@
 #include "Components/SizeBox.h"
 #include "XiangQiPro/UI/Components/UI_CommonDialog.h"
 #include "XiangQiPro/UI/UIManager.h"
+#include "XiangQiPro/GameMode/XQPGameInstance.h"
+#include "XiangQiPro/UI/Components/UI_XQP_ComboBox.h"
 
 void UUI_ClassicAISetup::NativeConstruct()
 {
     Super::NativeConstruct();
+    // 先让旧蓝图完成绑定，再统一替换选项；保存旧值，避免ClearOptions的临时空选择污染难度。
+    if (auto* Selector = Cast<UUI_XQP_ComboBox>(GetWidgetFromName(TEXT("WB_ComboBox_Difficult"))); Selector && Selector->ComboBox)
+    {
+        auto* GI = GetGameInstance<UXQPGameInstance>();
+        const int32 Selected = GI ? FMath::Clamp<int32>(GI->AIDifficulty, 0, 4) : 2;
+        Selector->ComboBox->ClearOptions();
+        for (const TCHAR* Name : {TEXT("简单"), TEXT("普通"), TEXT("困难"), TEXT("大师"), TEXT("棋圣")}) Selector->ComboBox->AddOption(Name);
+        Selector->ComboBox->SetSelectedIndex(Selected);
+        if (GI) GI->AIDifficulty = Selected;
+    }
     UpdateCanTick();
     if (!ChallengeSwitch || !HighestStreakText)
         return;
@@ -26,6 +38,7 @@ void UUI_ClassicAISetup::NativeConstruct()
 void UUI_ClassicAISetup::OnChallengeChanged(bool bChecked)
 {
     UPlayerProfileSubsystem* Profile = GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>();
+    const bool bJustEnabled = bChecked && !Profile->bChallengeSelected;
     if (!bChecked && Profile->HasActiveRun())
     {
         ChallengeSwitch->SetIsChecked(true);
@@ -47,6 +60,18 @@ void UUI_ClassicAISetup::OnChallengeChanged(bool bChecked)
         return;
     }
     ApplyChallengeSelection(bChecked);
+    if (bJustEnabled && CommonDialogClass)
+    {
+        // 仅在主动开启时说明学习与续局规则，恢复已有挑战不会重复打断玩家。
+        auto* Dialog = XQPMobile::CreateWidget<UUI_CommonDialog>(GetOwningPlayer(), CommonDialogClass);
+        if (!Dialog) return;
+        ChallengeDialog = Dialog;
+        GetGameInstance()->GetSubsystem<UUIManager>()->AddUI(Dialog, false);
+        Dialog->Configure(FText::FromString(TEXT("AI 连战挑战")),
+            FText::FromString(TEXT("AI 会在连战中学习你的用子习惯、进攻路线和应对方式，调整策略，并随着连胜逐步增强。\n\n对局进度与执棋回合会在每次落子时自动保存。即使在 AI 思考或落子动画期间退出，下次也能从已提交的局面继续。\n\n结束挑战后结算最高连胜，本次学习记录将清除。")),
+            FText::FromString(TEXT("知道了")), FText::GetEmpty());
+        Dialog->OnPrimaryAction = FSimpleDelegate::CreateWeakLambda(Dialog, [Dialog]() { Dialog->Dismiss(); });
+    }
 }
 
 void UUI_ClassicAISetup::ApplyChallengeSelection(bool bChecked)

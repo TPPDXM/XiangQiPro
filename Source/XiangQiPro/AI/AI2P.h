@@ -15,7 +15,8 @@ enum class EAI2PDifficulty : uint8
     Easy = 0,   // 简单
     Normal = 1, // 普通
     Hard = 2,   // 困难
-    Master = 3  // 大师
+    Master = 3, // 大师
+    Saint = 4   // 棋圣：交换分析、选择性搜索及完整局面评估。
 };
 
 // AI入口只负责预算与快照，具体规则和搜索独立于UObject。

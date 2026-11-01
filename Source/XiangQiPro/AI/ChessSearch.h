@@ -26,6 +26,9 @@ struct FChessSearchStyle
     int32 RandomSeed = 0;
     bool bUseOpeningBook = false;
     bool bAdvancedSearch = false;
+    // 棋圣独立启用选择性搜索；大师开始使用机动性与九宫安全评估。
+    bool bSelectiveSearch = false;
+    bool bTacticalEvaluation = false;
 };
 
 // 每次请求独享搜索状态，唯一跨线程可写数据是原子取消标志。

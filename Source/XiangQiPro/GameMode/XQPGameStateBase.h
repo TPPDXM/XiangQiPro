@@ -1,4 +1,4 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
@@ -15,7 +15,7 @@ class UChessBoard2P;
 class UUI_Battle2P_Base;
 class AChessBoard2PActor;
 class AChesses;
-class UProBattleComponent;
+class UFengHuoBattleComponent;
 class UBattleStartComponent;
 
 enum class EChessColor : uint8;
@@ -103,13 +103,13 @@ private:
 
 public:
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Pro Battle")
-    TObjectPtr<UProBattleComponent> ProBattle;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="FengHuo Battle")
+    TObjectPtr<UFengHuoBattleComponent> FengHuoBattle;
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Battle")
     TObjectPtr<UBattleStartComponent> BattleStart;
     void OnBattleStarted();
-    bool IsProBattle() const;
-    void FinishProBattle(EChessColor Winner);
+    bool IsFengHuoBattle() const;
+    void FinishFengHuoBattle(EChessColor Winner);
 
 	UPROPERTY(EditAnywhere)
 	EAI2PDifficulty AIDifficulty;
@@ -202,6 +202,6 @@ public:
     int32 GetEndingBestSteps() const { return EndingBestSteps; }
     bool DidBreakEndingRecord() const { return bEndingRecordBroken; }
     bool IsLANGame() const;
-    FTimerHandle ProResultTimer;
+    FTimerHandle FengHuoResultTimer;
 
 };

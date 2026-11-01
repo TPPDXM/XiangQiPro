@@ -4,6 +4,8 @@
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
 #include "XiangQiPro/GameMode/XQPGameInstance.h"
+#include "GameFramework/GameUserSettings.h"
+#include "HAL/IConsoleManager.h"
 
 FVector2D XQPMobile::ViewportSize(const UObject* Context)
 {
@@ -40,9 +42,9 @@ FBox2D XQPMobile::BoardRect(const UObject* Context)
     const float DPI = UWidgetLayoutLibrary::GetViewportScale(Context);
     // Keep this clearance in sync with the compact portrait HUD assets.
     const auto* GameInstance = Context && Context->GetWorld() ? Context->GetWorld()->GetGameInstance<UXQPGameInstance>() : nullptr;
-    const bool ProBattle = GameInstance && (GameInstance->GetGameMode() == EXQPGameMode::ProBattleAI || GameInstance->GetGameMode() == EXQPGameMode::ProBattleLAN);
-    const float Top = FMath::Min((ProBattle ? 142.f : 100.f) * DPI, Height * .25f);
-    const float Bottom = Height - FMath::Min((ProBattle ? 212.f : 106.f) * DPI, Height * .35f);
+    const bool FengHuoBattle = GameInstance && (GameInstance->GetGameMode() == EXQPGameMode::FengHuoAI || GameInstance->GetGameMode() == EXQPGameMode::FengHuoLAN);
+    const float Top = FMath::Min((FengHuoBattle ? 142.f : 100.f) * DPI, Height * .25f);
+    const float Bottom = Height - FMath::Min((FengHuoBattle ? 212.f : 106.f) * DPI, Height * .35f);
     const float Side = FMath::Min(8.f * DPI, Width * .025f);
     return FBox2D(FVector2D(Safe.Left + Side, Safe.Top + Top),
         FVector2D(Size.X - Safe.Right - Side, Safe.Top + FMath::Max(Top + 1.f, Bottom)));
@@ -58,4 +60,21 @@ UClass* XQPMobile::ResolveWidgetClass(const UObject* Context, UClass* WidgetClas
     if (UClass* MobileClass = LoadClass<UUserWidget>(nullptr, *Path)) return MobileClass;
     UE_LOG(LogTemp, Warning, TEXT("Mobile UI asset is missing: %s"), *Path);
     return WidgetClass;
+}
+
+void XQPMobile::ApplyNativeResolution(const UObject* Context)
+{
+    if (!IsPortrait(Context)) return;
+    if (GEngine && GEngine->GetGameUserSettings())
+    {
+        auto* Settings = GEngine->GetGameUserSettings();
+        Settings->SetResolutionScaleValueEx(100.f);
+        Settings->SetDynamicResolutionEnabled(false);
+        Settings->SetTextureQuality(FMath::Max(2, Settings->GetTextureQuality()));
+    }
+    // 0表示使用设备原生像素；不能写1，后者在Android上可能对应720p基准。
+    for (const auto& Setting : {TPair<const TCHAR*, int32>(TEXT("r.MobileContentScaleFactor"), 0),
+        {TEXT("r.ScreenPercentage"), 100}, {TEXT("r.DynamicRes.OperationMode"), 0},
+        {TEXT("r.MaxAnisotropy"), 16}, {TEXT("r.DepthOfFieldQuality"), 0}, {TEXT("r.MotionBlurQuality"), 0}})
+        if (auto* CVar = IConsoleManager::Get().FindConsoleVariable(Setting.Key)) CVar->Set(Setting.Value, ECVF_SetByGameOverride);
 }

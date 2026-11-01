@@ -1,0 +1,23 @@
+[
+  {
+    "Name": "FengHuo",
+    "Title": "烽火弈",
+    "GameModeID": 6,
+    "Covers": "/Script/Engine.Texture2D'/Game/UMG/Texture/T_UI_FengHuoCover.T_UI_FengHuoCover'",
+    "SetupWidgetClass": "/Game/UMG/FengHuo/BP_UI_FengHuoSetup.BP_UI_FengHuoSetup_C"
+  },
+  {
+    "Name": "SoloRide",
+    "Title": "千里走单骑",
+    "GameModeID": 3,
+    "Covers": "/Script/Engine.Texture2D'/Game/UMG/Texture/T_UI_Mode_SoloRide.T_UI_Mode_SoloRide'",
+    "SetupWidgetClass": "/Game/UMG/Main/BP_UI_GameModeSetup.BP_UI_GameModeSetup_C"
+  },
+  {
+    "Name": "GuessWho",
+    "Title": "兵不厌诈",
+    "GameModeID": 4,
+    "Covers": "/Script/Engine.Texture2D'/Game/UMG/Texture/T_UI_Mode_GuessWho.T_UI_Mode_GuessWho'",
+    "SetupWidgetClass": "/Game/UMG/Main/BP_UI_GameModeSetup.BP_UI_GameModeSetup_C"
+  }
+]

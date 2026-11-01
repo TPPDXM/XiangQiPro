@@ -24958,5 +24958,1389 @@
     "PerfectStepNum": 4,
     "GoodStepNum": 6,
     "PassStep": 9
+  },
+  {
+    "Name": "L313",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 6,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jv'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 5,
+          "Y": 2
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 1,
+          "Y": 5
+        }
+      }
+    ],
+    "Title": "宗师·远兵封喉",
+    "PerfectStepNum": 5,
+    "GoodStepNum": 7,
+    "PassStep": 11,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L314",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 8
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Pao'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 2,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 4
+        }
+      }
+    ],
+    "Title": "宗师·飞炮夺关",
+    "PerfectStepNum": 5,
+    "GoodStepNum": 7,
+    "PassStep": 11,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L315",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 6,
+          "Y": 2
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 6,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 4
+        }
+      }
+    ],
+    "Title": "宗师·双线争先",
+    "PerfectStepNum": 5,
+    "GoodStepNum": 7,
+    "PassStep": 11,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L316",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 7
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 6,
+          "Y": 0
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 2,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 1,
+          "Y": 0
+        }
+      }
+    ],
+    "Title": "宗师·铁门深锁",
+    "PerfectStepNum": 5,
+    "GoodStepNum": 7,
+    "PassStep": 11,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L317",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 4,
+          "Y": 1
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 2,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jv'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 2,
+          "Y": 4
+        }
+      }
+    ],
+    "Title": "宗师·绕宫取将",
+    "PerfectStepNum": 5,
+    "GoodStepNum": 7,
+    "PassStep": 11,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L318",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 6,
+          "Y": 0
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 6,
+          "Y": 6
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Xiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 4,
+          "Y": 6
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 1,
+          "Y": 3
+        }
+      }
+    ],
+    "Title": "宗师·卧马藏锋",
+    "PerfectStepNum": 5,
+    "GoodStepNum": 7,
+    "PassStep": 11,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L319",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jv'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 4,
+          "Y": 8
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Pao'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 3,
+          "Y": 1
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 2,
+          "Y": 3
+        }
+      }
+    ],
+    "Title": "宗师·炮兵合围",
+    "PerfectStepNum": 5,
+    "GoodStepNum": 7,
+    "PassStep": 11,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L320",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jv'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 4,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 3,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 2,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 0
+        }
+      }
+    ],
+    "Title": "宗师·借势夺宫",
+    "PerfectStepNum": 5,
+    "GoodStepNum": 7,
+    "PassStep": 11,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L321",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jv'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 2
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Xiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 5,
+          "Y": 2
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 4,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 1,
+          "Y": 1
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 3
+        }
+      }
+    ],
+    "Title": "宗师·横车绝渡",
+    "PerfectStepNum": 5,
+    "GoodStepNum": 7,
+    "PassStep": 11,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L322",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 5,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Pao'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 2,
+          "Y": 1
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 2,
+          "Y": 3
+        }
+      }
+    ],
+    "Title": "宗师·马炮追魂",
+    "PerfectStepNum": 5,
+    "GoodStepNum": 7,
+    "PassStep": 11,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L323",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Xiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 6
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Xiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 8
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Pao'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 6,
+          "Y": 1
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 3
+        }
+      }
+    ],
+    "Title": "宗师·兵临城下",
+    "PerfectStepNum": 5,
+    "GoodStepNum": 7,
+    "PassStep": 11,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L324",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 5,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jv'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 5,
+          "Y": 8
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Xiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 2,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 1,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jv'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 1,
+          "Y": 6
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 4
+        }
+      }
+    ],
+    "Title": "宗师·连环破阵",
+    "PerfectStepNum": 5,
+    "GoodStepNum": 7,
+    "PassStep": 11,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L325",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jv'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Pao'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 6,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 6,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 4
+        }
+      }
+    ],
+    "Title": "宗师·沉底惊雷",
+    "PerfectStepNum": 5,
+    "GoodStepNum": 7,
+    "PassStep": 11,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L326",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jv'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 6,
+          "Y": 2
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 5,
+          "Y": 0
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 3,
+          "Y": 6
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 2,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jv'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 1,
+          "Y": 4
+        }
+      }
+    ],
+    "Title": "宗师·暗渡陈仓",
+    "PerfectStepNum": 5,
+    "GoodStepNum": 7,
+    "PassStep": 11,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L327",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 6,
+          "Y": 6
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Pao'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 4,
+          "Y": 0
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jv'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 4,
+          "Y": 2
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jv'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 3,
+          "Y": 1
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jv'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 1,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 3
+        }
+      }
+    ],
+    "Title": "宗师·困宫擒王",
+    "PerfectStepNum": 5,
+    "GoodStepNum": 7,
+    "PassStep": 11,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L328",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 6
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 6
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jv'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Pao'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 7
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 4
+        }
+      }
+    ],
+    "Title": "宗师·巧破重门",
+    "PerfectStepNum": 5,
+    "GoodStepNum": 7,
+    "PassStep": 11,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L329",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 2
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 5
+        }
+      }
+    ],
+    "Title": "宗师·双子联攻",
+    "PerfectStepNum": 6,
+    "GoodStepNum": 8,
+    "PassStep": 12,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L330",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 6,
+          "Y": 0
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 2,
+          "Y": 1
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 4
+        }
+      }
+    ],
+    "Title": "宗师·截路封门",
+    "PerfectStepNum": 6,
+    "GoodStepNum": 8,
+    "PassStep": 12,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L331",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 8
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 5,
+          "Y": 7
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 2,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 5
+        }
+      }
+    ],
+    "Title": "宗师·弃子引将",
+    "PerfectStepNum": 6,
+    "GoodStepNum": 8,
+    "PassStep": 12,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L332",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Xiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 2
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Xiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 8
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jv'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 2,
+          "Y": 2
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 1,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 5
+        }
+      }
+    ],
+    "Title": "宗师·抽丝剥茧",
+    "PerfectStepNum": 6,
+    "GoodStepNum": 8,
+    "PassStep": 12,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L333",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 1
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 6,
+          "Y": 2
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 6,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Xiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 2
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 4
+        }
+      }
+    ],
+    "Title": "宗师·绝处逢生",
+    "PerfectStepNum": 6,
+    "GoodStepNum": 8,
+    "PassStep": 12,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L334",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Pao'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Pao'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 8
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 6
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 5
+        }
+      }
+    ],
+    "Title": "宗师·连将追击",
+    "PerfectStepNum": 6,
+    "GoodStepNum": 8,
+    "PassStep": 12,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L335",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 9,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 5,
+          "Y": 1
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Bing'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 1,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jv'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 1,
+          "Y": 6
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 4
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jv'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 0,
+          "Y": 7
+        }
+      }
+    ],
+    "Title": "宗师·运筹帷幄",
+    "PerfectStepNum": 6,
+    "GoodStepNum": 8,
+    "PassStep": 12,
+    "DefenceDifficulty": 4
+  },
+  {
+    "Name": "L336",
+    "Infos": [
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 8,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Shi'",
+        "Color": "BLACKCHESS",
+        "Pos": {
+          "X": 7,
+          "Y": 3
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Ma'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 5,
+          "Y": 5
+        }
+      },
+      {
+        "Class": "/Script/CoreUObject.Class'/Script/XiangQiPro.Chess_Jiang'",
+        "Color": "REDCHESS",
+        "Pos": {
+          "X": 1,
+          "Y": 4
+        }
+      }
+    ],
+    "Title": "宗师·七星攻坚",
+    "PerfectStepNum": 7,
+    "GoodStepNum": 9,
+    "PassStep": 13,
+    "DefenceDifficulty": 4
   }
 ]

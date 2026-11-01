@@ -14,7 +14,7 @@ class XIANGQIPRO_API UUI_LANLobby : public UXQPMobileWidget
 {
     GENERATED_BODY()
 public:
-    bool bProModeLobby = false;
+    bool bFengHuoLobby = false;
     virtual void NativeConstruct() override;
     virtual void NativeTick(const FGeometry& Geometry, float DeltaTime) override;
     virtual void NativeDestruct() override;

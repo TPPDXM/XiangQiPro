@@ -1,9 +1,9 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "Chesses.h"
 #include "XiangQiPro/Network/XQPLANSubsystem.h"
-#include "XiangQiPro/GameMode/ProBattleComponent.h"
+#include "XiangQiPro/GameMode/FengHuoBattleComponent.h"
 
 // Sets default values
 AChesses::AChesses()
@@ -107,7 +107,7 @@ void AChesses::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2
 		if (WeakThis.IsValid())
 		{
 			WeakThis->ChessMesh->SetHiddenInGame(true); // 棋子被吃后隐藏并销毁
-            WeakThis->bProFadeComplete = true;
+            WeakThis->bCaptureFadeComplete = true;
             WeakThis->FadeNiagara->Deactivate();
 		}
 		}));
@@ -144,26 +144,26 @@ void AChesses::Tick(float DeltaTime)
     if (!Board2P.IsValid()) return;
     if (bCaptureApproach)
     {
-        ProMoveTime += DeltaTime;
-        const float Alpha = FMath::Clamp(ProMoveTime / ProMoveDuration, 0.f, 1.f);
+        FengHuoMoveTime += DeltaTime;
+        const float Alpha = FMath::Clamp(FengHuoMoveTime / FengHuoMoveDuration, 0.f, 1.f);
         SetActorLocation(CaptureApproachLocation(PendingCapture.Get(), Alpha));
         if (Alpha >= 1.f)
         {
             bCaptureApproach = false;
             bCaptureLanding = true;
             Pos = TargetPos;
-            ProSupport = PendingCapture;
+            CaptureSupport = PendingCapture;
             CaptureHoverRemaining = 0.16f;
             CaptureHoverHeight = GetActorLocation().Z;
-            CaptureHoverOffset = ProSupport.IsValid() ? CaptureHoverHeight - ProSupport->GetActorLocation().Z : 0.f;
+            CaptureHoverOffset = CaptureSupport.IsValid() ? CaptureHoverHeight - CaptureSupport->GetActorLocation().Z : 0.f;
             if (PendingCapture.IsValid()) PendingCapture->Defeated();
             PendingCapture.Reset();
         }
     }
-    else if (bProTravelling)
+    else if (bRealtimeTravelling)
     {
-        ProMoveTime += DeltaTime;
-        const float Alpha = FMath::Clamp(ProMoveTime / ProMoveDuration, 0.f, 1.f);
+        FengHuoMoveTime += DeltaTime;
+        const float Alpha = FMath::Clamp(FengHuoMoveTime / FengHuoMoveDuration, 0.f, 1.f);
         const auto Occupant = Board2P->GetChess(TargetPos);
         AChesses* Victim = Occupant.IsValid() && Occupant->GetColor() != MyColor && !Occupant->IsDead() ? Occupant.Get() : nullptr;
         FVector Location = CaptureApproachLocation(Victim, Alpha);
@@ -172,13 +172,13 @@ void AChesses::Tick(float DeltaTime)
     else if (CaptureHoverRemaining > 0.f)
     {
         FVector Location = GetActorLocation();
-        if (ProSupport.IsValid()) CaptureHoverHeight = ProSupport->GetActorLocation().Z + CaptureHoverOffset;
+        if (CaptureSupport.IsValid()) CaptureHoverHeight = CaptureSupport->GetActorLocation().Z + CaptureHoverOffset;
         Location.Z = CaptureHoverHeight;
         SetActorLocation(Location);
         CaptureHoverRemaining = FMath::Max(0.f, CaptureHoverRemaining - DeltaTime);
-        if (CaptureHoverRemaining <= 0.f) ProSupport.Reset();
+        if (CaptureHoverRemaining <= 0.f) CaptureSupport.Reset();
     }
-    else if ((bProMode || bCaptureLanding) && Board2P->IsValidPosition(Pos.X, Pos.Y))
+    else if ((bFengHuoMode || bCaptureLanding) && Board2P->IsValidPosition(Pos.X, Pos.Y))
     {
         FVector Location = GetActorLocation();
         Location.Z = FMath::FInterpConstantTo(Location.Z, Board2P->BoardLocs[Pos.X][Pos.Y].Z, DeltaTime, 12.f);
@@ -187,14 +187,14 @@ void AChesses::Tick(float DeltaTime)
         {
             bCaptureLanding = bAnimationing = false;
             if (GameState.IsValid()) GameState->OnFinishMove2P(this);
-            if (!bProMode && !bDead) SetActorTickEnabled(false);
+            if (!bFengHuoMode && !bDead) SetActorTickEnabled(false);
         }
     }
     if (bDead)
     {
-        ProDeathTime += DeltaTime;
-        if (bProFadeComplete && FadeNiagara->IsComplete()) Destroy();
-        else if (ProDeathTime > 8.f) { FadeNiagara->DeactivateImmediate(); Destroy(); }
+        CaptureDeathTime += DeltaTime;
+        if (bCaptureFadeComplete && FadeNiagara->IsComplete()) Destroy();
+        else if (CaptureDeathTime > 8.f) { FadeNiagara->DeactivateImmediate(); Destroy(); }
     }
 }
 
@@ -204,9 +204,9 @@ void AChesses::ClearMoveSelection()
     ChessMesh->SetOverlayMaterial(nullptr);
 }
 
-void AChesses::EnableProMode()
+void AChesses::EnableFengHuoMode()
 {
-    bProMode = true;
+    bFengHuoMode = true;
     PrimaryActorTick.bCanEverTick = true;
     SetActorTickEnabled(true);
     UpdateSelectable();
@@ -220,11 +220,11 @@ FVector AChesses::CaptureApproachLocation(AChesses* Victim, float Alpha) const
     {
         const float BottomOffset = GetActorLocation().Z - (ChessMesh->Bounds.Origin.Z - ChessMesh->Bounds.BoxExtent.Z);
         const float HoverZ = Victim->GetSurfaceZ() + BottomOffset + 0.25f;
-        FVector Location = FMath::Lerp(ProMoveStart, End, Alpha);
-        Location.Z = FMath::Lerp(ProMoveStart.Z, HoverZ, FMath::SmoothStep(0.f, 0.35f, Alpha));
+        FVector Location = FMath::Lerp(FengHuoMoveStart, End, Alpha);
+        Location.Z = FMath::Lerp(FengHuoMoveStart.Z, HoverZ, FMath::SmoothStep(0.f, 0.35f, Alpha));
         return Location;
     }
-    FVector Location = FMath::Lerp(ProMoveStart, End, Alpha);
+    FVector Location = FMath::Lerp(FengHuoMoveStart, End, Alpha);
     Location.Z += FMath::Sin(Alpha * PI) * 1.8f;
     return Location;
 }
@@ -234,14 +234,14 @@ float AChesses::GetSurfaceZ() const
     return ChessMesh->Bounds.Origin.Z + ChessMesh->Bounds.BoxExtent.Z;
 }
 
-void AChesses::BeginProMove(const FChessMove2P& Move, float Duration)
+void AChesses::BeginFengHuoMove(const FChessMove2P& Move, float Duration)
 {
     TargetPos = Move.to;
-    bProTravelling = bAnimationing = true;
-    ProMoveTime = 0.f;
-    ProMoveDuration = FMath::Max(0.01f, Duration);
-    ProMoveStart = GetActorLocation();
-    ProSupport.Reset();
+    bRealtimeTravelling = bAnimationing = true;
+    FengHuoMoveTime = 0.f;
+    FengHuoMoveDuration = FMath::Max(0.01f, Duration);
+    FengHuoMoveStart = GetActorLocation();
+    CaptureSupport.Reset();
     CaptureHoverRemaining = 0.f;
     bSelected = false;
     ChessMesh->SetOverlayMaterial(nullptr);
@@ -249,11 +249,11 @@ void AChesses::BeginProMove(const FChessMove2P& Move, float Duration)
     ChessMesh->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 }
 
-void AChesses::ArriveProMove(FIntPoint Destination, AChesses* Captured)
+void AChesses::ArriveFengHuoMove(FIntPoint Destination, AChesses* Captured)
 {
-    bProTravelling = bAnimationing = false;
+    bRealtimeTravelling = bAnimationing = false;
     Pos = TargetPos = Destination;
-    ProSupport = Captured;
+    CaptureSupport = Captured;
     FVector Location = Board2P->BoardLocs[Pos.X][Pos.Y];
     if (IsValid(Captured))
     {
@@ -267,9 +267,9 @@ void AChesses::ArriveProMove(FIntPoint Destination, AChesses* Captured)
     ChessMesh->SetCollisionResponseToChannel(ECC_Visibility, bSelectable ? ECR_Block : ECR_Ignore);
 }
 
-void AChesses::StopProMove()
+void AChesses::StopFengHuoMove()
 {
-    bProTravelling = bAnimationing = false;
+    bRealtimeTravelling = bAnimationing = false;
     bSelectable = bSelected = false;
     ChessMesh->SetOverlayMaterial(nullptr);
     ChessMesh->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
@@ -395,7 +395,7 @@ void AChesses::Defeated()
 	if (bDead)
 		return;
 
-    bCaptureApproach = bCaptureLanding = bProTravelling = bAnimationing = false;
+    bCaptureApproach = bCaptureLanding = bRealtimeTravelling = bAnimationing = false;
     TimeLine_ChessMove->Stop();
 
 	bDead = true;													// 标记阵亡
@@ -490,10 +490,10 @@ void AChesses::GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObject
 
 	// 获取全部合法走法
     TArray<FChessMove2P> Moves;
-    if (GameState->IsProBattle())
+    if (GameState->IsFengHuoBattle())
     {
-        GameState->ProBattle->SelectedType = MyType;
-        Moves = GameState->ProBattle->GenerateMoves(this);
+        GameState->FengHuoBattle->SelectedType = MyType;
+        Moves = GameState->FengHuoBattle->GenerateMoves(this);
     }
     else Moves = board2P->GenerateMovesForChess(Pos.X, Pos.Y, this);
 
@@ -512,8 +512,8 @@ void AChesses::ApplyMove(FChessMove2P Move)
     if (PendingCapture.IsValid())
     {
         // 普通模式吃子固定用时到达目标上方，距离越远位移速度越快。
-        ProMoveStart = GetActorLocation(); ProMoveTime = 0.f;
-        ProMoveDuration = 0.4f;
+        FengHuoMoveStart = GetActorLocation(); FengHuoMoveTime = 0.f;
+        FengHuoMoveDuration = 0.4f;
         bCaptureApproach = bAnimationing = true;
         SetActorTickEnabled(true);
     }

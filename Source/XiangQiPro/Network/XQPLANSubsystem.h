@@ -101,11 +101,11 @@ class XIANGQIPRO_API UXQPLANSubsystem : public UGameInstanceSubsystem, public FT
     void NotifyBoardReady();
     void NotifyMatchFinished();
     void Resign();
-    UFUNCTION(BlueprintCallable) void SelectProMode(bool bSelected);
-    bool IsProRoom() const { return bProRoom; }
+    UFUNCTION(BlueprintCallable) void SelectFengHuoMode(bool bSelected);
+    bool IsFengHuoRoom() const { return bFengHuoRoom; }
     bool IsBattleReady() const { return State == EXQPRoomState::Playing && bHandshake && bLocalBoardReady && bPeerBoardReady; }
-    bool SubmitProMove(const FChessMove2P& Move);
-    void BroadcastProState(const TSharedRef<FJsonObject>& Message);
+    bool SubmitFengHuoMove(const FChessMove2P& Move);
+    void BroadcastFengHuoState(const TSharedRef<FJsonObject>& Message);
     void ConfirmBattleStart();
     void BroadcastBattleStart(const TSharedRef<FJsonObject>& Message);
     DECLARE_MULTICAST_DELEGATE_OneParam(FModeMismatch, const FString&);
@@ -122,9 +122,9 @@ class XIANGQIPRO_API UXQPLANSubsystem : public UGameInstanceSubsystem, public FT
     FString LocalName;
     FString PeerName;
     bool bHost = false;
-    bool bProRoom = false;
-    int32 ProRequestSerial = 0;
-    int32 LastProPeerRequest = 0;
+    bool bFengHuoRoom = false;
+    int32 FengHuoRequestSerial = 0;
+    int32 LastFengHuoPeerRequest = 0;
     TSharedPtr<FJsonObject> PendingProSnapshot;
     TSharedPtr<FJsonObject> PendingStartSnapshot;
     bool bHandshake = false;

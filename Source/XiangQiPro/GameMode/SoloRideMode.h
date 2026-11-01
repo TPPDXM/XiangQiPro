@@ -1,4 +1,4 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
@@ -6,7 +6,7 @@
 #include <utility>
 
 #include "XiangQiPro/Util/ChessMove.h"
-#include "XiangQiPro/Interface/IF_ProMode.h"
+#include "XiangQiPro/Interface/IF_ExtraGameMode.h"
 
 #include "XQPGameStateBase.h"
 #include "Kismet/KismetMathLibrary.h"

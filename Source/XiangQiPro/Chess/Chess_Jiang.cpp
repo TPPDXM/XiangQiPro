@@ -1,4 +1,4 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "Chess_Jiang.h"
@@ -37,7 +37,7 @@ void AChess_Jiang::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBo
 void AChess_Jiang::Defeated()
 {
 	Super::Defeated();
-	if (GameState.IsValid() && !GameState->IsProBattle()) GameState->NotifyGameOver(MyColor == EChessColor::BLACKCHESS ? EChessColor::REDCHESS : EChessColor::BLACKCHESS);
+	if (GameState.IsValid() && !GameState->IsFengHuoBattle()) GameState->NotifyGameOver(MyColor == EChessColor::BLACKCHESS ? EChessColor::REDCHESS : EChessColor::BLACKCHESS);
 }
 
 // 生成选中棋子的合法走法并显示提示。

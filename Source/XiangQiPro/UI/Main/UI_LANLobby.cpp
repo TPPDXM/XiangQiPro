@@ -15,7 +15,7 @@ void UUI_LANLobby::NativeConstruct()
     Super::NativeConstruct();
     XQPUIStyle::SetFactionText(RedFactionLabel, EChessColor::REDCHESS, true);
     XQPUIStyle::SetFactionText(BlackFactionLabel, EChessColor::BLACKCHESS, true);
-    GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->SelectProMode(bProModeLobby);
+    GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->SelectFengHuoMode(bFengHuoLobby);
     auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
     Room->OnModeMismatch.RemoveAll(this);
     Room->OnModeMismatch.AddUObject(this, &UUI_LANLobby::ShowModeMismatch);

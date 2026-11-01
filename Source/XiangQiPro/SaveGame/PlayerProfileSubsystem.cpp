@@ -7,7 +7,7 @@ namespace
 bool ValidProfile(const USavePlayerProfile* P)
 {
     if (!P || P->Version != 1 || P->CurrentStreak < 0 || P->BestStreak < P->CurrentStreak || P->BestStreak > 1000000 ||
-        P->RunDifficulty > 3 || P->SavedTurn > 1 || P->PositionMoveCounts.Num() > 4096 || P->AICaution.Num() > 4096 ||
+        P->RunDifficulty > 4 || P->SavedTurn > 1 || P->PositionMoveCounts.Num() > 4096 || P->AICaution.Num() > 4096 ||
         P->HarmfulReplies.Num() > 4096)
         return false;
     if (P->ObservedMoves < 0 || P->ObservedMoves > 100000 || P->PieceCounts.Num() > 8 || P->FileCounts.Num() > 9)
@@ -99,7 +99,7 @@ uint8 UPlayerProfileSubsystem::BeginOrResumeRun(uint8 Difficulty)
     {
         ClearLearning();
         Profile->bRunActive = true;
-        Profile->RunDifficulty = FMath::Min<uint8>(3, Difficulty);
+        Profile->RunDifficulty = FMath::Min<uint8>(4, Difficulty);
         Save();
     }
     return Profile->RunDifficulty;

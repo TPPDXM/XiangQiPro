@@ -70,6 +70,12 @@ void FChessSearch::OrderMoves(TArray<FChessMove2P>& Moves, const FChessMove2P& P
             (Style.bAdvancedSearch && Ply < MaxPly && SameMove(Move, Killers[Ply][1])) ? 800000 :
             History[static_cast<uint8>(Side)][Move.from.X * 9 + Move.from.Y][Move.to.X * 9 + Move.to.Y];
         if (Ply == 0) Move.score += RootBias[Move.from.X * 9 + Move.from.Y][Move.to.X * 9 + Move.to.Y];
+        if (Style.bSelectiveSearch && Victim != EChessType::EMPTY && !SameMove(Move, Preferred))
+        {
+            const int32 Exchange = Board.StaticExchange(Move);
+            // 亏损交换排在优质静着之后，但不删除，仍允许战术弃子。
+            Move.score += Exchange < 0 ? -1200000 : FMath::Min(20000, Exchange * 8);
+        }
         if (Side == EChessColor::REDCHESS) Move.score += Learning.MovePriority(Board, Move);
     }
     // 高价值吃子和已验证的主变化优先搜索。
@@ -119,7 +125,16 @@ FChessSearchResult FChessSearch::FindBestMove()
     {
         if (FPlatformTime::Seconds() >= Deadline || ShouldStop()) break;
         RootMove = Result.Move;
-        const int32 Score = Negamax(Depth, -Infinity, Infinity, Color, 0);
+        int32 Score;
+        if (Style.bSelectiveSearch && Depth >= 4)
+        {
+            // 渴望窗口只缩小首次搜索区间；失败必须完整重搜，不能发布窗口外的界值。
+            const int32 Previous = Result.Move.score;
+            Score = Negamax(Depth, Previous - 70, Previous + 70, Color, 0);
+            if (!bAborted && (Score <= Previous - 70 || Score >= Previous + 70))
+                Score = Negamax(Depth, -Infinity, Infinity, Color, 0);
+        }
+        else Score = Negamax(Depth, -Infinity, Infinity, Color, 0);
         if (bAborted) break;
         Result.Move = RootMove;
         Result.Move.score = Score;
@@ -143,7 +158,8 @@ int32 FChessSearch::Negamax(int32 Depth, int32 Alpha, int32 Beta, EChessColor Si
     if (IsRepeated(Key)) return 0;
     if (Depth <= 0) return Quiescence(Alpha, Beta, Side, Ply, Style.CaptureDepth);
     // 强档延伸应将变化，限制总层数，避免连续将军无限延伸。
-    if (Style.bAdvancedSearch && Board.IsInCheck(Side) && Ply < MaxDepth * 2) ++Depth;
+    const bool bInCheck = Board.IsInCheck(Side);
+    if (Style.bAdvancedSearch && bInCheck && Ply < MaxDepth * 2) ++Depth;
     TArray<FChessMove2P> Moves = Board.GenerateLegalMoves(Side);
     if (Ply == 0)
         Moves.RemoveAll([&](const FChessMove2P& Move)
@@ -169,6 +185,7 @@ int32 FChessSearch::Negamax(int32 Depth, int32 Alpha, int32 Beta, EChessColor Si
     PathContext ^= Key;
     int32 BestScore = -Infinity;
     FChessMove2P BestMove;
+    int32 MoveIndex = 0;
     for (const FChessMove2P& Move : Moves)
     {
         // 将历史失误作为根走法的有限代价；同步平移子节点窗口保持剪枝一致。
@@ -178,9 +195,17 @@ int32 FChessSearch::Negamax(int32 Depth, int32 Alpha, int32 Beta, EChessColor Si
         int32 Score;
         if (Style.bAdvancedSearch && BestMove.IsValid())
         {
+            // 只缩减非主变化的后置安静着。应将、将军、吃子、杀手着均保留完整深度。
+            const bool Reduce = Style.bSelectiveSearch && Ply > 0 && Beta - Alpha == 1 && Depth >= 3 && MoveIndex >= 4 &&
+                !bInCheck && Captured.Type == EChessType::EMPTY && !Board.IsInCheck(FChessPosition::Opponent(Side)) &&
+                !SameMove(Move, Killers[Ply][0]) && !SameMove(Move, Killers[Ply][1]);
+            const int32 Reduction = Reduce ? (Depth >= 6 && MoveIndex >= 12 ? 2 : 1) : 0;
             // 主变化搜索：其余分支先用零窗口验证，需要时再完整重搜。
-            Score = -Negamax(Depth - 1, -Alpha - 1 - LearnedPenalty, -Alpha - LearnedPenalty,
+            Score = -Negamax(Depth - 1 - Reduction, -Alpha - 1 - LearnedPenalty, -Alpha - LearnedPenalty,
                 FChessPosition::Opponent(Side), Ply + 1) - LearnedPenalty;
+            if (!bAborted && Reduction > 0 && Score > Alpha)
+                Score = -Negamax(Depth - 1, -Alpha - 1 - LearnedPenalty, -Alpha - LearnedPenalty,
+                    FChessPosition::Opponent(Side), Ply + 1) - LearnedPenalty;
             if (!bAborted && Score > Alpha && Score < Beta)
                 Score = -Negamax(Depth - 1, -Beta - LearnedPenalty, -Alpha - LearnedPenalty,
                     FChessPosition::Opponent(Side), Ply + 1) - LearnedPenalty;
@@ -188,6 +213,7 @@ int32 FChessSearch::Negamax(int32 Depth, int32 Alpha, int32 Beta, EChessColor Si
         else Score = -Negamax(Depth - 1, -Beta - LearnedPenalty, -Alpha - LearnedPenalty,
             FChessPosition::Opponent(Side), Ply + 1) - LearnedPenalty;
         Board.UndoMove(Move, Captured);
+        ++MoveIndex;
         if (bAborted) break;
         if (Score > BestScore)
         {
@@ -248,7 +274,19 @@ int32 FChessSearch::Quiescence(int32 Alpha, int32 Beta, EChessColor Side, int32 
     PathContext ^= Key;
     for (const FChessMove2P& Move : Moves)
     {
-        if (!bInCheck && Board.Get(Move.to).Type == EChessType::EMPTY) continue;
+        const auto Victim = Board.Get(Move.to);
+        bool GivesCheck = false;
+        if (!bInCheck && Style.bSelectiveSearch)
+        {
+            const auto Taken = Board.MakeMove(Move);
+            GivesCheck = Board.IsInCheck(FChessPosition::Opponent(Side));
+            Board.UndoMove(Move, Taken);
+        }
+        // 静态搜索前两层也检查安静将军，覆盖弃子后续杀；总层数和时间仍有限制。
+        if (!bInCheck && Victim.Type == EChessType::EMPTY && !(GivesCheck && Remaining >= Style.CaptureDepth - 1)) continue;
+        if (!bInCheck && !GivesCheck && Style.bSelectiveSearch && Victim.Type != EChessType::EMPTY &&
+            Victim.Type != EChessType::JIANG && StandPat + FChessPosition::PieceValue(Victim.Type) + 180 < Alpha &&
+            Board.StaticExchange(Move) < 0) continue;
         const FChessPiece2P Captured = Board.MakeMove(Move);
         const int32 Score = -Quiescence(-Beta, -Alpha, FChessPosition::Opponent(Side), Ply + 1, Remaining - 1);
         Board.UndoMove(Move, Captured);
@@ -265,5 +303,6 @@ int32 FChessSearch::Quiescence(int32 Alpha, int32 Beta, EChessColor Side, int32 
 int32 FChessSearch::Evaluate(EChessColor Side) const
 {
     const int32 LearnedStyle = Learning.StyleEvaluation(Board);
-    return Board.Evaluate(Side) + (Side == EChessColor::REDCHESS ? LearnedStyle : -LearnedStyle);
+    return Board.Evaluate(Side) + (Style.bTacticalEvaluation ? Board.EvaluateActivity(Side) : 0) +
+        (Side == EChessColor::REDCHESS ? LearnedStyle : -LearnedStyle);
 }

@@ -21,6 +21,13 @@ TArray<FName> UEndingLibrary::GetEndingLevelOrder()
     return IsValid(Table) ? Table->GetRowNames() : TArray<FName>();
 }
 
+// 难度跟随关卡行保存，重新排序不会让高难残局退回普通AI。
+uint8 UEndingLibrary::GetDefenceDifficulty(int32 Index)
+{
+    const auto Row = XQPDataTables::ReadRow<FChessGenerationInfos>(EndingTablePath, Index);
+    return Row.IsSet() ? FMath::Min<uint8>(4, Row->DefenceDifficulty) : 1;
+}
+
 // 返回指定关卡的棋子生成数据，越界或空表不再读取负数索引。
 TArray<FChessGenerationInfo> UEndingLibrary::GetChessGenerateInfo(int32 Index)
 {

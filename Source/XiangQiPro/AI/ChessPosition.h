@@ -52,6 +52,10 @@ struct XIANGQIPRO_API FChessPosition
     static int32 PieceValue(EChessType Type);
     // 从指定阵营视角计算子力、位置和残局价值。
     int32 Evaluate(EChessColor Color) const;
+    // 以最便宜合法攻击子模拟同格交换，重新计算炮架、马腿与牵制；不修改调用方棋盘。
+    int32 StaticExchange(const FChessMove2P& Move) const;
+    // 强档额外评估活动空间、成对重子、九宫火力和残局兵形，分值保持阵营反对称。
+    int32 EvaluateActivity(EChessColor Color) const;
     // 计算包含执棋方和规则设置的局面键。
     uint64 Hash(EChessColor Color) const;
 };

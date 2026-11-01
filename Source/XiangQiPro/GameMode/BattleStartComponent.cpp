@@ -18,7 +18,7 @@ void UBattleStartComponent::BeginSetup()
     Countdown = -1.f;
     SetupTime = SendTime = 0.f;
     const auto* State = Cast<AXQPGameStateBase>(GetOwner());
-    if (State && !State->IsProBattle() && !State->IsLANGame())
+    if (State && !State->IsFengHuoBattle() && !State->IsLANGame())
     {
         bRedReady = bBlackReady = true;
         StartBattle();
@@ -42,7 +42,7 @@ void UBattleStartComponent::ConfirmSide(EChessColor Side)
     (Side == EChessColor::REDCHESS ? bRedReady : bBlackReady) = true;
     if (bRedReady && bBlackReady && Countdown < 0.f)
     {
-        if (Cast<AXQPGameStateBase>(GetOwner())->IsProBattle()) Countdown = 3.f;
+        if (Cast<AXQPGameStateBase>(GetOwner())->IsFengHuoBattle()) Countdown = 3.f;
         else { StartBattle(); return; }
     }
     OnSetupChanged.Broadcast();

@@ -9,7 +9,7 @@
 #include "XiangQiPro/GameMode/XQPGameInstance.h"
 #include "XiangQiPro/GameMode/XQPGameStateBase.h"
 #include "XiangQiPro/SaveGame/PlayerProfileSubsystem.h"
-#include "XiangQiPro/GameMode/ProBattleComponent.h"
+#include "XiangQiPro/GameMode/FengHuoBattleComponent.h"
 #include "XiangQiPro/GameMode/BattleStartComponent.h"
 #include "XiangQiPro/GameObject/ChessBoard2P.h"
 
@@ -83,8 +83,8 @@ void UXQPLANSubsystem::Deinitialize()
 
 void UXQPLANSubsystem::CloseSockets()
 {
-    if (State == EXQPRoomState::Playing && bProRoom)
-        if (auto* GS = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr) GS->ProBattle->Suspend();
+    if (State == EXQPRoomState::Playing && bFengHuoRoom)
+        if (auto* GS = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr) GS->FengHuoBattle->Suspend();
     DestroySocket(Peer);
     DestroySocket(Listener);
     DestroySocket(Discovery);
@@ -284,7 +284,7 @@ void UXQPLANSubsystem::TickDiscovery(double Now)
             auto Reply = Packet(TEXT("XQP_ROOM_V1"));
             Reply->SetStringField(TEXT("name"), RoomName);
             Reply->SetStringField(TEXT("host"), LocalName);
-            Reply->SetBoolField(TEXT("pro"), bProRoom);
+            Reply->SetBoolField(TEXT("pro"), bFengHuoRoom);
             FString Text;
             FJsonSerializer::Serialize(Reply, TJsonWriterFactory<>::Create(&Text));
             FTCHARToUTF8 Bytes(*Text);
@@ -299,9 +299,9 @@ void UXQPLANSubsystem::TickDiscovery(double Now)
                 !Reply->TryGetStringField(TEXT("type"), Type) || Type != TEXT("XQP_ROOM_V1") ||
                 !Reply->TryGetStringField(TEXT("name"), Name) || !Reply->TryGetStringField(TEXT("host"), Host))
                 continue;
-            bool Pro = false;
-            Reply->TryGetBoolField(TEXT("pro"), Pro);
-            if (Pro != bProRoom) continue;
+            bool FengHuo = false;
+            Reply->TryGetBoolField(TEXT("pro"), FengHuo);
+            if (FengHuo != bFengHuoRoom) continue;
             const FString IP = Sender->ToString(false);
             if (!Rooms.ContainsByPredicate([&IP](const FXQPLANRoom& R) { return R.Address == IP; }) && Rooms.Num() < 32)
             {
@@ -351,7 +351,7 @@ void UXQPLANSubsystem::TickConnection(double Now)
             auto Hello = Packet(TEXT("hello"));
             Hello->SetNumberField(TEXT("version"), 1);
             Hello->SetStringField(TEXT("name"), LocalName);
-            Hello->SetBoolField(TEXT("pro"), bProRoom);
+            Hello->SetBoolField(TEXT("pro"), bFengHuoRoom);
             Send(Hello);
             State = EXQPRoomState::Lobby;
             Status = TEXT("正在进入房间…");
@@ -417,7 +417,7 @@ void UXQPLANSubsystem::SendLobby()
     auto Message = Packet(TEXT("lobby"));
     Message->SetStringField(TEXT("name"), LocalName);
     Message->SetStringField(TEXT("room"), RoomName);
-    Message->SetBoolField(TEXT("pro"), bProRoom);
+    Message->SetBoolField(TEXT("pro"), bFengHuoRoom);
     Message->SetNumberField(TEXT("color"), static_cast<uint8>(HostColor));
     Send(Message);
 }
@@ -451,7 +451,7 @@ bool UXQPLANSubsystem::StartMatch()
     bLocalBoardReady = bPeerBoardReady = bMoveRequested = false;
     PendingMoves.Reset();
     auto Start = Packet(TEXT("start"));
-    Start->SetBoolField(TEXT("pro"), bProRoom);
+    Start->SetBoolField(TEXT("pro"), bFengHuoRoom);
     Start->SetNumberField(TEXT("color"), static_cast<uint8>(HostColor));
     Send(Start);
     FlushSend();
@@ -460,7 +460,7 @@ bool UXQPLANSubsystem::StartMatch()
 }
 void UXQPLANSubsystem::OpenBattleMap()
 {
-    ProRequestSerial = LastProPeerRequest = 0;
+    FengHuoRequestSerial = LastFengHuoPeerRequest = 0;
     PendingProSnapshot.Reset();
     PendingStartSnapshot.Reset();
     bPeerResigned = bLocalResigned = false;
@@ -468,7 +468,7 @@ void UXQPLANSubsystem::OpenBattleMap()
     Status = TEXT("等待双方棋盘就绪…");
     bLocalReady = bPeerReady = false;
     if (UXQPGameInstance* GI = Cast<UXQPGameInstance>(GetGameInstance()))
-        GI->SetGameMode(bProRoom ? EXQPGameMode::ProBattleLAN : EXQPGameMode::LAN);
+        GI->SetGameMode(bFengHuoRoom ? EXQPGameMode::FengHuoLAN : EXQPGameMode::LAN);
     UXQPGameInstance::OpenGameLevel(GetWorld(), TEXT("/Game/Map/Battle2P"));
 }
 void UXQPLANSubsystem::NotifyBoardReady()
@@ -555,10 +555,10 @@ void UXQPLANSubsystem::HandleMessage(const TSharedPtr<FJsonObject>& M)
         }
         PeerName = CleanName(Name);
         bool PeerPro = false;
-        if (!M->TryGetBoolField(TEXT("pro"), PeerPro) || PeerPro != bProRoom)
+        if (!M->TryGetBoolField(TEXT("pro"), PeerPro) || PeerPro != bFengHuoRoom)
         {
             auto Failure = Packet(TEXT("mode_mismatch"));
-            Failure->SetStringField(TEXT("message"), bProRoom ? TEXT("该房间为烽火弈，请从烽火弈的联机入口加入。") : TEXT("该房间为经典象棋，请从经典模式的联机入口加入。"));
+            Failure->SetStringField(TEXT("message"), bFengHuoRoom ? TEXT("该房间为烽火弈，请从烽火弈的联机入口加入。") : TEXT("该房间为经典象棋，请从经典模式的联机入口加入。"));
             Send(Failure); FlushSend();
             DestroySocket(Peer); ReceiveBuffer.Reset(); SendBuffer.Reset();
             PeerName.Reset();
@@ -584,9 +584,9 @@ void UXQPLANSubsystem::HandleMessage(const TSharedPtr<FJsonObject>& M)
         PeerName = CleanName(Name);
         RoomName = CleanName(Room);
         HostColor = static_cast<EChessColor>(Color);
-        bool Pro = false;
-        M->TryGetBoolField(TEXT("pro"), Pro);
-        if (Pro != bProRoom) { OnModeMismatch.Broadcast(TEXT("房间玩法不同，请从对应玩法的联机入口加入。")); Disconnect(TEXT("房间玩法不同，请选择对应玩法后加入")); return; }
+        bool FengHuo = false;
+        M->TryGetBoolField(TEXT("pro"), FengHuo);
+        if (FengHuo != bFengHuoRoom) { OnModeMismatch.Broadcast(TEXT("房间玩法不同，请从对应玩法的联机入口加入。")); Disconnect(TEXT("房间玩法不同，请选择对应玩法后加入")); return; }
         bHandshake = true;
         bLocalReady = false;
         Status = TEXT("选择颜色后，请准备开始");
@@ -632,9 +632,9 @@ void UXQPLANSubsystem::HandleMessage(const TSharedPtr<FJsonObject>& M)
             return;
         }
         HostColor = static_cast<EChessColor>(Color);
-        bool Pro = false;
-        M->TryGetBoolField(TEXT("pro"), Pro);
-        if (Pro != bProRoom) { OnModeMismatch.Broadcast(TEXT("开局玩法不一致，请重新选择对应房间。")); Disconnect(TEXT("开局玩法不一致")); return; }
+        bool FengHuo = false;
+        M->TryGetBoolField(TEXT("pro"), FengHuo);
+        if (FengHuo != bFengHuoRoom) { OnModeMismatch.Broadcast(TEXT("开局玩法不一致，请重新选择对应房间。")); Disconnect(TEXT("开局玩法不一致")); return; }
         Sequence = 0;
         AuthoritativeBoard = InitialBoard();
         Turn = EChessColor::REDCHESS;
@@ -659,31 +659,31 @@ void UXQPLANSubsystem::HandleMessage(const TSharedPtr<FJsonObject>& M)
         PendingStartSnapshot = M;
         return;
     }
-    if (Type == TEXT("pro_request") && bHost && bProRoom && (State == EXQPRoomState::Playing || State == EXQPRoomState::Finished))
+    if (Type == TEXT("pro_request") && bHost && bFengHuoRoom && (State == EXQPRoomState::Playing || State == EXQPRoomState::Finished))
     {
         int32 From, To, Request;
         bool Applied = false;
         if (ReadInt(M, TEXT("from"), From, 0, 89) && ReadInt(M, TEXT("to"), To, 0, 89) &&
-            ReadInt(M, TEXT("request"), Request, 1, 1000000) && Request > LastProPeerRequest)
+            ReadInt(M, TEXT("request"), Request, 1, 1000000) && Request > LastFengHuoPeerRequest)
         {
-            LastProPeerRequest = Request;
+            LastFengHuoPeerRequest = Request;
             if (IsBattleReady())
                 if (auto* GS = GetWorld()->GetGameState<AXQPGameStateBase>(); GS && GS->board2P)
-                    Applied = GS->ProBattle->TryMove(GS->board2P->GetChess({From / 9, From % 9}).Get(),
+                    Applied = GS->FengHuoBattle->TryMove(GS->board2P->GetChess({From / 9, From % 9}).Get(),
                         {{From / 9, From % 9}, {To / 9, To % 9}}, FChessPosition::Opponent(HostColor));
         }
         if (!Applied) Send(Packet(TEXT("pro_rejected")));
         return;
     }
-    if (Type == TEXT("pro_rejected") && !bHost && bProRoom) { Status = TEXT("落子未生效：请检查粮草及棋子状态"); return; }
-    if (Type == TEXT("pro_state") && !bHost && bProRoom && (State == EXQPRoomState::Playing || State == EXQPRoomState::Finished))
+    if (Type == TEXT("pro_rejected") && !bHost && bFengHuoRoom) { Status = TEXT("落子未生效：请检查粮草及棋子状态"); return; }
+    if (Type == TEXT("pro_state") && !bHost && bFengHuoRoom && (State == EXQPRoomState::Playing || State == EXQPRoomState::Finished))
     {
         PendingProSnapshot = M;
         return;
     }
     if (Type == TEXT("request") && bHost && State == EXQPRoomState::Playing)
     {
-        if (bProRoom) { Disconnect(TEXT("房间落子协议不一致")); return; }
+        if (bFengHuoRoom) { Disconnect(TEXT("房间落子协议不一致")); return; }
         // 请求只表达落子意图，失败时不改变棋盘并解除客户端等待锁。
         int32 From, To, Seq;
         if (!ReadInt(M, TEXT("from"), From, 0, 89) || !ReadInt(M, TEXT("to"), To, 0, 89) ||
@@ -700,7 +700,7 @@ void UXQPLANSubsystem::HandleMessage(const TSharedPtr<FJsonObject>& M)
     }
     if (Type == TEXT("move") && !bHost && State == EXQPRoomState::Playing)
     {
-        if (bProRoom) { Disconnect(TEXT("房间落子协议不一致")); return; }
+        if (bFengHuoRoom) { Disconnect(TEXT("房间落子协议不一致")); return; }
         // 按步号检查有序性，再独立验棋和核对局面哈希，发现不同步就停止对局。
         int32 From, To, Seq;
         FString Hash;
@@ -733,7 +733,7 @@ void UXQPLANSubsystem::HandleMessage(const TSharedPtr<FJsonObject>& M)
     }
     if (Type == TEXT("resign") && State == EXQPRoomState::Playing)
     {
-        if (bProRoom && !bHost) return;
+        if (bFengHuoRoom && !bHost) return;
         bPeerResigned = true;
         if (AXQPGameStateBase* GS = GetWorld()->GetGameState<AXQPGameStateBase>())
             GS->NotifyGameOver(GetLocalColor());
@@ -749,7 +749,7 @@ void UXQPLANSubsystem::Resign()
     bLocalResigned = true;
     Send(Packet(TEXT("resign")));
     FlushSend();
-    if (bProRoom && !bHost) return;
+    if (bFengHuoRoom && !bHost) return;
     if (AXQPGameStateBase* GS = GetWorld()->GetGameState<AXQPGameStateBase>())
         GS->NotifyGameOver(FChessPosition::Opponent(GetLocalColor()));
 }
@@ -765,13 +765,13 @@ void UXQPLANSubsystem::Tick(float DeltaTime)
             const auto Snapshot = PendingStartSnapshot; PendingStartSnapshot.Reset();
             if (!GS->BattleStart->ReceiveSnapshot(Snapshot)) Disconnect(TEXT("开局确认数据无效"));
         }
-    if (bProRoom && PendingProSnapshot.IsValid() && bLocalBoardReady)
+    if (bFengHuoRoom && PendingProSnapshot.IsValid() && bLocalBoardReady)
     {
-        if (auto* GS = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr; GS && GS->ProBattle->IsActive())
+        if (auto* GS = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr; GS && GS->FengHuoBattle->IsActive())
         {
             const auto Snapshot = PendingProSnapshot;
             PendingProSnapshot.Reset();
-            if (!GS->ProBattle->ReceiveSnapshot(Snapshot)) Disconnect(TEXT("实时对局数据无效"));
+            if (!GS->FengHuoBattle->ReceiveSnapshot(Snapshot)) Disconnect(TEXT("实时对局数据无效"));
         }
     }
     if (State == EXQPRoomState::Playing && !PendingMoves.IsEmpty())
@@ -784,33 +784,33 @@ void UXQPLANSubsystem::Tick(float DeltaTime)
         }
 }
 
-void UXQPLANSubsystem::SelectProMode(bool bSelected)
+void UXQPLANSubsystem::SelectFengHuoMode(bool bSelected)
 {
-    if (bProRoom == bSelected) return;
+    if (bFengHuoRoom == bSelected) return;
     LeaveRoom();
-    bProRoom = bSelected;
+    bFengHuoRoom = bSelected;
     Rooms.Reset();
 }
 
-bool UXQPLANSubsystem::SubmitProMove(const FChessMove2P& Move)
+bool UXQPLANSubsystem::SubmitFengHuoMove(const FChessMove2P& Move)
 {
-    if (!bProRoom || !IsBattleReady() || !Move.IsValid()) return false;
+    if (!bFengHuoRoom || !IsBattleReady() || !Move.IsValid()) return false;
     auto* GS = GetWorld()->GetGameState<AXQPGameStateBase>();
     if (!GS || !GS->board2P) return false;
     AChesses* Chess = GS->board2P->GetChess(Move.from).Get();
-    if (!GS->ProBattle->CanMove(Chess, Move, GetLocalColor())) return false;
-    if (bHost) return GS->ProBattle->TryMove(Chess, Move, GetLocalColor());
+    if (!GS->FengHuoBattle->CanMove(Chess, Move, GetLocalColor())) return false;
+    if (bHost) return GS->FengHuoBattle->TryMove(Chess, Move, GetLocalColor());
     auto Message = Packet(TEXT("pro_request"));
-    Message->SetNumberField(TEXT("request"), ++ProRequestSerial);
+    Message->SetNumberField(TEXT("request"), ++FengHuoRequestSerial);
     Message->SetNumberField(TEXT("from"), Move.from.X * 9 + Move.from.Y);
     Message->SetNumberField(TEXT("to"), Move.to.X * 9 + Move.to.Y);
     Send(Message);
     return true;
 }
 
-void UXQPLANSubsystem::BroadcastProState(const TSharedRef<FJsonObject>& Message)
+void UXQPLANSubsystem::BroadcastFengHuoState(const TSharedRef<FJsonObject>& Message)
 {
-    if (bHost && bProRoom && bHandshake && (State == EXQPRoomState::Playing || State == EXQPRoomState::Finished)) Send(Message);
+    if (bHost && bFengHuoRoom && bHandshake && (State == EXQPRoomState::Playing || State == EXQPRoomState::Finished)) Send(Message);
 }
 
 void UXQPLANSubsystem::ConfirmBattleStart()

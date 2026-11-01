@@ -6,6 +6,8 @@
 void UUI_SettingsMenu::NativeConstruct()
 {
     Super::NativeConstruct();
+    if (XQPMobile::IsPortrait(this))
+        if (auto* Video = GetWidgetFromName(TEXT("WB_Btn_VideoSettings"))) Video->SetVisibility(ESlateVisibility::Collapsed);
     // 原有视频、画面和返回按钮的蓝图接线保持有效，只连接新增的玩家设置入口。
     if (PlayerSettingsButton)
         XQPButtonBinding::GetButton(PlayerSettingsButton)->OnClicked.AddUniqueDynamic(this, &UUI_SettingsMenu::OpenPlayerSettings);

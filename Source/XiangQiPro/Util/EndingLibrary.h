@@ -53,6 +53,10 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	uint8 PassStep = 8;
+
+    // 保持旧关卡的普通防守强度；新高难残局可独立选择大师或棋圣防守。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(ClampMin="0", ClampMax="4"))
+    uint8 DefenceDifficulty = 1;
 };
 
 /**
@@ -68,6 +72,7 @@ public:
 	UFUNCTION(BlueprintPure)
 	static int32 GetEndingGameNum();
     static TArray<FName> GetEndingLevelOrder();
+    static uint8 GetDefenceDifficulty(int32 Index);
 	// 返回指定关卡的棋子生成数据，越界或空表不再读取负数索引。
 	UFUNCTION(BlueprintPure)
 	static TArray<FChessGenerationInfo> GetChessGenerateInfo(int32 Index);

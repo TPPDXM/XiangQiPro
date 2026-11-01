@@ -1,4 +1,4 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
@@ -70,14 +70,14 @@ protected:
 
 	bool bDead = false;
 
-    bool bProMode = false;
-    bool bProTravelling = false;
-    bool bProFadeComplete = false;
-    float ProMoveTime = 0.f;
-    float ProMoveDuration = 1.f;
-    float ProDeathTime = 0.f;
-    FVector ProMoveStart = FVector::ZeroVector;
-    TWeakObjectPtr<AChesses> ProSupport;
+    bool bFengHuoMode = false;
+    bool bRealtimeTravelling = false;
+    bool bCaptureFadeComplete = false;
+    float FengHuoMoveTime = 0.f;
+    float FengHuoMoveDuration = 1.f;
+    float CaptureDeathTime = 0.f;
+    FVector FengHuoMoveStart = FVector::ZeroVector;
+    TWeakObjectPtr<AChesses> CaptureSupport;
     TWeakObjectPtr<AChesses> PendingCapture;
     bool bCaptureApproach = false;
     bool bCaptureLanding = false;
@@ -176,12 +176,12 @@ public:
 
 	// 获取是否阵亡
 	bool IsDead() const;
-    void EnableProMode();
+    void EnableFengHuoMode();
     void PrepareCapture(AChesses* Victim) { PendingCapture = Victim; }
-    void BeginProMove(const FChessMove2P& Move, float Duration);
-    void ArriveProMove(FIntPoint Destination, AChesses* Captured);
-    void StopProMove();
-    bool IsProMoving() const { return bProTravelling; }
+    void BeginFengHuoMove(const FChessMove2P& Move, float Duration);
+    void ArriveFengHuoMove(FIntPoint Destination, AChesses* Captured);
+    void StopFengHuoMove();
+    bool IsRealtimeMoving() const { return bRealtimeTravelling; }
     bool IsSelectedForMove() const { return bSelected; }
     void ClearMoveSelection();
     float GetSurfaceZ() const;

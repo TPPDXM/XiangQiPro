@@ -157,6 +157,7 @@ void UXQPGameInstance::EndLoadMap(UWorld* LoadedWorld)
 	if (GetMoviePlayer()) GetMoviePlayer()->StopMovie();
     bTravelPending = false;
     if (!LoadedWorld || LoadedWorld->GetGameInstance() != this) return;
+    XQPMobile::ApplyNativeResolution(LoadedWorld);
     const bool bEntry = LoadedWorld->GetMapName().EndsWith(TEXT("Entry"));
     if (!bEntry) bHasLoadedInitialMap = true;
     const bool bPlayable = !LoadedWorld->GetMapName().EndsWith(TEXT("OpenMap")) && !bEntry;

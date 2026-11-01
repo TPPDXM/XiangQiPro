@@ -1,0 +1,37 @@
+// Copyright 2026 Ultimate Player All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
+#include "Blueprint/IUserObjectListEntry.h"
+#include "UI_Item_GameMode.generated.h"
+
+/**
+ * 
+ */
+UCLASS()
+class XIANGQIPRO_API UUI_Item_GameMode : public UUserWidget, public IUserObjectListEntry
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
+	class UTextBlock* ItemText;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
+	class UImage* ItemCover;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int GameModeID = 3;
+
+public:
+	virtual void NativeConstruct() override;
+    void SetModeInfo(const FString& Title, class UTexture2D* Cover, int32 ModeId, TSubclassOf<class UUI_GameModeSetup> Adapter = nullptr);
+    UFUNCTION(BlueprintCallable) void OpenModeIntroduction();
+    UPROPERTY(EditDefaultsOnly) TSubclassOf<class UUI_GameModeSetup> SetupClass;
+
+	virtual void NativeOnListItemObjectSet(UObject* ListItemObject) override;
+	
+};

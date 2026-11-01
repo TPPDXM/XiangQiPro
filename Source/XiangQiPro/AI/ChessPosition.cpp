@@ -218,6 +218,107 @@ int32 FChessPosition::Evaluate(EChessColor Color) const
     return Score;
 }
 
+// 最小价值攻击子交换序列；每次交换后重新判合法性，避免把牵制子当成有效保护。
+int32 FChessPosition::StaticExchange(const FChessMove2P& Move) const
+{
+    if (!Move.IsValid() || Get(Move.to).Type == EChessType::EMPTY) return 0;
+    FChessPosition Copy = *this;
+    int32 Gains[32] = {};
+    Gains[0] = PieceValue(Copy.Get(Move.to).Type);
+    Copy.MakeMove(Move);
+    EChessColor Side = Opponent(Get(Move.from).Color);
+    int32 Depth = 0;
+    while (Depth < 31 && Copy.Get(Move.to).Type != EChessType::JIANG)
+    {
+        FChessMove2P Cheapest;
+        int32 Cost = MAX_int32;
+        for (int32 I = 0; I < 90; ++I)
+        {
+            const auto Piece = Copy.Squares[I];
+            const Position From(I / 9, I % 9);
+            if (Piece.Type == EChessType::EMPTY || Piece.Color != Side || PieceValue(Piece.Type) >= Cost || !Copy.CanReach(From, Move.to)) continue;
+            const FChessMove2P Capture(From, Move.to);
+            const auto Victim = Copy.MakeMove(Capture);
+            const bool Legal = !Copy.IsInCheck(Side);
+            Copy.UndoMove(Capture, Victim);
+            if (Legal) { Cheapest = Capture; Cost = PieceValue(Piece.Type); }
+        }
+        if (!Cheapest.IsValid()) break;
+        ++Depth;
+        Gains[Depth] = PieceValue(Copy.Get(Move.to).Type) - Gains[Depth - 1];
+        Copy.MakeMove(Cheapest);
+        Side = Opponent(Side);
+    }
+    // 任一方都可以停止交换，不能强迫对手完成明显亏损的后续吃子。
+    while (Depth > 0) { Gains[Depth - 1] = -FMath::Max(-Gains[Depth - 1], Gains[Depth]); --Depth; }
+    return Gains[0];
+}
+
+// 只生成伪合法活动图，估值不递归调用搜索；将帅安全仍由走法生成器严格保证。
+int32 FChessPosition::EvaluateActivity(EChessColor Color) const
+{
+    int32 Values[2] = {}, Horses[2] = {}, Cannons[2] = {}, Rooks[2] = {}, Pressure[2] = {};
+    int32 PawnFiles[2][9] = {};
+    int32 MajorCount = 0;
+    for (const auto& Piece : Squares)
+        if (Piece.Type == EChessType::MA || Piece.Type == EChessType::PAO || Piece.Type == EChessType::JV) ++MajorCount;
+    const Position Kings[] = {FindKing(EChessColor::REDCHESS), FindKing(EChessColor::BLACKCHESS)};
+    for (int32 I = 0; I < 90; ++I)
+    {
+        const auto Piece = Squares[I];
+        if (Piece.Type == EChessType::EMPTY || static_cast<uint8>(Piece.Color) > 1) continue;
+        const int32 S = static_cast<uint8>(Piece.Color);
+        const Position From(I / 9, I % 9);
+        TArray<FChessMove2P> Moves;
+        GeneratePieceMoves(From, Moves);
+        const bool Major = Piece.Type == EChessType::JV || Piece.Type == EChessType::MA || Piece.Type == EChessType::PAO;
+        if (Major)
+        {
+            Values[S] += Moves.Num() * (Piece.Type == EChessType::JV ? 3 : 5);
+            if (Piece.Type == EChessType::MA) ++Horses[S];
+            if (Piece.Type == EChessType::PAO) ++Cannons[S];
+            if (Piece.Type == EChessType::JV) ++Rooks[S];
+            for (const auto& M : Moves)
+            {
+                const auto King = Kings[1 - S];
+                if (IsInside(King) && FMath::Abs(M.to.X - King.X) + FMath::Abs(M.to.Y - King.Y) <= 2) ++Pressure[S];
+                const auto Target = Get(M.to);
+                if (Target.Type != EChessType::EMPTY) Values[S] += FMath::Min(24, PieceValue(Target.Type) / 35);
+            }
+            if (Moves.Num() <= 1) Values[S] -= 32; // 受困车马炮不应按完全活动子估值。
+        }
+        if (Piece.Type == EChessType::BING)
+        {
+            ++PawnFiles[S][From.Y];
+            const int32 Rank = S == 0 ? From.X : 9 - From.X;
+            if (Rank >= 5)
+            {
+                for (int32 File : {From.Y - 1, From.Y + 1})
+                    if (IsInside({From.X, File}) && Get({From.X, File}).Type == EChessType::BING && Get({From.X, File}).Color == Piece.Color)
+                        Values[S] += MajorCount <= 4 ? 20 : 10;
+                // 到底兵失去向前活动空间，残局尤其不能过度估价。
+                if (Rank == 9) Values[S] -= 30;
+            }
+        }
+        if (Piece.Type == EChessType::JIANG)
+        {
+            Values[S] += Moves.Num() * 4;
+            int32 Guards = 0;
+            for (const auto& P : Squares) if (P.Color == Piece.Color && (P.Type == EChessType::SHI || P.Type == EChessType::XIANG)) ++Guards;
+            Values[S] += Guards * FMath::Min(12, MajorCount * 2);
+        }
+    }
+    for (int32 S = 0; S < 2; ++S)
+    {
+        Values[S] += FMath::Min(200, Pressure[S] * (4 + FMath::Min(8, Pressure[S])));
+        if (Rooks[S] >= 2) Values[S] += 18;
+        if (Horses[S] && Cannons[S]) Values[S] += 22;
+        if (MajorCount <= 4) Values[S] += Horses[S] * 12 - Cannons[S] * 8;
+        for (int32 File = 0; File < 9; ++File) Values[S] -= FMath::Max(0, PawnFiles[S][File] - 1) * 12;
+    }
+    return Color == EChessColor::REDCHESS ? Values[0] - Values[1] : Values[1] - Values[0];
+}
+
 // 生成稳定局面键，供置换表和重复局面检测使用。
 uint64 FChessPosition::Hash(EChessColor Color) const
 {
