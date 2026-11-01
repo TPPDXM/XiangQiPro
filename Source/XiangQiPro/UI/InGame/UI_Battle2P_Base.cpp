@@ -259,7 +259,7 @@ void UUI_Battle2P_Base::ShowMatchResult(EChessColor Winner)
         if (Won && GameState.IsValid())
         {
             Message += FString::Printf(TEXT("\n本次 %d 步 · 最少步数纪录 %d 步"), GameState->GetEndingMoveCount(), GameState->GetEndingBestSteps());
-            if (GameState->DidBreakEndingRecord()) Message += TEXT("\n已刷新最少步数纪录！");
+            if (GameState->DidBreakEndingRecord()) Message += TEXT("\n\n新纪录！ 更少的移动步数！");
         }
         Dialog->Configure(FText::FromString(Won ? TEXT("残局通关") : TEXT("挑战失败")), FText::FromString(Message),
             FText::FromString(TEXT("重新挑战")), FText::FromString(TEXT("返回主菜单")), FText::FromString(TEXT("查看棋盘")));
