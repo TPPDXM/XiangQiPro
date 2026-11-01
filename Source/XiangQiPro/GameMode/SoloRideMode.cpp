@@ -5,7 +5,6 @@
 #include "XiangQiPro/GameObject/ChessBoard2P.h"
 #include "XiangQiPro/GameObject/ChessBoard2PActor.h"
 #include "XiangQiPro/Chess/AllChessHeader.h"
-#include "XiangQiPro/Util/Logger.h"
 
 TWeakObjectPtr<AXQPGameStateBase> USoloRideMode::GS = nullptr;
 std::list<std::pair<TWeakObjectPtr<AChesses>, int32>> USoloRideMode::SoloRideEnemies = std::list<std::pair<TWeakObjectPtr<AChesses>, int32>>(0);
@@ -48,9 +47,10 @@ bool USoloRideMode::OnApplyMove(FChessMove2P move)
 void USoloRideMode::OnFinishMove()
 {
     if (!GS.IsValid() || !IsValid(GS->board2P)) return;
-    if (!SoloRideHorse.IsValid())
+    // 只在落子完成回调中结算，马可能已在消散过程中被销毁。
+    if (!SoloRideHorse.IsValid() || SoloRideHorse->IsDead())
     {
-        ULogger::LogError(TEXT("AXQPGameStateBase::OnFinishMove2P"), TEXT("SoloRideHorse is nullptr."));
+        GS->NotifyGameOver(EChessColor::BLACKCHESS);
         return;
     }
     Position horsePos = SoloRideHorse->GetPosition();
@@ -70,7 +70,6 @@ void USoloRideMode::OnFinishMove()
         {
             GS->SetBattleTurn(EPlayerTag::P2);
             GS->ApplyMove2P(GS->GetChessBoard2P()->GetChess(move.from), move); // 吃掉玩家的马
-            GS->NotifyGameOver(EChessColor::BLACKCHESS);
             return;
         }
     }

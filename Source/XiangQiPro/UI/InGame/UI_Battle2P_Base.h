@@ -13,7 +13,8 @@ class AChesses;
 class AXQPGameStateBase;
 class UTextBlock;
 class UImage;
-class UMultiLineEditableTextBox;
+class UScrollBox;
+class UVerticalBox;
 class UUI_CommonDialog;
 
 enum class EPlayerTag : uint8;
@@ -100,11 +101,24 @@ public:
 
 	// 增加落子历史记录
 	void AddOperatingRecord(EPlayerTag player, TWeakObjectPtr<AChesses> targetChess, FChessMove2P move, TOptional<int32> MovePoints = {});
+    void ResetOperatingRecord();
 	// 将棋子移动转换为基本中文棋谱。
 	FString GetMoveNotation(TWeakObjectPtr<AChesses> targetChess, FChessMove2P move);
 	// 增强版：考虑同列多个相同棋子的情况
 	FString GetEnhancedMoveNotation(TWeakObjectPtr<AChesses> targetChess, FChessMove2P move);
 protected:
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> RecordPanel;
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UUserWidget> RecordButton;
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UScrollBox> RecordScroll;
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UVerticalBox> RecordRows;
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> RecordCount;
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UTextBlock> RecordEmpty;
+    bool bRecordExpanded = false;
+    float RecordExpansion = 0.f;
+    int32 RecordMoveCount = 0;
+    UFUNCTION() void ToggleOperatingRecord();
+    void UpdateRecordExpansion(float DeltaTime);
+    void AddRecordRow(EChessColor Color, const FString& Notation, const FString& PlayerName, TOptional<int32> MovePoints);
     UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> PlayerScorePanel;
     UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> OpponentScorePanel;
     bool bPlayerScoreVisible = true;

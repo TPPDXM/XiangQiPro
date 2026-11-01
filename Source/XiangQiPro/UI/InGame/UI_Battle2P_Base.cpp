@@ -15,6 +15,14 @@
 #include "Components/Image.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/TextBlock.h"
+#include "Blueprint/WidgetTree.h"
+#include "Components/Border.h"
+#include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
+#include "Components/ScrollBox.h"
+#include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
+#include "Styling/CoreStyle.h"
 #include "XiangQiPro/UI/Components/XQPButtonBinding.h"
 #include "XiangQiPro/UI/Components/UI_CommonDialog.h"
 #include "XiangQiPro/GameMode/XQPPlayerController.h"
@@ -36,6 +44,17 @@ void UUI_Battle2P_Base::NativeConstruct()
             if (Label) Label->SetToolTipText(FText::FromString(TEXT("累计走子评分：好棋加分，失误扣分；双方独立累计，可为负分。每手得分见棋谱记录。")));
     if (auto* Button = XQPButtonBinding::GetButton(MenuButton))
         Button->OnClicked.AddUniqueDynamic(this, &UUI_Battle2P_Base::OpenMenu);
+    if (auto* Button = XQPButtonBinding::GetButton(RecordButton))
+    {
+        Button->OnClicked.AddUniqueDynamic(this, &UUI_Battle2P_Base::ToggleOperatingRecord);
+        Button->SetToolTipText(FText::FromString(bRecordExpanded ? TEXT("收起走子记录") : TEXT("展开走子记录")));
+    }
+    if (RecordPanel)
+    {
+        RecordPanel->SetRenderOpacity(RecordExpansion);
+        RecordPanel->SetVisibility(bRecordExpanded ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+    }
+    ResetOperatingRecord();
     if (auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>())
     {
         Room->OnRoomUpdated.RemoveAll(this);
@@ -53,6 +72,7 @@ void UUI_Battle2P_Base::NativeDestruct()
 void UUI_Battle2P_Base::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
     Super::NativeTick(MyGeometry, InDeltaTime);
+    UpdateRecordExpansion(InDeltaTime);
     if (!GameState.IsValid()) return;
     RefreshPlayerInfoLayout();
     const auto* Profile = GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>();
@@ -124,6 +144,72 @@ void UUI_Battle2P_Base::RefreshPlayerInfoLayout()
 void UUI_Battle2P_Base::OpenMenu()
 {
     if (auto* Controller = Cast<AXQPPlayerController>(GetOwningPlayer())) Controller->OnEscapePressed();
+}
+
+void UUI_Battle2P_Base::ToggleOperatingRecord()
+{
+    bRecordExpanded = !bRecordExpanded;
+    if (RecordPanel) RecordPanel->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+    if (bRecordExpanded && RecordScroll) RecordScroll->ScrollToEnd();
+    if (auto* Button = XQPButtonBinding::GetButton(RecordButton))
+        Button->SetToolTipText(FText::FromString(bRecordExpanded ? TEXT("收起走子记录") : TEXT("展开走子记录")));
+}
+
+void UUI_Battle2P_Base::UpdateRecordExpansion(float DeltaTime)
+{
+    const float Target = bRecordExpanded ? 1.f : 0.f;
+    if (!RecordPanel || RecordExpansion == Target) return;
+    RecordExpansion = FMath::FInterpConstantTo(RecordExpansion, Target, DeltaTime, 1.f / 0.22f);
+    const float Alpha = FMath::SmoothStep(0.f, 1.f, RecordExpansion);
+    RecordPanel->SetRenderOpacity(Alpha);
+    RecordPanel->SetRenderTranslation(FVector2D(-24.f * (1.f - Alpha), 12.f * (1.f - Alpha)));
+    RecordPanel->SetVisibility(RecordExpansion > 0.f ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+}
+
+void UUI_Battle2P_Base::ResetOperatingRecord()
+{
+    RecordMoveCount = 0;
+    if (Text_OperatingRecord) Text_OperatingRecord->SetText(FText::GetEmpty());
+    if (RecordRows) RecordRows->ClearChildren();
+    if (RecordCount) RecordCount->SetText(FText::FromString(TEXT("共 0 手")));
+    if (RecordEmpty) RecordEmpty->SetVisibility(ESlateVisibility::HitTestInvisible);
+    if (RecordScroll) RecordScroll->ScrollToEnd();
+}
+
+void UUI_Battle2P_Base::AddRecordRow(EChessColor Color, const FString& Notation, const FString& PlayerName, TOptional<int32> MovePoints)
+{
+    if (!RecordRows || !WidgetTree) return;
+    // 仅在原本位于底部时跟随新棋谱，手动向上翻阅不会被新走子打断。
+    const bool FollowLatest = RecordScroll && RecordScroll->GetScrollOffsetOfEnd() - RecordScroll->GetScrollOffset() <= 8.f;
+    auto* Background = WidgetTree->ConstructWidget<UBorder>();
+    Background->SetPadding(FMargin(10.f, 9.f));
+    Background->SetBrushColor(FLinearColor(.02f, .018f, .014f, RecordMoveCount % 2 ? .24f : .1f));
+    Background->SetToolTipText(FText::FromString(PlayerName));
+    RecordRows->AddChildToVerticalBox(Background)->SetPadding(FMargin(0.f, 0.f, 0.f, 4.f));
+    auto* Row = WidgetTree->ConstructWidget<UHorizontalBox>();
+    Background->SetContent(Row);
+    const auto AddLabel = [this, Row](const FString& Value, int32 Size, FLinearColor Ink, bool Fill = false)
+    {
+        auto* Label = WidgetTree->ConstructWidget<UTextBlock>();
+        // 正文字体包含完整中文回退字库，保留棋子原名中的“傌”“俥”等字形。
+        Label->SetFont(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"), Size));
+        Label->SetText(FText::FromString(Value));
+        Label->SetColorAndOpacity(Ink);
+        auto* Slot = Row->AddChildToHorizontalBox(Label);
+        Slot->SetVerticalAlignment(VAlign_Center);
+        Slot->SetPadding(FMargin(0.f, 0.f, Fill ? 0.f : 10.f, 0.f));
+        if (Fill) Slot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+        return Label;
+    };
+    const FLinearColor Gold(.83f, .69f, .22f);
+    AddLabel(FString::Printf(TEXT("%02d"), ++RecordMoveCount), 14.f, FLinearColor(.6f, .53f, .37f));
+    auto* Faction = AddLabel(Color == EChessColor::REDCHESS ? TEXT("红") : TEXT("黑"), 17.f, Gold);
+    XQPUIStyle::SetFactionText(Faction, Color);
+    AddLabel(Notation, 19.f, FLinearColor(.94f, .87f, .7f), true);
+    if (MovePoints.IsSet()) AddLabel(FString::Printf(TEXT("%+d"), MovePoints.GetValue()), 15.f, Gold);
+    if (RecordCount) RecordCount->SetText(FText::FromString(FString::Printf(TEXT("共 %d 手"), RecordMoveCount)));
+    if (RecordEmpty) RecordEmpty->SetVisibility(ESlateVisibility::Collapsed);
+    if (FollowLatest) RecordScroll->ScrollToEnd();
 }
 
 void UUI_Battle2P_Base::ShowBattleStart()
@@ -317,15 +403,13 @@ void UUI_Battle2P_Base::ExecGamePlayAgain()
     if (GameState.IsValid() && GameState->IsLANGame()) return;
     EXEC_PLAYAGAIN();
     SetAITurn(false); // 更新AI回合结束
-    if (IsValid(Text_OperatingRecord)) Text_OperatingRecord->SetText(FText());
+    ResetOperatingRecord();
 }
 
 // 将当前走法追加到执棋方的棋谱。
 void UUI_Battle2P_Base::AddOperatingRecord(EPlayerTag player, TWeakObjectPtr<AChesses> targetChess, FChessMove2P move, TOptional<int32> MovePoints)
 {
-	if (!IsValid(Text_OperatingRecord) || !IsValid(Text_Name_P1) || !IsValid(Text_Name_P2) || !targetChess.IsValid()) return;
-	// 获取之前的操作
-	FString text = Text_OperatingRecord->GetText().ToString();
+	if (!IsValid(Text_Name_P1) || !IsValid(Text_Name_P2) || !targetChess.IsValid()) return;
 
 	FString playerName;
 	// 获取玩家名称
@@ -343,7 +427,15 @@ void UUI_Battle2P_Base::AddOperatingRecord(EPlayerTag player, TWeakObjectPtr<ACh
 		break;
 	}
 
-    text.Append(playerName).Append(TEXT(": ")).Append(GetEnhancedMoveNotation(targetChess, move));
+    const FString Notation = GetEnhancedMoveNotation(targetChess, move);
+    if (RecordRows)
+    {
+        AddRecordRow(targetChess->GetColor(), Notation, playerName, MovePoints);
+        return;
+    }
+    if (!Text_OperatingRecord) return;
+    FString text = Text_OperatingRecord->GetText().ToString();
+    text.Append(playerName).Append(TEXT(": ")).Append(Notation);
     if (MovePoints.IsSet()) text.Append(FString::Printf(TEXT(" · 本手 %+d"), MovePoints.GetValue()));
     text.Append(TEXT("\n"));
     if (IsValid(Text_OperatingRecord)) Text_OperatingRecord->SetText(FText::FromString(text));

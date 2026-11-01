@@ -187,6 +187,7 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
     }
     if (IsProBattle()) ProBattle->Start(GI->ProSettings, IsLANGame(), GI->GetGameMode() == EXQPGameMode::ProBattleAI);
     BattleStart->BeginSetup();
+    if (HUD2P.IsValid()) HUD2P->ResetOperatingRecord();
     if (HUD2P.IsValid()) HUD2P->ShowBattleStart();
     if (HUD2P.IsValid()) HUD2P->SetAITurn(false);
     UpdateScore();
@@ -253,7 +254,7 @@ void AXQPGameStateBase::OnFinishMove2P(TWeakObjectPtr<AChesses> Target)
     if (bGameOver || bEndingPlay || !IsValid(board2P)) return;
     if (battleType == EBattleType::SoloRide)
     {
-        if (battleTurn == EPlayerTag::P1) USoloRideMode::OnFinishMove();
+        USoloRideMode::OnFinishMove();
         UpdateScore();
         return;
     }

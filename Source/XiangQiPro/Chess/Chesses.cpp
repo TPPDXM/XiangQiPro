@@ -511,9 +511,9 @@ void AChesses::ApplyMove(FChessMove2P Move)
 	if (GameState.IsValid()) GameState->DismissSettingPoint2P(); // 隐藏所有落子点
     if (PendingCapture.IsValid())
     {
-        // 非烽火弈棋子统一速度；吃子与普通移动共用同一行程时长。
+        // 普通模式吃子固定用时到达目标上方，距离越远位移速度越快。
         ProMoveStart = GetActorLocation(); ProMoveTime = 0.f;
-        ProMoveDuration = FMath::Max(0.65f, FVector2D(TargetPos - Pos).Size() / 4.f);
+        ProMoveDuration = 0.4f;
         bCaptureApproach = bAnimationing = true;
         SetActorTickEnabled(true);
     }
