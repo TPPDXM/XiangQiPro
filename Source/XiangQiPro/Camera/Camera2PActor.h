@@ -54,6 +54,12 @@ private:
     void EnablePortraitCamera();
     FVector DesktopBaseTargetOffset = FVector::ZeroVector;
     void UpdateDesktopOrbit();
+    float DesktopHomeArmLength = 90.f;
+    float DesktopHomeMaxZoom = 200.f;
+    bool bDesktopCameraAdjusted = false;
+    bool bDesktopFrameApplied = false;
+    FVector2D LastDesktopViewport = FVector2D::ZeroVector;
+    FBox2D LastDesktopBoardRect;
 
 
 
@@ -138,6 +144,8 @@ public:
     // 如果需要每帧更新，可以重写Tick函数
     virtual void Tick(float DeltaTime) override;
     void PlayProResultCamera();
+    // 使用HUD实际剩余区域拟合初始镜头，经典对弈保留场景里的目标距离。
+    void FitProBoardToViewport(const FVector2D& ViewportSize, const FBox2D& BoardRect);
     virtual void GamePlayAgain(UObject* OwnerObject) override;
     // 响应游戏暂停事件。
     virtual void GamePause(UObject* OwnerObject) override;

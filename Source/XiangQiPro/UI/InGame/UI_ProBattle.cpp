@@ -10,6 +10,8 @@
 #include "XiangQiPro/GameMode/BattleStartComponent.h"
 #include "XiangQiPro/GameMode/XQPGameStateBase.h"
 #include "XiangQiPro/GameMode/ProBattleComponent.h"
+#include "XiangQiPro/Camera/Camera2PActor.h"
+#include "EngineUtils.h"
 
 void UUI_ProBattle::NativeConstruct()
 {
@@ -54,6 +56,7 @@ void UUI_ProBattle::NativeTick(const FGeometry& Geometry, float DeltaTime)
 {
     Super::NativeTick(Geometry, DeltaTime);
     const auto* State = GetWorld()->GetGameState<AXQPGameStateBase>();
+    if (State && State->IsProBattle() && !XQPMobile::IsPortrait(this)) FitDesktopCamera(Geometry);
     if (!State || !State->IsProBattle() || !State->ProBattle->IsActive()) return;
     const auto* Battle = State->ProBattle.Get();
     BattleFadeTime = State->BattleStart->HasStarted() ? FMath::Min(0.45f, BattleFadeTime + DeltaTime) : 0.f;
@@ -105,6 +108,48 @@ void UUI_ProBattle::NativeTick(const FGeometry& Geometry, float DeltaTime)
         DoubleSupplyBanner->SetRenderOpacity(FMath::Clamp(DoubleBannerTime / .2f, 0.f, 1.f) * FMath::Clamp((3.f - DoubleBannerTime) / .6f, 0.f, 1.f));
         DoubleSupplyBanner->SetRenderScale(FVector2D(1.f + .12f * FMath::Exp(-DoubleBannerTime * 5.f)));
     }
+}
+
+void UUI_ProBattle::FitDesktopCamera(const FGeometry& Geometry)
+{
+    const FVector2D Size = Geometry.GetLocalSize();
+    const FVector2D Viewport = XQPMobile::ViewportSize(this);
+    if (Size.X <= 0 || Size.Y <= 0 || Viewport.X <= 0 || Viewport.Y <= 0) return;
+    if (!BattleCamera.IsValid())
+    {
+        TActorIterator<ACamera2PActor> It(GetWorld());
+        if (It) BattleCamera = *It;
+    }
+    if (!BattleCamera.IsValid()) return;
+    const FVector2D PixelScale = Viewport / Size;
+    FBox2D Rect(FVector2D(16, 16) * PixelScale, Viewport - FVector2D(16, 16) * PixelScale);
+    // 开场HUD尚未绘制时先按Canvas锚点预留空间，显示后再以真实几何校正。
+    const auto Reserve = [&](const UWidget* Widget, bool bFooter)
+    {
+        if (!Widget) return;
+        const FGeometry& G = Widget->GetCachedGeometry();
+        float TopY, BottomY;
+        if (!G.GetLocalSize().IsNearlyZero())
+        {
+            TopY = Geometry.AbsoluteToLocal(G.LocalToAbsolute(FVector2D::ZeroVector)).Y;
+            BottomY = Geometry.AbsoluteToLocal(G.LocalToAbsolute(G.GetLocalSize())).Y;
+        }
+        else if (const auto* Slot = Cast<UCanvasPanelSlot>(Widget->Slot))
+        {
+            const FAnchors Anchors = Slot->GetAnchors();
+            const FMargin Offsets = Slot->GetOffsets();
+            if (!FMath::IsNearlyEqual(Anchors.Minimum.Y, Anchors.Maximum.Y)) return;
+            const float Height = Slot->GetAutoSize() ? Widget->GetDesiredSize().Y : Offsets.Bottom;
+            TopY = Size.Y * Anchors.Minimum.Y + Offsets.Top - Slot->GetAlignment().Y * Height;
+            BottomY = TopY + Height;
+        }
+        else return;
+        if (bFooter) Rect.Max.Y = FMath::Min(Rect.Max.Y, (TopY - 16.f) * PixelScale.Y);
+        else Rect.Min.Y = FMath::Max(Rect.Min.Y, (BottomY + 12.f) * PixelScale.Y);
+    };
+    Reserve(LocalSupplyPanel, true);
+    Reserve(GetWidgetFromName(TEXT("ClockFrame")), false);
+    BattleCamera->FitProBoardToViewport(Viewport, Rect);
 }
 
 void UUI_ProBattle::ShowMatchResult(EChessColor Winner)

@@ -30,6 +30,10 @@ void UUI_Battle2P_Base::NativeConstruct()
     const bool Solo = GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::SoloRide;
     SetPlayerScoreVisible(true);
     SetOpponentScoreVisible(!Solo);
+    const auto Mode = GetGameInstance<UXQPGameInstance>()->GetGameMode();
+    if (Mode == EXQPGameMode::Default || Mode == EXQPGameMode::AI2P || Mode == EXQPGameMode::LAN || Mode == EXQPGameMode::Ending)
+        for (auto* Label : {Text_Score_P1, Text_Score_P2})
+            if (Label) Label->SetToolTipText(FText::FromString(TEXT("累计走子评分：好棋加分，失误扣分；双方独立累计，可为负分。每手得分见棋谱记录。")));
     if (auto* Button = XQPButtonBinding::GetButton(MenuButton))
         Button->OnClicked.AddUniqueDynamic(this, &UUI_Battle2P_Base::OpenMenu);
     if (auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>())
@@ -41,8 +45,8 @@ void UUI_Battle2P_Base::NativeConstruct()
 
 void UUI_Battle2P_Base::NativeDestruct()
 {
-    if (GetGameInstance())
-        GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->OnRoomUpdated.RemoveAll(this);
+    if (auto* GI = GetGameInstance())
+        if (auto* Room = GI->GetSubsystem<UXQPLANSubsystem>()) Room->OnRoomUpdated.RemoveAll(this);
     Super::NativeDestruct();
 }
 
@@ -317,7 +321,7 @@ void UUI_Battle2P_Base::ExecGamePlayAgain()
 }
 
 // 将当前走法追加到执棋方的棋谱。
-void UUI_Battle2P_Base::AddOperatingRecord(EPlayerTag player, TWeakObjectPtr<AChesses> targetChess, FChessMove2P move)
+void UUI_Battle2P_Base::AddOperatingRecord(EPlayerTag player, TWeakObjectPtr<AChesses> targetChess, FChessMove2P move, TOptional<int32> MovePoints)
 {
 	if (!IsValid(Text_OperatingRecord) || !IsValid(Text_Name_P1) || !IsValid(Text_Name_P2) || !targetChess.IsValid()) return;
 	// 获取之前的操作
@@ -339,7 +343,9 @@ void UUI_Battle2P_Base::AddOperatingRecord(EPlayerTag player, TWeakObjectPtr<ACh
 		break;
 	}
 
-    text.Append(playerName).Append(TEXT(": ")).Append(GetEnhancedMoveNotation(targetChess, move)/* 获取操作 */).Append(TEXT("\n"));
+    text.Append(playerName).Append(TEXT(": ")).Append(GetEnhancedMoveNotation(targetChess, move));
+    if (MovePoints.IsSet()) text.Append(FString::Printf(TEXT(" · 本手 %+d"), MovePoints.GetValue()));
+    text.Append(TEXT("\n"));
     if (IsValid(Text_OperatingRecord)) Text_OperatingRecord->SetText(FText::FromString(text));
 }
 

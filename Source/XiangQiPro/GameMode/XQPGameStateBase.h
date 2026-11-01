@@ -68,6 +68,7 @@ private:
 
 	// 玩家3的得分
 	int32 score3 = 0;
+    bool bUseMoveScores = false;
 
 	bool bGameOver = false;
     EChessColor WinnerColor = EChessColor::REDCHESS;
@@ -97,7 +98,7 @@ private:
     void ApplyAIResult(const FChessSearchResult& Result);
     // 统一处理普通胜负和残局通关。
     void Finish2PGame(EChessColor Winner);
-    // 更新双方局面评估或玩法得分。
+    // 同步累计走子质量分或特殊玩法得分，不重复计分。
     void UpdateScore();
 
 public:

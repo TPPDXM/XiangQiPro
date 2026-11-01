@@ -123,7 +123,13 @@ bool UPlayerProfileSubsystem::RestoreBoard(FChessPosition& OutBoard, EChessColor
     return true;
 }
 
-void UPlayerProfileSubsystem::SaveBoard(const FChessPosition& Board, EChessColor Turn)
+void UPlayerProfileSubsystem::RestoreMoveScores(int32& RedMoveScore, int32& BlackMoveScore) const
+{
+    RedMoveScore = Profile->SavedRedMoveScore;
+    BlackMoveScore = Profile->SavedBlackMoveScore;
+}
+
+void UPlayerProfileSubsystem::SaveBoard(const FChessPosition& Board, EChessColor Turn, int32 RedMoveScore, int32 BlackMoveScore)
 {
     // 每手保存已提交的逻辑棋盘，动画尚未完成也能继续正确回合。
     if (!Profile->bRunActive)
@@ -133,6 +139,8 @@ void UPlayerProfileSubsystem::SaveBoard(const FChessPosition& Board, EChessColor
         Profile->SavedBoard[I] =
             static_cast<uint8>(Board.Squares[I].Type) | (static_cast<uint8>(Board.Squares[I].Color) << 4);
     Profile->SavedTurn = static_cast<uint8>(Turn);
+    Profile->SavedRedMoveScore = RedMoveScore;
+    Profile->SavedBlackMoveScore = BlackMoveScore;
     Save();
 }
 
@@ -182,6 +190,7 @@ void UPlayerProfileSubsystem::ClearLearning()
     Profile->PositionMoveCounts.Reset();
     Profile->SavedBoard.Reset();
     Profile->SavedTurn = 0;
+    Profile->SavedRedMoveScore = Profile->SavedBlackMoveScore = 0;
     Profile->AICaution.Reset();
     Profile->HarmfulReplies.Reset();
     Profile->LastAIMoveKey.Reset();
@@ -232,6 +241,7 @@ void UPlayerProfileSubsystem::CompleteRound(bool bPlayerWon)
         Profile->CurrentStreak = FMath::Min(Profile->CurrentStreak + 1, 1000000);
         Profile->BestStreak = FMath::Max(Profile->BestStreak, Profile->CurrentStreak);
         Profile->SavedBoard.Reset();
+        Profile->SavedRedMoveScore = Profile->SavedBlackMoveScore = 0;
     }
     else
     {

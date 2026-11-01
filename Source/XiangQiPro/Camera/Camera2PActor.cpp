@@ -13,6 +13,8 @@
 #include "EngineUtils.h"
 #include "Sound/SoundBase.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Engine/LocalPlayer.h"
+#include "SceneView.h"
 
 // 初始化默认属性和组件。
 ACamera2PActor::ACamera2PActor()
@@ -81,6 +83,8 @@ void ACamera2PActor::InitCamera()
     }
     HomeRotation = TargetRotation;
     DesktopBaseTargetOffset = SpringArm->TargetOffset;
+    DesktopHomeArmLength = TargetArmLength;
+    DesktopHomeMaxZoom = MaxZoomDistance;
     if (MinPitchAngle <= -89.9f) MinPitchAngle = -90.f;
     if (bPortraitCamera) EnablePortraitCamera();
     else UpdateDesktopOrbit();
@@ -98,6 +102,76 @@ void ACamera2PActor::UpdateDesktopOrbit()
     // 水平径向指向镜头所在的一侧。偏移位于棋盘平面，不随俯角改变高度。
     const FVector Outward = -FRotator(0.f, View.Yaw, 0.f).Vector();
     SpringArm->TargetOffset = DesktopBaseTargetOffset + Outward * Radius;
+}
+
+void ACamera2PActor::FitProBoardToViewport(const FVector2D& Viewport, const FBox2D& BoardRect)
+{
+    const auto* GI = GetGameInstance<UXQPGameInstance>();
+    if (!GI || (GI->GetGameMode() != EXQPGameMode::ProBattleAI && GI->GetGameMode() != EXQPGameMode::ProBattleLAN) ||
+        bPortraitCamera || bProResultCamera || bDesktopCameraAdjusted || Viewport.X <= 0 || Viewport.Y <= 0 ||
+        !BoardRect.bIsValid || BoardRect.GetSize().X < 80 || BoardRect.GetSize().Y < 80) return;
+    if (!SpringArm->GetRelativeRotation().Equals(TargetRotation, .1f)) return;
+    if (bDesktopFrameApplied && LastDesktopViewport.Equals(Viewport, 1.f) &&
+        LastDesktopBoardRect.Min.Equals(BoardRect.Min, 1.f) && LastDesktopBoardRect.Max.Equals(BoardRect.Max, 1.f)) return;
+    if (!MobileBoard.IsValid())
+    {
+        TActorIterator<AChessBoard2PActor> It(GetWorld());
+        if (It) MobileBoard = *It;
+    }
+    if (!MobileBoard.IsValid() || !MobileBoard->ChessBoardMesh) return;
+    const FBox Bounds = MobileBoard->ChessBoardMesh->Bounds.GetBox().ExpandBy(FVector(2.f, 2.f, 6.f));
+    if (!Bounds.IsValid) return;
+    FMinimalViewInfo View;
+    GameCamera->GetCameraView(0.f, View);
+    const FIntRect FullRect(0, 0, FMath::RoundToInt(Viewport.X), FMath::RoundToInt(Viewport.Y));
+    FSceneViewProjectionData Projection;
+    Projection.SetViewRectangle(FullRect);
+    const EAspectRatioAxisConstraint Constraint = GameCamera->bOverrideAspectRatioAxisConstraint
+        ? GameCamera->AspectRatioAxisConstraint.GetValue() : GetDefault<ULocalPlayer>()->AspectRatioAxisConstraint.GetValue();
+    FMinimalViewInfo::CalculateProjectionMatrixGivenViewRectangle(View, Constraint, FullRect, Projection);
+    const FRotator ArmRotation = SpringArm->GetComponentRotation();
+    const FVector Outward = -FRotator(0.f, ArmRotation.Yaw, 0.f).Vector();
+    const float PitchWeight = FMath::Max(0.f, FMath::Cos(FMath::DegreesToRadians(FMath::Abs(ArmRotation.Pitch))));
+    const FMatrix AxisSwap(FPlane(0,0,1,0), FPlane(1,0,0,0), FPlane(0,1,0,0), FPlane(0,0,0,1));
+    const auto Fits = [&](float Distance)
+    {
+        const float Range = DesktopHomeMaxZoom - MinZoomDistance;
+        const float Proximity = Range > KINDA_SMALL_NUMBER ? FMath::Clamp((DesktopHomeMaxZoom - Distance) / Range, 0.f, 1.f) : 0.f;
+        const FVector Pivot = SpringArm->GetComponentLocation() + DesktopBaseTargetOffset + Outward * (FMath::Max(0.f, CloseOrbitRadius) * Proximity * PitchWeight);
+        const FTransform Socket(ArmRotation, Pivot - ArmRotation.Vector() * Distance + ArmRotation.RotateVector(SpringArm->SocketOffset));
+        const FTransform Camera = GameCamera->GetRelativeTransform() * Socket;
+        const FMatrix Matrix = FTranslationMatrix(-Camera.GetLocation()) * FInverseRotationMatrix(Camera.Rotator()) * AxisSwap * Projection.ProjectionMatrix;
+        for (int32 Corner = 0; Corner < 8; ++Corner)
+        {
+            const FVector Point((Corner & 1) ? Bounds.Max.X : Bounds.Min.X,
+                (Corner & 2) ? Bounds.Max.Y : Bounds.Min.Y, (Corner & 4) ? Bounds.Max.Z : Bounds.Min.Z);
+            FVector2D Pixel;
+            if (!FSceneView::ProjectWorldToScreen(Point, Projection.GetConstrainedViewRect(), Matrix, Pixel) ||
+                Pixel.X < BoardRect.Min.X || Pixel.X > BoardRect.Max.X || Pixel.Y < BoardRect.Min.Y || Pixel.Y > BoardRect.Max.Y) return false;
+        }
+        return true;
+    };
+    float Distance = FMath::Max(MinZoomDistance, DesktopHomeArmLength);
+    if (!Fits(Distance))
+    {
+        float Low = Distance, High = FMath::Max(DesktopHomeMaxZoom, Distance * 2.f);
+        for (int32 Attempt = 0; Attempt < 6 && !Fits(High); ++Attempt) High *= 2.f;
+        if (!Fits(High)) return;
+        for (int32 Step = 0; Step < 20; ++Step)
+        {
+            const float Mid = (Low + High) * .5f;
+            if (Fits(Mid)) High = Mid;
+            else Low = Mid;
+        }
+        Distance = High;
+    }
+    MaxZoomDistance = FMath::Max(DesktopHomeMaxZoom, Distance);
+    TargetArmLength = Distance;
+    if (!bDesktopFrameApplied) SpringArm->TargetArmLength = Distance;
+    UpdateDesktopOrbit();
+    bDesktopFrameApplied = true;
+    LastDesktopViewport = Viewport;
+    LastDesktopBoardRect = BoardRect;
 }
 
 void ACamera2PActor::EnablePortraitCamera()
@@ -189,7 +263,12 @@ void ACamera2PActor::GamePlayAgain(UObject* OwnerObject)
         bProResultCamera = false;
         TargetRotation = HomeRotation;
         if (bPortraitCamera) FitMobileBoard();
-        else TargetArmLength = 90.f;
+        else
+        {
+            TargetArmLength = DesktopHomeArmLength;
+            MaxZoomDistance = DesktopHomeMaxZoom;
+            bDesktopCameraAdjusted = bDesktopFrameApplied = false;
+        }
         EnableInput(GetController<APlayerController>());
     }
     IIF_GameState::GamePlayAgain(OwnerObject);
@@ -276,6 +355,7 @@ void ACamera2PActor::OnMouseRightButtonPressed()
 {
     if (bPortraitCamera) return;
 	bIsRotatingCamera = true;
+    bDesktopCameraAdjusted = true;
 
 	// 显示鼠标光标并锁定到视口
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
@@ -327,6 +407,7 @@ void ACamera2PActor::OnMouseWheel(float Value)
     if (bPortraitCamera) return;
 	if (FMath::Abs(Value) > 0.0f)
 	{
+        bDesktopCameraAdjusted = true;
 		// 计算缩放增量（滚轮向上为正值，但我们要缩小距离，所以取负）
 		float ZoomDelta = Value * MouseWheelZoomSensitivity;
 
@@ -342,6 +423,7 @@ void ACamera2PActor::OnMouseWheel(float Value)
 void ACamera2PActor::OnTouchBegin(ETouchIndex::Type FingerIndex, FVector Location)
 {
     if (bPortraitCamera) return;
+    bDesktopCameraAdjusted = true;
 	APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
 	if (!IsValid(PC)) return;
 	if (FingerIndex == ETouchIndex::Touch1)

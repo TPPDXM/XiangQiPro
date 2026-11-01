@@ -26,7 +26,8 @@ class XIANGQIPRO_API UPlayerProfileSubsystem : public UGameInstanceSubsystem
     uint8 BeginOrResumeRun(uint8 Difficulty);
     // 棋盘恢复与逐手保存均使用纯数据快照。
     bool RestoreBoard(FChessPosition& OutBoard, EChessColor& OutTurn) const;
-    void SaveBoard(const FChessPosition& Board, EChessColor Turn);
+    void SaveBoard(const FChessPosition& Board, EChessColor Turn, int32 RedMoveScore = 0, int32 BlackMoveScore = 0);
+    void RestoreMoveScores(int32& RedMoveScore, int32& BlackMoveScore) const;
     void ObserveMove(const FChessPosition& Before, const FChessMove2P& Move);
     void CompleteRound(bool bPlayerWon);
     void EndChallenge();

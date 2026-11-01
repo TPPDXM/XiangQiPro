@@ -27,6 +27,8 @@ private:
     float DoubleBannerTime = 4.f;
     bool bWasDoubleSupply = false;
     float BattleFadeTime = 0.f;
+    TWeakObjectPtr<class ACamera2PActor> BattleCamera;
+    void FitDesktopCamera(const FGeometry& Geometry);
     void UpdateBattlePresentation(float Alpha);
     void UpdateSupply(const TArray<TObjectPtr<UProgressBar>>& Bars, float Value, int32 Max, FLinearColor Color);
 };

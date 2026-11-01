@@ -99,7 +99,7 @@ public:
 	void ExecGamePlayAgain();
 
 	// 增加落子历史记录
-	void AddOperatingRecord(EPlayerTag player, TWeakObjectPtr<AChesses> targetChess, FChessMove2P move);
+	void AddOperatingRecord(EPlayerTag player, TWeakObjectPtr<AChesses> targetChess, FChessMove2P move, TOptional<int32> MovePoints = {});
 	// 将棋子移动转换为基本中文棋谱。
 	FString GetMoveNotation(TWeakObjectPtr<AChesses> targetChess, FChessMove2P move);
 	// 增强版：考虑同列多个相同棋子的情况

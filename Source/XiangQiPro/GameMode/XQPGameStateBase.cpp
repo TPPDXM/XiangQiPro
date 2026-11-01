@@ -6,6 +6,7 @@
 #include "Async/Async.h"
 #include "TimerManager.h"
 #include "XiangQiPro/AI/AI2P.h"
+#include "XiangQiPro/AI/ChessMoveAssessment.h"
 #include "XiangQiPro/Chess/Chesses.h"
 #include "XiangQiPro/GameObject/ChessBoard2P.h"
 #include "XiangQiPro/GameObject/ChessBoard2PActor.h"
@@ -122,6 +123,8 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
     AI2P = GI->GetSubsystem<UAI2P>();
     if (!IsValid(board2P) || !IsValid(AI2P)) return;
     board2PActor = InBoard2PActor;
+    score1 = score2 = score3 = 0;
+    bUseMoveScores = !IsProBattle() && GI->GetGameMode() != EXQPGameMode::SoloRide && GI->GetGameMode() != EXQPGameMode::GuessWho;
     bGameOver = false;
     CurrentEndingIndex = INDEX_NONE;
     EndingMoveCount = 0;
@@ -175,9 +178,10 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
             board2PActor->GenerateFromPosition(Restored);
             battleTurn = RestoredTurn == EChessColor::REDCHESS ? EPlayerTag::P1 : EPlayerTag::AI;
             board2P->SetSideToMove(RestoredTurn);
+            Profile->RestoreMoveScores(score1, score2);
         }
         else board2PActor->GenerateChesses();
-        if (bEnableMachineLearning) Profile->SaveBoard(board2P->CreateSnapshot(), GetTurnColor());
+        if (bEnableMachineLearning) Profile->SaveBoard(board2P->CreateSnapshot(), GetTurnColor(), score1, score2);
         break;
     }
     }
@@ -215,6 +219,18 @@ void AXQPGameStateBase::ApplyMove2P(TWeakObjectPtr<AChesses> Target, FChessMove2
         return;
     }
     bMoveInProgress = true;
+    TOptional<int32> MovePoints;
+    // 所有合法本地、AI和网络走子仅在统一提交入口计分一次。
+    if (bUseMoveScores)
+    {
+        const auto Assessment = FChessMoveAssessor::Assess(board2P->CreateSnapshot(), Move);
+        if (Assessment.bValid)
+        {
+            int32& Total = Side == EChessColor::REDCHESS ? score1 : score2;
+            Total += Assessment.Points;
+            MovePoints = Assessment.Points;
+        }
+    }
     if (CurrentEndingIndex != INDEX_NONE && Side == EChessColor::REDCHESS) ++EndingMoveCount;
     if (bEnableMachineLearning)
     {
@@ -222,10 +238,10 @@ void AXQPGameStateBase::ApplyMove2P(TWeakObjectPtr<AChesses> Target, FChessMove2
         FChessPosition Snapshot = board2P->CreateSnapshot();
         if (Side == EChessColor::REDCHESS) Profile->ObserveMove(Snapshot, Move);
         Snapshot.MakeMove(Move);
-        Profile->SaveBoard(Snapshot, FChessPosition::Opponent(Side));
+        Profile->SaveBoard(Snapshot, FChessPosition::Opponent(Side), score1, score2);
     }
     if (battleType == EBattleType::SoloRide) USoloRideMode::OnApplyMove(Move);
-    if (HUD2P.IsValid()) HUD2P->AddOperatingRecord(battleTurn, Target, Move);
+    if (HUD2P.IsValid()) HUD2P->AddOperatingRecord(battleTurn, Target, Move, MovePoints);
     SwitchBattleTurn(); // 棋谱记录当前执棋方后再轮换
     board2P->ApplyMove(Target, Move);
 }
@@ -397,14 +413,11 @@ void AXQPGameStateBase::FinishProBattle(EChessColor Winner)
     }), 1.05f, false);
 }
 
-// 经典对弈显示相对于各自阵营的局面评估，单骑模式显示累计得分。
+// 经典对弈保留双方独立累计的走子分，界面刷新和结算不会再次加分。
 void AXQPGameStateBase::UpdateScore()
 {
-    score1 = 0;
-    score2 = 0;
-    score3 = 0;
     if (battleType == EBattleType::SoloRide) score1 = USoloRideMode::SoloRideScore;
-    else if (IsValid(board2P))
+    else if (!bUseMoveScores && !IsProBattle() && IsValid(board2P))
     {
         const FChessPosition Snapshot = board2P->CreateSnapshot();
         score1 = Snapshot.Evaluate(EChessColor::REDCHESS);

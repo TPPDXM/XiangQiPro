@@ -23,6 +23,8 @@ public:
     UPROPERTY(SaveGame) uint8 RunDifficulty = 1;
     UPROPERTY(SaveGame) TArray<uint8> SavedBoard;
     UPROPERTY(SaveGame) uint8 SavedTurn = 0;
+    UPROPERTY(SaveGame) int32 SavedRedMoveScore = 0;
+    UPROPERTY(SaveGame) int32 SavedBlackMoveScore = 0;
     UPROPERTY(SaveGame) TArray<int32> PieceCounts;
     UPROPERTY(SaveGame) TArray<int32> FileCounts;
     UPROPERTY(SaveGame) int32 ObservedMoves = 0;
