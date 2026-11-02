@@ -2,7 +2,7 @@
 #include "Components/ListView.h"
 #include "Misc/ConfigCacheIni.h"
 
-// 单一画质档位同步所有效果组；移动端原生分辨率约束由SaveAndApply统一落实。
+// 单一画质档位同步所有效果组，移动端清晰度由SaveAndApply统一落实。
 void UUI_QualitySettings::NativeConstruct()
 {
     Super::NativeConstruct();
@@ -18,8 +18,8 @@ void UUI_QualitySettings::NativeConstruct()
         {
             if (!WeakThis.IsValid() || !IsValid(WeakThis->UserSettings)) return;
             WeakThis->UserSettings->SetOverallScalabilityLevel(FMath::Clamp(Index, 0, 3));
-            WeakThis->SaveAndApply();
             GConfig->SetInt(TEXT("XQP.Graphics"), TEXT("OverallQuality"), FMath::Clamp(Index, 0, 3), GGameUserSettingsIni);
+            WeakThis->SaveAndApply();
             GConfig->Flush(false, GGameUserSettingsIni);
         });
     QualitySettingsList->AddItem(Quality);

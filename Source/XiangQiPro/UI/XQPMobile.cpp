@@ -6,6 +6,7 @@
 #include "XiangQiPro/GameMode/XQPGameInstance.h"
 #include "GameFramework/GameUserSettings.h"
 #include "HAL/IConsoleManager.h"
+#include "Misc/ConfigCacheIni.h"
 
 FVector2D XQPMobile::ViewportSize(const UObject* Context)
 {
@@ -65,16 +66,27 @@ UClass* XQPMobile::ResolveWidgetClass(const UObject* Context, UClass* WidgetClas
 void XQPMobile::ApplyNativeResolution(const UObject* Context)
 {
     if (!IsPortrait(Context)) return;
+    auto* Settings = GEngine ? GEngine->GetGameUserSettings() : nullptr;
+    int32 Quality = Settings ? FMath::Clamp(Settings->GetOverallScalabilityLevel(), 0, 3) : 3;
+    GConfig->GetInt(TEXT("XQP.Graphics"), TEXT("OverallQuality"), Quality, GGameUserSettingsIni);
+    Quality = FMath::Clamp(Quality, 0, 3);
+    const FVector2D Size = ViewportSize(Context);
+    const float ShortSide = FMath::Min(Size.X, Size.Y);
+    // 低档不低于旧版Android的720p基准，小屏设备仍使用100%。UI保持原生分辨率。
+    const float Floor = ShortSide > 0.f ? FMath::Clamp(72000.f / ShortSide, 70.f, 100.f) : 100.f;
+    const float Scale = FMath::Lerp(Floor, 100.f, Quality / 3.f);
     if (GEngine && GEngine->GetGameUserSettings())
     {
-        auto* Settings = GEngine->GetGameUserSettings();
-        Settings->SetResolutionScaleValueEx(100.f);
+        Settings->SetResolutionScaleValueEx(Scale);
         Settings->SetDynamicResolutionEnabled(false);
-        Settings->SetTextureQuality(FMath::Max(2, Settings->GetTextureQuality()));
+        Settings->SetTextureQuality(Quality);
     }
     // 0表示使用设备原生像素；不能写1，后者在Android上可能对应720p基准。
     for (const auto& Setting : {TPair<const TCHAR*, int32>(TEXT("r.MobileContentScaleFactor"), 0),
-        {TEXT("r.ScreenPercentage"), 100}, {TEXT("r.DynamicRes.OperationMode"), 0},
-        {TEXT("r.MaxAnisotropy"), 16}, {TEXT("r.DepthOfFieldQuality"), 0}, {TEXT("r.MotionBlurQuality"), 0}})
+        {TEXT("r.DynamicRes.OperationMode"), 0},
+        {TEXT("r.MaxAnisotropy"), 2 << Quality}, {TEXT("r.DepthOfFieldQuality"), 0}, {TEXT("r.MotionBlurQuality"), 0}})
         if (auto* CVar = IConsoleManager::Get().FindConsoleVariable(Setting.Key)) CVar->Set(Setting.Value, ECVF_SetByGameOverride);
+    if (auto* CVar = IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage"))) CVar->Set(Scale, ECVF_SetByGameOverride);
+    // 避免引擎低档的16级Mip偏移过度模糊棋子，超高维持之前的完整贴图。
+    if (auto* CVar = IConsoleManager::Get().FindConsoleVariable(TEXT("r.Streaming.MipBias"))) CVar->Set((3 - Quality) / 3.f, ECVF_SetByGameOverride);
 }

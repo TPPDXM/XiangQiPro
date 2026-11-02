@@ -513,7 +513,7 @@ void AChesses::ApplyMove(FChessMove2P Move)
     {
         // 普通模式吃子固定用时到达目标上方，距离越远位移速度越快。
         FengHuoMoveStart = GetActorLocation(); FengHuoMoveTime = 0.f;
-        FengHuoMoveDuration = 0.4f;
+        FengHuoMoveDuration = 0.65f;
         bCaptureApproach = bAnimationing = true;
         SetActorTickEnabled(true);
     }

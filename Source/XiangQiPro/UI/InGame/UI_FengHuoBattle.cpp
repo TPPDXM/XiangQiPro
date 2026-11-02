@@ -31,7 +31,7 @@ void UUI_FengHuoBattle::UpdateBattlePresentation(float Alpha)
 {
     if (auto* Root = GetPresentationRoot())
         for (auto* Child : Root->GetAllChildren())
-            if (Child && Child->GetFName() != TEXT("BattleReadyOverlay"))
+            if (Child && Child->GetFName() != TEXT("BattleReadyOverlay") && Child != RecordPanel)
             {
                 Child->SetRenderOpacity(Alpha);
                 Child->SetIsEnabled(Alpha > 0.f);

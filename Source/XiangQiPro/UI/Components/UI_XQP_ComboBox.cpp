@@ -2,14 +2,23 @@
 
 
 #include "UI_XQP_ComboBox.h"
-#include "Styling/CoreStyle.h"
+#include "Engine/Texture2D.h"
+#include "UObject/ConstructorHelpers.h"
+
+UUI_XQP_ComboBox::UUI_XQP_ComboBox(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
+{
+    static ConstructorHelpers::FObjectFinder<UTexture2D> Arrow(TEXT("/Game/UMG/Textures/T_ComboArrow"));
+    ArrowTexture = Arrow.Object;
+}
 
 void UUI_XQP_ComboBox::NativePreConstruct()
 {
     Super::NativePreConstruct();
     if (!ComboBox) return;
     FComboBoxStyle Style = ComboBox->GetWidgetStyle();
-    Style.ComboButtonStyle.DownArrowImage = *FCoreStyle::Get().GetBrush("ComboButton.Arrow");
+    Style.ComboButtonStyle.DownArrowImage.SetResourceObject(ArrowTexture);
+    Style.ComboButtonStyle.DownArrowImage.DrawAs = ESlateBrushDrawType::Image;
+    Style.ComboButtonStyle.DownArrowImage.ImageType = ESlateBrushImageType::FullColor;
     Style.ComboButtonStyle.DownArrowImage.TintColor = FSlateColor(FLinearColor(.83f, .69f, .35f));
     ComboBox->SetWidgetStyle(Style);
 }

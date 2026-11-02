@@ -17,10 +17,12 @@ class XIANGQIPRO_API UUI_XQP_ComboBox : public UUserWidget
 	GENERATED_BODY()
 
 public:
+    UUI_XQP_ComboBox(const FObjectInitializer& ObjectInitializer);
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 	UComboBoxString* ComboBox;
 protected:
-    // 下拉箭头使用Slate内置矢量资源，任意DPI下保持锐利；其余样式由公共UMG模板编辑。
+    UPROPERTY() TObjectPtr<class UTexture2D> ArrowTexture;
+    // 使用显式引用的随包贴图，避免打包遗漏Slate样式文件。
     virtual void NativePreConstruct() override;
 };

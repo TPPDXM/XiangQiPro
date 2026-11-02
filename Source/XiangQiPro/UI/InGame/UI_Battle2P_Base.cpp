@@ -1,4 +1,4 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "UI_Battle2P_Base.h"
@@ -17,6 +17,7 @@
 #include "Components/TextBlock.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
+#include "Components/ContentWidget.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/ScrollBox.h"
@@ -52,7 +53,7 @@ void UUI_Battle2P_Base::NativeConstruct()
     if (RecordPanel)
     {
         RecordPanel->SetRenderOpacity(RecordExpansion);
-        RecordPanel->SetVisibility(bRecordExpanded ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+        RecordPanel->SetVisibility(bRecordExpanded ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
     }
     ResetOperatingRecord();
     if (auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>())
@@ -120,6 +121,20 @@ void UUI_Battle2P_Base::RefreshPlayerInfoLayout()
     const bool LocalBlack = GameState.IsValid() && GameState->IsLANGame() && Room &&
         Room->GetLocalColor() == EChessColor::BLACKCHESS;
     if (LocalBlack == bInfoPanelsSwapped) return;
+    if (auto* LocalHost = Cast<UContentWidget>(GetWidgetFromName(TEXT("LocalPlayerInfoHost"))))
+    {
+        if (auto* OpponentHost = Cast<UContentWidget>(GetWidgetFromName(TEXT("OpponentPlayerInfoHost"))))
+        {
+            UWidget* Local = LocalHost->GetContent();
+            UWidget* Opponent = OpponentHost->GetContent();
+            LocalHost->SetContent(nullptr);
+            OpponentHost->SetContent(nullptr);
+            LocalHost->SetContent(Opponent);
+            OpponentHost->SetContent(Local);
+            bInfoPanelsSwapped = LocalBlack;
+            return;
+        }
+    }
 
     const auto SwapLayout = [](UWidget* Red, UWidget* Black)
     {
@@ -149,7 +164,7 @@ void UUI_Battle2P_Base::OpenMenu()
 void UUI_Battle2P_Base::ToggleOperatingRecord()
 {
     bRecordExpanded = !bRecordExpanded;
-    if (RecordPanel) RecordPanel->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+    if (RecordPanel) RecordPanel->SetVisibility(ESlateVisibility::Visible);
     if (bRecordExpanded && RecordScroll) RecordScroll->ScrollToEnd();
     if (auto* Button = XQPButtonBinding::GetButton(RecordButton))
         Button->SetToolTipText(FText::FromString(bRecordExpanded ? TEXT("收起走子记录") : TEXT("展开走子记录")));
@@ -163,7 +178,7 @@ void UUI_Battle2P_Base::UpdateRecordExpansion(float DeltaTime)
     const float Alpha = FMath::SmoothStep(0.f, 1.f, RecordExpansion);
     RecordPanel->SetRenderOpacity(Alpha);
     RecordPanel->SetRenderTranslation(FVector2D(-24.f * (1.f - Alpha), 12.f * (1.f - Alpha)));
-    RecordPanel->SetVisibility(RecordExpansion > 0.f ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+    RecordPanel->SetVisibility(RecordExpansion > 0.f ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 }
 
 void UUI_Battle2P_Base::ResetOperatingRecord()
