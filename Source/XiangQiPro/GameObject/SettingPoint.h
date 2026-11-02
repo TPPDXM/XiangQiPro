@@ -86,6 +86,8 @@ public:
 
 	// 激活组件
 	void SetActivate(bool bInActive);
+    // 拖动释放必须命中当前仍激活、且仍属于所选棋子的合法落点。
+    bool IsActiveForMove() const { return bActive; }
 
 	// 设置目标棋子
 	void SetTargetChess(TWeakObjectPtr<AChesses> targetChess);

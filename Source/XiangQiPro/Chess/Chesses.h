@@ -179,6 +179,8 @@ public:
     void StopFengHuoMove();
     bool IsRealtimeMoving() const { return bRealtimeTravelling; }
     bool IsSelectedForMove() const { return bSelected; }
+    // 按下即选择并显示合法落点；已选棋子不会在按下时被切换为未选中。
+    bool BeginTouchMoveSelection();
     void ClearMoveSelection();
     float GetSurfaceZ() const;
 	// 根据玩法与阵营更新棋子的可选状态。

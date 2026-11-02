@@ -2,6 +2,7 @@
 #include "MobileMenuCamera.h"
 #include "XiangQiPro/Util/AssetPaths.h"
 #include "Camera/CameraComponent.h"
+#include "Engine/StaticMesh.h"
 #include "Components/AudioComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SceneComponent.h"
@@ -19,8 +20,10 @@ AMobileMenuCamera::AMobileMenuCamera()
 {
     PrimaryActorTick.bCanEverTick = true;
     SetRootComponent(CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot")));
+    BoardPivot = CreateDefaultSubobject<USceneComponent>(TEXT("BoardPivot"));
+    BoardPivot->SetupAttachment(RootComponent);
     Board = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Board"));
-    Board->SetupAttachment(RootComponent);
+    Board->SetupAttachment(BoardPivot);
     static ConstructorHelpers::FObjectFinder<UStaticMesh> Mesh(PATH_PACKAGE_SM_CHESSBOARD_2P);
     Board->SetStaticMesh(Mesh.Object);
     // This mesh's long edge is its local Y axis; the game coordinates use X for ranks.
@@ -35,6 +38,7 @@ AMobileMenuCamera::AMobileMenuCamera()
     Camera->PostProcessSettings.bOverride_DepthOfFieldScale = true;
     Camera->PostProcessSettings.DepthOfFieldScale = 0.f;
     Demo = CreateDefaultSubobject<UMenuChessDemoComponent>(TEXT("ChessDemo"));
+    Demo->SetPresentationRoot(BoardPivot);
     Music = CreateDefaultSubobject<UAudioComponent>(TEXT("Music"));
     Music->SetupAttachment(Board);
     Music->bIsUISound = true;
@@ -45,6 +49,9 @@ AMobileMenuCamera::AMobileMenuCamera()
 void AMobileMenuCamera::BeginPlay()
 {
     Super::BeginPlay();
+    // 已有地图可能保存了旧的 Board 绑定关系，运行时重新确认其父级。
+    // Demo 在组件 BeginPlay 前已经从默认子对象获得同一个展示枢轴。
+    Board->AttachToComponent(BoardPivot, FAttachmentTransformRules::KeepRelativeTransform);
     FitBoard();
     APlayerController* PC = GetWorld()->GetFirstPlayerController();
     if (!PC) return;
@@ -85,16 +92,19 @@ void AMobileMenuCamera::FitBoard()
     const FVector Center = GetActorLocation() + FVector(0, 0, 2.8f);
     const double TanV = TanH * Viewport.Y / Viewport.X;
     double Distance = 1.f;
-    // Fit all eight corners, including the pieces, while keeping the requested angles fixed.
-    for (double X : {-44., 44.})
-        for (double Y : {-36., 36.})
-            for (double Z : {-2., 3.})
-            {
-                const FVector Corner(X, Y, Z);
-                const double Depth = FVector::DotProduct(Corner, Forward);
-                Distance = FMath::Max(Distance, FMath::Abs(FVector::DotProduct(Corner, Right)) / (TanH * Frame.GetSize().X / Viewport.X) - Depth);
-                Distance = FMath::Max(Distance, FMath::Abs(FVector::DotProduct(Corner, Up)) / (TanV * Frame.GetSize().Y / Viewport.Y) - Depth);
-            }
+    // 一次拟合覆盖整个横向环绕及允许的倾斜范围，滑动期间不反复改变镜头距离。
+    // 这样棋盘转到对角方向或演示棋子正在跃起时，也不会跑进标题和按钮区域。
+    for (int32 Yaw = 0; Yaw < 360; Yaw += 15)
+        for (const float Pitch : {-12.f, 0.f, 12.f})
+            for (const double X : {-44., 44.})
+                for (const double Y : {-36., 36.})
+                    for (const double Z : {-2., 7.})
+                    {
+                        const FVector Corner = FRotator(Pitch, Yaw, 0.f).RotateVector(FVector(X, Y, Z)) - FVector(0, 0, 2.8f);
+                        const double Depth = FVector::DotProduct(Corner, Forward);
+                        Distance = FMath::Max(Distance, FMath::Abs(FVector::DotProduct(Corner, Right)) / (TanH * Frame.GetSize().X / Viewport.X) - Depth);
+                        Distance = FMath::Max(Distance, FMath::Abs(FVector::DotProduct(Corner, Up)) / (TanV * Frame.GetSize().Y / Viewport.Y) - Depth);
+                    }
     Camera->SetWorldLocationAndRotation(Center - Forward * (Distance * 1.05), Rotation);
     LastViewport = Viewport;
     LastInsets = Safe;
@@ -111,4 +121,28 @@ void AMobileMenuCamera::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
 {
     Super::CalcCamera(DeltaTime, OutResult);
     OutResult.OffCenterProjectionOffset = LensShift;
+}
+
+// 碰撞保持关闭，避免菜单演示参与游戏拾取；命中检测直接在棋盘局部空间做射线/盒相交。
+bool AMobileMenuCamera::IsBoardTouchPosition(const FVector2D& ScreenPosition) const
+{
+    const auto* Player = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+    if (!Player || !Board || !Board->GetStaticMesh()) return false;
+    FVector Origin, Direction;
+    if (!Player->DeprojectScreenPositionToWorld(ScreenPosition.X, ScreenPosition.Y, Origin, Direction)) return false;
+    const FTransform Transform = Board->GetComponentTransform();
+    const FVector LocalStart = Transform.InverseTransformPosition(Origin);
+    const FVector LocalEnd = Transform.InverseTransformPosition(Origin + Direction * 100000.f);
+    return FMath::LineBoxIntersection(Board->GetStaticMesh()->GetBoundingBox().ExpandBy(2.f), LocalStart, LocalEnd, LocalEnd - LocalStart);
+}
+
+void AMobileMenuCamera::RotateBoard(const FVector2D& ScreenDelta)
+{
+    const float Width = XQPMobile::ViewportSize(this).X;
+    if (!BoardPivot || Width <= 0.f) return;
+    FRotator Rotation = BoardPivot->GetRelativeRotation();
+    Rotation.Yaw = FRotator::NormalizeAxis(Rotation.Yaw + ScreenDelta.X * 180.f / Width);
+    Rotation.Pitch = FMath::Clamp(Rotation.Pitch - ScreenDelta.Y * 63.f / Width, -12.f, 12.f);
+    Rotation.Roll = 0.f;
+    BoardPivot->SetRelativeRotation(Rotation);
 }

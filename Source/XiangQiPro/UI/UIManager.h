@@ -49,6 +49,8 @@ public:
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 
     UUserWidget* GetBasicUI() const { return BasicUI; }
+    // 棋盘手势不能穿透设置、暂停或结算弹窗；基础 HUD 内的按钮仍由 Slate 正常处理。
+    bool HasOverlayUI() const { return !ui_stack.IsEmpty(); }
     void CloseOverlays();
     void CloseDialogs(UUserWidget* Except = nullptr);
 

@@ -198,6 +198,16 @@ void AChesses::Tick(float DeltaTime)
     }
 }
 
+bool AChesses::BeginTouchMoveSelection()
+{
+    // 与原点击选择共用权限和走法生成：观战、对手回合、动画中及已阵亡棋子均不可拖动。
+    if (!GameState.IsValid() || !GameState->IsMyTurn() || !Board2P.IsValid() || bDead || bAnimationing || !bSelectable)
+        return false;
+    if (!bSelected) HandleClick();
+    else GenerateMove2P(Board2P, this);
+    return bSelected;
+}
+
 void AChesses::ClearMoveSelection()
 {
     bSelected = false;

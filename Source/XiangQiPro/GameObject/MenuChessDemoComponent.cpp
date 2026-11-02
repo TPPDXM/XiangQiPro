@@ -100,7 +100,15 @@ void UMenuChessDemoComponent::BeginPlay()
 
 FVector UMenuChessDemoComponent::SquareLocation(FIntPoint Square) const
 {
-    return GetOwner()->GetActorLocation() + FVector(-38.f + Square.X * (76.f / 9.f), -30.f + Square.Y * 7.5f, 2.8f);
+    const FVector Local(-38.f + Square.X * (76.f / 9.f), -30.f + Square.Y * 7.5f, 2.8f);
+    return PresentationRoot ? Local : GetOwner()->GetActorLocation() + Local;
+}
+
+void UMenuChessDemoComponent::SetPieceLocation(UStaticMeshComponent* Piece, const FVector& Location) const
+{
+    if (!Piece) return;
+    if (PresentationRoot) Piece->SetRelativeLocation(Location);
+    else Piece->SetWorldLocation(Location);
 }
 
 void UMenuChessDemoComponent::ClearPieces()
@@ -129,9 +137,11 @@ void UMenuChessDemoComponent::ResetBoard()
         Mesh->SetStaticMesh(PieceMesh);
         Mesh->SetMobility(EComponentMobility::Movable);
         Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-        Mesh->SetupAttachment(GetOwner()->GetRootComponent());
+        Mesh->SetupAttachment(PresentationRoot ? PresentationRoot.Get() : GetOwner()->GetRootComponent());
         Mesh->RegisterComponent();
-        Mesh->SetWorldLocationAndRotation(SquareLocation({I / 9, I % 9}), FRotator::ZeroRotator);
+        if (PresentationRoot) Mesh->SetRelativeRotation(FRotator::ZeroRotator);
+        else Mesh->SetWorldRotation(FRotator::ZeroRotator);
+        SetPieceLocation(Mesh, SquareLocation({I / 9, I % 9}));
         Pieces[I] = Mesh;
         auto* Label = NewObject<UDecalComponent>(GetOwner());
         Label->SetupAttachment(Mesh);
@@ -171,7 +181,7 @@ void UMenuChessDemoComponent::TickComponent(float DeltaTime, ELevelTick TickType
     const float Alpha = FMath::Clamp(Elapsed / MoveSeconds, 0.f, 1.f);
     const float Smooth = FMath::SmoothStep(0.f, 1.f, Alpha);
     if (UStaticMeshComponent* Mesh = Pieces[Moving.from.X * 9 + Moving.from.Y])
-        Mesh->SetWorldLocation(FMath::Lerp(SquareLocation(Moving.from), SquareLocation(Moving.to), Smooth)
+        SetPieceLocation(Mesh, FMath::Lerp(SquareLocation(Moving.from), SquareLocation(Moving.to), Smooth)
             + FVector(0, 0, FMath::Sin(PI * Alpha) * 3.5f));
     if (Alpha >= 1.f) FinishMove();
 }
