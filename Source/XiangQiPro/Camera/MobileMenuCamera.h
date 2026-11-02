@@ -16,8 +16,10 @@ public:
     virtual void CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult) override;
     // 以实际棋盘包围盒判断触摸起点，标题、按钮和棋盘外的滑动不会启动旋转。
     bool IsBoardTouchPosition(const FVector2D& ScreenPosition) const;
-    // 手势位移按视口宽度归一化：横向环绕，纵向小幅倾斜，棋盘与演示棋子共用枢轴。
+    // 手势按屏幕轴自由旋转，不限制横向或纵向翻转角度；棋子共用展示枢轴。
     void RotateBoard(const FVector2D& ScreenDelta);
+    void BeginBoardInteraction();
+    void EndBoardInteraction(bool bAllowInertia);
 protected:
     virtual void BeginPlay() override;
 private:
@@ -27,9 +29,24 @@ private:
     UPROPERTY(VisibleAnywhere) TObjectPtr<class UStaticMeshComponent> Board;
     UPROPERTY(VisibleAnywhere) TObjectPtr<class UMenuChessDemoComponent> Demo;
     UPROPERTY(VisibleAnywhere) TObjectPtr<class UAudioComponent> Music;
-    UPROPERTY() TObjectPtr<class UTextBlock> Caption;
     FVector2D LastViewport = FVector2D::ZeroVector;
     FMargin LastInsets;
     FVector2D LensShift = FVector2D::ZeroVector;
+    // 回正只改变展示枢轴，镜头保持稳定；没有飞散时完整保留棋谱步号和走子进度。
+    TWeakObjectPtr<class UStaticMeshComponent> BackgroundSurface;
+    FQuat HomeBoardRotation = FQuat::Identity;
+    FQuat ReturnStartRotation = FQuat::Identity;
+    FVector PendingAngularDisplacement = FVector::ZeroVector;
+    FVector2D PendingInputDegrees = FVector2D::ZeroVector;
+    FVector2D InertialVelocity = FVector2D::ZeroVector;
+    bool bBoardHeld = false;
+    float PendingRotationRadians = 0.f;
+    float RotationIdleSeconds = 0.f;
+    float ReturnSeconds = 0.f;
+    bool bHasUserRotation = false;
+    bool bReturningBoard = false;
+    void ApplyBoardRotation(const FVector2D& AngleDegrees);
+    void ConfigureBoardClearance();
+    void UpdateBoardInteraction(float DeltaSeconds);
     void FitBoard();
 };

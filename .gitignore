@@ -379,7 +379,11 @@ FodyWeavers.xsd
 !/Content/Material/Scene/
 /Content/Material/Scene/*
 !/Content/Material/Scene/M_MobileTabletop.uasset
-/Content/Mesh
+# 保留本次按模型生成的棋子凸壳，其余原始网格继续忽略。
+/Content/Mesh/*
+!/Content/Mesh/Chess/
+/Content/Mesh/Chess/*
+!/Content/Mesh/Chess/SM_Chess.uasset
 /Content/Niagara
 /Content/Texture
 /Content/UMG/Font

@@ -69,11 +69,12 @@ void AXQPPlayerController::SetHoveredDropPoint(ASettingPoint* Point)
     if (Point) Point->HandleHoverStart(nullptr);
 }
 
-void AXQPPlayerController::CancelMobileBoardGesture()
+void AXQPPlayerController::CancelMobileBoardGesture(bool bAllowMenuInertia)
 {
     SetHoveredDropPoint(nullptr);
     ActiveBoardContact.Reset();
     TouchChess.Reset();
+    if (TouchMenu.IsValid()) TouchMenu->EndBoardInteraction(bAllowMenuInertia);
     TouchMenu.Reset();
     TouchSource = FIntPoint(-1, -1);
     bBoardTouchMoved = bSelectedBeforeTouch = bTouchBeganOnPiece = false;
@@ -136,7 +137,11 @@ void AXQPPlayerController::ProcessTouchHitResult(FTouchId TouchId, ETouchType::T
         TouchStart = PreviousBoardTouch = TouchLocation;
         if (Menu)
         {
-            if (Menu->IsBoardTouchPosition(TouchLocation)) TouchMenu = Menu;
+            if (Menu->IsBoardTouchPosition(TouchLocation))
+            {
+                TouchMenu = Menu;
+                Menu->BeginBoardInteraction();
+            }
             return;
         }
         if (!State->IsMyTurn()) return;
@@ -201,7 +206,7 @@ void AXQPPlayerController::ProcessTouchHitResult(FTouchId TouchId, ETouchType::T
                 TouchChess->HandleClick();
             }
         }
-        if (WasActive) CancelMobileBoardGesture();
+        if (WasActive) CancelMobileBoardGesture(!bRejectBoardContacts && CanUseMobileBoardInput());
         if (BoardContacts.IsEmpty()) bRejectBoardContacts = false;
         return;
     }

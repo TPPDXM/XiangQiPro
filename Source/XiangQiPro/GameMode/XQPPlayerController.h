@@ -51,5 +51,5 @@ private:
     // 用棋盘平面反投影到格子，再读取当前激活落点；吃子目标的网格不会遮住落点判定。
     class ASettingPoint* FindTouchDropPoint(const FVector2D& ScreenPosition) const;
     void SetHoveredDropPoint(class ASettingPoint* Point);
-    void CancelMobileBoardGesture();
+    void CancelMobileBoardGesture(bool bAllowMenuInertia = false);
 };
