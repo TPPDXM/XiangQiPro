@@ -25,4 +25,6 @@ protected:
     UPROPERTY() TObjectPtr<class UTexture2D> ArrowTexture;
     // 使用显式引用的随包贴图，避免打包遗漏Slate样式文件。
     virtual void NativePreConstruct() override;
+    // 移动端按钮在触摸按下时切换，防止弹层先关闭、抬手时又被同一次点击重新打开。
+    virtual void NativeConstruct() override;
 };

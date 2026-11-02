@@ -423,3 +423,9 @@ bool UFengHuoBattleComponent::ReceiveSnapshot(const TSharedPtr<FJsonObject>& M)
     if (Finished) Finish(static_cast<EChessColor>(int32(Win)), Draw, Timeout);
     return true;
 }
+
+AChesses* UFengHuoBattleComponent::GetUnitActor(int32 Id) const
+{
+    // Actor 可能已经消散或随地图销毁，UI 应当跳过失效对象。
+    return Actors.IsValidIndex(Id) ? Actors[Id].Get() : nullptr;
+}

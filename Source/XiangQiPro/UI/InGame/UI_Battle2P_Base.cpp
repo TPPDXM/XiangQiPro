@@ -2,6 +2,7 @@
 
 
 #include "UI_Battle2P_Base.h"
+#include "XiangQiPro/Util/AssetPaths.h"
 #include "XiangQiPro/UI/XQPMobile.h"
 #include "XiangQiPro/UI/XQP_HUD.h"
 #include "XiangQiPro/Chess/Chesses.h"
@@ -30,6 +31,8 @@
 #include "XiangQiPro/GameMode/XQPPlayerController.h"
 #include "XiangQiPro/Util/EndingLibrary.h"
 #include "XiangQiPro/UI/XQPUIStyle.h"
+#include "XiangQiPro/Camera/Camera2PActor.h"
+#include "EngineUtils.h"
 
 void UUI_Battle2P_Base::NativeConstruct()
 {
@@ -37,9 +40,16 @@ void UUI_Battle2P_Base::NativeConstruct()
     UpdateCanTick();
     GameState = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr;
     RefreshPlayerInfoLayout();
+    XQPUIStyle::ConstrainPlayerName(Text_Name_P1);
+    XQPUIStyle::ConstrainPlayerName(Text_Name_P2);
     const bool Solo = GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::SoloRide;
     SetPlayerScoreVisible(true);
     SetOpponentScoreVisible(!Solo);
+    if (GameState.IsValid() && GameState->IsSpectator())
+    {
+        SetPlayerScoreVisible(false);
+        SetOpponentScoreVisible(false);
+    }
     const auto Mode = GetGameInstance<UXQPGameInstance>()->GetGameMode();
     if (Mode == EXQPGameMode::Default || Mode == EXQPGameMode::AI2P || Mode == EXQPGameMode::LAN || Mode == EXQPGameMode::Ending)
         for (auto* Label : {Text_Score_P1, Text_Score_P2})
@@ -83,6 +93,7 @@ void UUI_Battle2P_Base::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
     UpdateRecordExpansion(InDeltaTime);
     if (!GameState.IsValid()) return;
     RefreshPlayerInfoLayout();
+    if (GameState->IsSpectator() && !XQPMobile::IsPortrait(this)) FitSpectatorCamera(MyGeometry);
     const auto* Profile = GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>();
     const bool LAN = GameState->IsLANGame();
     const bool Solo = GameState->GetBattleType() == EBattleType::SoloRide;
@@ -111,6 +122,7 @@ void UUI_Battle2P_Base::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
                 GameState->IsGameOver() ? TEXT("本局结束") :
                 (GameState->GetTurnColor() == EChessColor::REDCHESS ? TEXT("红方回合") : TEXT("黑方回合")))
             : FString::Printf(TEXT("最高连胜 %d 局"), Profile->GetBestStreak())));
+        if (GameState->IsSpectator()) ModeStatus->SetText(FText::FromString(GameState->IsGameOver() ? TEXT("观战 · 本局结束") : TEXT("观战中")));
     }
     if (LAN)
     {
@@ -124,10 +136,56 @@ void UUI_Battle2P_Base::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
     }
 }
 
+void UUI_Battle2P_Base::FitSpectatorCamera(const FGeometry& Geometry)
+{
+    const FVector2D Size = Geometry.GetLocalSize();
+    const FVector2D Viewport = XQPMobile::ViewportSize(this);
+    if (Size.X <= 0.f || Size.Y <= 0.f || Viewport.X <= 0.f || Viewport.Y <= 0.f) return;
+    if (!SpectatorCamera.IsValid())
+    {
+        TActorIterator<ACamera2PActor> It(GetWorld());
+        if (It) SpectatorCamera = *It;
+    }
+    if (!SpectatorCamera.IsValid()) return;
+    const FVector2D PixelScale = Viewport / Size;
+    FBox2D Rect(FVector2D(16.f, 16.f) * PixelScale, Viewport - FVector2D(16.f, 16.f) * PixelScale);
+    const auto Reserve = [&](const TCHAR* Name, bool Footer)
+    {
+        const UWidget* Widget = GetWidgetFromName(Name);
+        if (!Widget) return;
+        float Top, Bottom;
+        const FGeometry& G = Widget->GetCachedGeometry();
+        if (!G.GetLocalSize().IsNearlyZero())
+        {
+            Top = Geometry.AbsoluteToLocal(G.LocalToAbsolute(FVector2D::ZeroVector)).Y;
+            Bottom = Geometry.AbsoluteToLocal(G.LocalToAbsolute(G.GetLocalSize())).Y;
+        }
+        else if (const auto* Slot = Cast<UCanvasPanelSlot>(Widget->Slot))
+        {
+            // 首帧尚无几何，先按固定锚点预留，避免先显示一帧被遮挡的棋盘。
+            const FAnchors Anchors = Slot->GetAnchors();
+            if (!FMath::IsNearlyEqual(Anchors.Minimum.Y, Anchors.Maximum.Y)) return;
+            const FMargin Offsets = Slot->GetOffsets();
+            const float Height = Slot->GetAutoSize() ? Widget->GetDesiredSize().Y : Offsets.Bottom;
+            Top = Size.Y * Anchors.Minimum.Y + Offsets.Top - Slot->GetAlignment().Y * Height;
+            Bottom = Top + Height;
+        }
+        else return;
+        if (Footer) Rect.Max.Y = FMath::Min(Rect.Max.Y, (Top - 12.f) * PixelScale.Y);
+        else Rect.Min.Y = FMath::Max(Rect.Min.Y, (Bottom + 12.f) * PixelScale.Y);
+    };
+    Reserve(TEXT("RedInfoPanel"), false);
+    Reserve(TEXT("BlackInfoPanel"), false);
+    Reserve(TEXT("ClockFrame"), false);
+    Reserve(TEXT("RecordButton"), true);
+    Reserve(TEXT("MenuButton"), true);
+    SpectatorCamera->FitProBoardToViewport(Viewport, Rect);
+}
+
 void UUI_Battle2P_Base::RefreshPlayerInfoLayout()
 {
     const auto* Room = GetGameInstance() ? GetGameInstance()->GetSubsystem<UXQPLANSubsystem>() : nullptr;
-    const bool LocalBlack = GameState.IsValid() && GameState->IsLANGame() && Room &&
+    const bool LocalBlack = GameState.IsValid() && !GameState->IsSpectator() && GameState->IsLANGame() && Room &&
         Room->GetLocalColor() == EChessColor::BLACKCHESS;
     if (LocalBlack == bInfoPanelsSwapped) return;
     if (auto* LocalHost = Cast<UContentWidget>(GetWidgetFromName(TEXT("LocalPlayerInfoHost"))))
@@ -255,7 +313,7 @@ void UUI_Battle2P_Base::AddRecordRow(EChessColor Color, const FString& Notation,
 void UUI_Battle2P_Base::ShowBattleStart()
 {
     if (auto* Ready = GetWidgetFromName(TEXT("BattleReadyOverlay")))
-        Ready->SetVisibility(GameState.IsValid() && !GameState->BattleStart->HasStarted() ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+        Ready->SetVisibility(GameState.IsValid() && !GameState->IsSpectator() && !GameState->BattleStart->HasStarted() ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 }
 
 UUI_CommonDialog* UUI_Battle2P_Base::OpenResultDialog()
@@ -290,6 +348,15 @@ void UUI_Battle2P_Base::ShowMatchResult(EChessColor Winner)
     const bool LAN = GameState.IsValid() && GameState->IsLANGame();
     auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
     const bool Won = Winner == (LAN ? Room->GetLocalColor() : EChessColor::REDCHESS);
+    if (LAN && Room->IsSpectator())
+    {
+        Dialog->Configure(FText::FromString(TEXT("对局结束")),
+            FText::FromString(Winner == EChessColor::REDCHESS ? Room->GetRedName() + TEXT("（红方）获胜") : Room->GetBlackName() + TEXT("（黑方）获胜")),
+            FText::GetEmpty(), FText::FromString(TEXT("退出观战")), FText::FromString(TEXT("查看棋盘")));
+        Dialog->SetMessageFaction(Winner);
+        Dialog->SetSpectatorOutcome();
+        return;
+    }
     if (GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::Ending)
     {
         const FString Title = GameState.IsValid() ? UEndingLibrary::GetEndingGameTitle(GameState->GetCurrentEndingIndex()) : FString();
@@ -352,6 +419,7 @@ void UUI_Battle2P_Base::RefreshRematchAction()
     auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
     if (GameState->IsLANGame())
     {
+        if (Room->IsSpectator()) { ResultDialog->SetPrimaryAction(FText::GetEmpty(), false); return; }
         if (Room->GetState() != EXQPRoomState::Finished) return;
         const bool Waiting = Room->IsHost() ? !Room->IsPeerReady() : Room->IsLocalReady();
         const TCHAR* Caption = Room->IsHost() ? (Waiting ? TEXT("等待对方再战") : TEXT("确认再战"))
@@ -379,6 +447,7 @@ void UUI_Battle2P_Base::PlayAgain()
     if (GameState->IsLANGame())
     {
         auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
+        if (Room->IsSpectator()) return;
         if (Room->GetState() != EXQPRoomState::Finished || !Room->HasPeer()) return;
         if (Room->IsHost()) Room->StartMatch();
         else Room->SetReady(true);
@@ -396,7 +465,7 @@ void UUI_Battle2P_Base::ReturnToMainMenu()
     if (GameState.IsValid() && GameState->IsLANGame()) GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->LeaveRoom();
     GetGameInstance<UXQPGameInstance>()->SetGameMode(EXQPGameMode::Default);
     UGameplayStatics::SetGamePaused(this, false);
-    UXQPGameInstance::OpenGameLevel(this, TEXT("/Game/Map/Main"));
+    UXQPGameInstance::OpenGameLevel(this, PATH_MAP_MAIN);
 }
 
 // 刷新双方得分控件。

@@ -10,21 +10,9 @@
 
 #include "CoreMinimal.h"
 #include "FengHuoBattleTypes.h"
+#include "XQPGameTypes.h"
 #include "Engine/GameInstance.h"
 #include "XQPGameInstance.generated.h"
-
-UENUM()
-enum class EXQPGameMode : uint8
-{
-	Default = 0,
-	AI2P = 1,
-	Ending = 2,
-	SoloRide = 3,
-	GuessWho = 4,
-    LAN = 5,
-    FengHuoAI = 6,
-    FengHuoLAN = 7
-};
 
 /**
  * 游戏实例类

@@ -55,7 +55,7 @@ void UUI_BattleReady::RefreshPresentation()
     const auto* State = GetWorld()->GetGameState<AXQPGameStateBase>();
     const auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
     const auto* Start = State ? State->BattleStart.Get() : nullptr;
-    const bool Visible = Start && Start->IsActive() && !Start->HasStarted() && !State->IsGameOver() &&
+    const bool Visible = Start && !State->IsSpectator() && Start->IsActive() && !Start->HasStarted() && !State->IsGameOver() &&
         (!State->IsLANGame() || Room->GetState() != EXQPRoomState::Disconnected);
     SetVisibility(Visible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
     if (!Visible) return;

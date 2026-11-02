@@ -31,7 +31,7 @@ void UBattleStartComponent::BeginSetup()
 void UBattleStartComponent::ConfirmLocal()
 {
     auto* State = Cast<AXQPGameStateBase>(GetOwner());
-    if (!State || !bActive || bRunning || State->IsGameOver()) return;
+    if (!State || State->IsSpectator() || !bActive || bRunning || State->IsGameOver()) return;
     if (State->IsLANGame()) GetWorld()->GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->ConfirmBattleStart();
     else ConfirmSide(EChessColor::REDCHESS);
 }

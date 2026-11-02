@@ -36,6 +36,9 @@ private:
 
     bool bInfoPanelsSwapped = false;
     void RefreshPlayerInfoLayout();
+    // 只拟合进入观战时的默认镜头，用户开始操作后保留原旋转/缩放行为。
+    TWeakObjectPtr<class ACamera2PActor> SpectatorCamera;
+    void FitSpectatorCamera(const FGeometry& Geometry);
 
 public:
 

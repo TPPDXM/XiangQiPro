@@ -1,6 +1,21 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #include "ChessPosition.h"
+
+FChessPosition FChessPosition::Standard()
+{
+    FChessPosition Board;
+    constexpr EChessType Back[] = {EChessType::JV, EChessType::MA, EChessType::XIANG, EChessType::SHI,
+        EChessType::JIANG, EChessType::SHI, EChessType::XIANG, EChessType::MA, EChessType::JV};
+    for (int32 Side = 0; Side < 2; ++Side)
+    {
+        const auto Color = static_cast<EChessColor>(Side);
+        for (int32 File = 0; File < 9; ++File) Board.Set({Side ? 9 : 0, File}, {Back[File], Color});
+        for (int32 File : {1, 7}) Board.Set({Side ? 7 : 2, File}, {EChessType::PAO, Color});
+        for (int32 File : {0, 2, 4, 6, 8}) Board.Set({Side ? 6 : 3, File}, {EChessType::BING, Color});
+    }
+    return Board;
+}
 
 // 判断棋盘边界。
 bool FChessPosition::IsInside(Position Pos)
@@ -136,7 +151,9 @@ void FChessPosition::GeneratePieceMoves(Position From, TArray<FChessMove2P>& Mov
     {
         Add(From + Position(1, 0)); Add(From + Position(-1, 0));
         Add(From + Position(0, 1)); Add(From + Position(0, -1));
-        if (Piece.Type == EChessType::JIANG)
+        // 烽火弈允许将帅照面，且不允许飞将吃子：不扫描对方将位，也不生成虚假的长程威胁。
+        // 经典模式保留原照面吃将规则，避免把中路棋子错误地当作必须保留的屏障。
+        if (Piece.Type == EChessType::JIANG && bFlyingKingCapture)
         {
             const Position King = FindKing(Opponent(Piece.Color));
             if (FMath::Abs(King.X - From.X) + FMath::Abs(King.Y - From.Y) > 1) Add(King);
@@ -263,15 +280,17 @@ int32 FChessPosition::EvaluateActivity(EChessColor Color) const
     for (const auto& Piece : Squares)
         if (Piece.Type == EChessType::MA || Piece.Type == EChessType::PAO || Piece.Type == EChessType::JV) ++MajorCount;
     const Position Kings[] = {FindKing(EChessColor::REDCHESS), FindKing(EChessColor::BLACKCHESS)};
+    TArray<FChessMove2P> Moves;
+    Moves.Reserve(32);
     for (int32 I = 0; I < 90; ++I)
     {
         const auto Piece = Squares[I];
         if (Piece.Type == EChessType::EMPTY || static_cast<uint8>(Piece.Color) > 1) continue;
         const int32 S = static_cast<uint8>(Piece.Color);
         const Position From(I / 9, I % 9);
-        TArray<FChessMove2P> Moves;
-        GeneratePieceMoves(From, Moves);
         const bool Major = Piece.Type == EChessType::JV || Piece.Type == EChessType::MA || Piece.Type == EChessType::PAO;
+        Moves.Reset();
+        if (Major || Piece.Type == EChessType::JIANG) GeneratePieceMoves(From, Moves);
         if (Major)
         {
             Values[S] += Moves.Num() * (Piece.Type == EChessType::JV ? 3 : 5);

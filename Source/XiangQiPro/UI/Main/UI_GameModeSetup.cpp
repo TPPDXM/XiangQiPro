@@ -1,4 +1,5 @@
-#include "UI_GameModeSetup.h"
+﻿#include "UI_GameModeSetup.h"
+#include "XiangQiPro/Util/AssetPaths.h"
 #include "XiangQiPro/GameMode/XQPGameInstance.h"
 #include "XiangQiPro/Network/XQPLANSubsystem.h"
 #include "Components/TextBlock.h"
@@ -31,5 +32,5 @@ void UUI_GameModeSetup::StartGame()
     if (!GI || (ModeId != 3 && ModeId != 4)) return;
     GI->GetSubsystem<UXQPLANSubsystem>()->LeaveRoom();
     GI->SetGameMode(ModeId == 3 ? EXQPGameMode::SoloRide : EXQPGameMode::GuessWho);
-    UXQPGameInstance::OpenGameLevel(this, TEXT("/Game/Map/Battle2P"));
+    UXQPGameInstance::OpenGameLevel(this, PATH_MAP_BATTLE2P);
 }

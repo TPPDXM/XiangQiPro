@@ -1,4 +1,4 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
@@ -53,6 +53,8 @@ private:
     void FitMobileBoard();
     void EnablePortraitCamera();
     FVector DesktopBaseTargetOffset = FVector::ZeroVector;
+    // 默认观战构图平移；首次人工操作后不再重新拟合。
+    FVector DesktopFrameOffset = FVector::ZeroVector;
     void UpdateDesktopOrbit();
     float DesktopHomeArmLength = 90.f;
     float DesktopHomeMaxZoom = 200.f;

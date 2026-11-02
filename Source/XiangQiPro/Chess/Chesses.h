@@ -1,6 +1,7 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
+#include "XiangQiPro/Util/AssetPaths.h"
 
 #include "../Interface/IF_GameState.h"
 
@@ -22,11 +23,6 @@
 #include "GameFramework/Pawn.h"
 #include "Chesses.generated.h"
 
-#define PATH_SM_CHESS TEXT("/Script/Engine.StaticMesh'/Game/Mesh/Chess/SM_Chess.SM_Chess'")
-#define PATH_M_CHESSMASK TEXT("/Script/Engine.Material'/Game/Material/Decal/ChessMask/M_ChessMask.M_ChessMask'")
-#define PATH_MI_STROKE_CHESS TEXT("/Script/Engine.MaterialInstanceConstant'/Game/Material/Chess/MI_Stroke_Chess.MI_Stroke_Chess'")
-#define PATH_CF_CHESSMOVE TEXT("/Script/Engine.CurveFloat'/Game/Curve/Chess/CF_ChessMove.CF_ChessMove'")
-#define PATH_NS_FADE TEXT("/Script/Niagara.NiagaraSystem'/Game/Niagara/NiagaraSystem/NS_LeakParticles.NS_LeakParticles'")
 
 struct FChessMove2P;
 

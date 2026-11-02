@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 #include "ChessOpeningBook.h"
 
 namespace
@@ -42,28 +42,7 @@ namespace
         TEXT("0726 9776 0122 9172 0224 6252 0818 9888 3646 7778")
     };
 
-    FChessPosition StartingPosition()
-    {
-        FChessPosition Board;
-        constexpr EChessType Back[] = {EChessType::JV, EChessType::MA, EChessType::XIANG,
-            EChessType::SHI, EChessType::JIANG, EChessType::SHI, EChessType::XIANG, EChessType::MA, EChessType::JV};
-        for (int32 Y = 0; Y < 9; ++Y)
-        {
-            Board.Set({0, Y}, {Back[Y], EChessColor::REDCHESS});
-            Board.Set({9, Y}, {Back[Y], EChessColor::BLACKCHESS});
-            if (Y % 2 == 0)
-            {
-                Board.Set({3, Y}, {EChessType::BING, EChessColor::REDCHESS});
-                Board.Set({6, Y}, {EChessType::BING, EChessColor::BLACKCHESS});
-            }
-        }
-        for (int32 Y : {1, 7})
-        {
-            Board.Set({2, Y}, {EChessType::PAO, EChessColor::REDCHESS});
-            Board.Set({7, Y}, {EChessType::PAO, EChessColor::BLACKCHESS});
-        }
-        return Board;
-    }
+
 }
 
 TArray<FChessMove2P> FChessOpeningBook::FindMoves(const FChessPosition& Position, EChessColor Side)
@@ -76,7 +55,7 @@ TArray<FChessMove2P> FChessOpeningBook::FindMoves(const FChessPosition& Position
         for (const TCHAR* Line : Lines)
             for (bool bMirror : {false, true})
             {
-                FChessPosition Board = StartingPosition();
+                FChessPosition Board = FChessPosition::Standard();
                 EChessColor Turn = EChessColor::REDCHESS;
                 TArray<FString> Moves;
                 FString(Line).ParseIntoArrayWS(Moves);

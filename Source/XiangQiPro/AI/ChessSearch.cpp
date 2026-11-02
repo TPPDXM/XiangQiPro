@@ -3,6 +3,8 @@
 #include "ChessSearch.h"
 #include "ChessOpeningBook.h"
 #include "HAL/PlatformTime.h"
+#include "HAL/CriticalSection.h"
+#include "Misc/ScopeLock.h"
 
 namespace
 {
@@ -10,6 +12,16 @@ namespace
     constexpr int32 Infinity = 200000;
     constexpr int32 MaxPly = 96;
     constexpr int32 TableSize = 1 << 16;
+
+    struct FOpeningAnalysis
+    {
+        FChessSearchResult Result;
+        FChessSearchStyle Style;
+        int32 MaxDepth;
+        double Budget;
+    };
+    FCriticalSection OpeningCacheMutex;
+    TMap<uint64, FOpeningAnalysis> OpeningCache;
 
     // 比较走法坐标，排序分数不参与匹配。
     bool SameMove(const FChessMove2P& A, const FChessMove2P& B)
@@ -28,6 +40,25 @@ namespace
     {
         return Score > MateScore - MaxPly ? Score - Ply : Score < -MateScore + MaxPly ? Score + Ply : Score;
     }
+}
+
+FChessAISettings FChessAISettings::ForDifficulty(uint8 Difficulty)
+{
+    static constexpr int32 Depths[] = {1, 3, 7, 12, 12};
+    static constexpr double Seconds[] = {0.08, 0.35, 2.5, 7.0, 12.0};
+    static constexpr int32 CaptureDepths[] = {0, 2, 6, 10, 12};
+    static constexpr int32 Inaccuracies[] = {180, 25, 0, 0, 0};
+    const int32 Index = FMath::Min<int32>(Difficulty, 4);
+    FChessAISettings Result;
+    Result.Depth = Depths[Index];
+    Result.Seconds = Seconds[Index];
+    Result.Style.CaptureDepth = CaptureDepths[Index];
+    Result.Style.Inaccuracy = Inaccuracies[Index];
+    Result.Style.bUseOpeningBook = Index >= 2;
+    Result.Style.bAdvancedSearch = Index >= 2;
+    Result.Style.bSelectiveSearch = Index >= 4;
+    Result.Style.bTacticalEvaluation = Index >= 3;
+    return Result;
 }
 
 // 初始化一次搜索，内存由线程安全共享指针管理。
@@ -110,6 +141,27 @@ FChessSearchResult FChessSearch::FindBestMove()
     }
     FRandomStream Random(Style.RandomSeed);
     const TArray<FChessMove2P> BookMoves = Style.bUseOpeningBook ? FChessOpeningBook::FindMoves(Board, Color) : TArray<FChessMove2P>();
+    // 只复用无随机误差、无学习和长将限制的同一开局。预算和棋力策略必须匹配，
+    // 困难/大师不能读到棋圣的分析，棋圣也不会被低档缓存覆盖。
+    const bool bCacheOpening = !BookMoves.IsEmpty() && Style.Inaccuracy == 0 && RestrictedRootMoves.IsEmpty() &&
+        Learning.Observations == 0 && Learning.PositionMoves.IsEmpty() && Learning.AICaution.IsEmpty() && Learning.HarmfulReplies.IsEmpty();
+    if (bCacheOpening)
+    {
+        FScopeLock Lock(&OpeningCacheMutex);
+        if (const auto* Cached = OpeningCache.Find(InitialPositionKey); Cached && Cached->MaxDepth == MaxDepth &&
+            Cached->Budget >= TimeBudget && Cached->Style.CaptureDepth == Style.CaptureDepth &&
+            Cached->Style.bAdvancedSearch == Style.bAdvancedSearch && Cached->Style.bSelectiveSearch == Style.bSelectiveSearch &&
+            Cached->Style.bTacticalEvaluation == Style.bTacticalEvaluation &&
+            Moves.ContainsByPredicate([&](const FChessMove2P& Move) { return SameMove(Move, Cached->Result.Move); }))
+        {
+            Result = Cached->Result;
+            Result.Nodes = 0;
+            Result.bFromOpeningCache = true;
+            Result.bCancelled = bCancelled.load(std::memory_order_relaxed);
+            if (Result.bCancelled) Result.Move = {};
+            return Result;
+        }
+    }
     for (const FChessMove2P& Move : Moves)
     {
         int32& Bias = RootBias[Move.from.X * 9 + Move.from.Y][Move.to.X * 9 + Move.to.Y];
@@ -120,6 +172,7 @@ FChessSearchResult FChessSearch::FindBestMove()
     OrderMoves(Moves, {}, Color, 0);
     Result.Move = Moves[0]; // 时间不足时仍保留一个合法走法
     Table.SetNum(TableSize);
+    EvaluationTable.SetNum(TableSize);
     Path.Reserve(MaxPly);
     for (int32 Depth = 1; Depth <= MaxDepth; ++Depth)
     {
@@ -144,6 +197,12 @@ FChessSearchResult FChessSearch::FindBestMove()
     Result.Nodes = Nodes;
     Result.bCancelled = bCancelled.load(std::memory_order_relaxed);
     if (Result.bCancelled) Result.Move = FChessMove2P();
+    if (bCacheOpening && !Result.bCancelled && Result.CompletedDepth > 0)
+    {
+        FScopeLock Lock(&OpeningCacheMutex);
+        if (OpeningCache.Num() >= 256) OpeningCache.Reset();
+        OpeningCache.Add(InitialPositionKey, {Result, Style, MaxDepth, TimeBudget});
+    }
     return Result;
 }
 
@@ -160,18 +219,11 @@ int32 FChessSearch::Negamax(int32 Depth, int32 Alpha, int32 Beta, EChessColor Si
     // 强档延伸应将变化，限制总层数，避免连续将军无限延伸。
     const bool bInCheck = Board.IsInCheck(Side);
     if (Style.bAdvancedSearch && bInCheck && Ply < MaxDepth * 2) ++Depth;
-    TArray<FChessMove2P> Moves = Board.GenerateLegalMoves(Side);
-    if (Ply == 0)
-        Moves.RemoveAll([&](const FChessMove2P& Move)
-            { return RestrictedRootMoves.ContainsByPredicate([&](const FChessMove2P& Restricted) { return SameMove(Move, Restricted); }); });
-    if (Moves.IsEmpty()) return -MateScore + Ply; // 中国象棋困毙也判负
-    if (Ply >= MaxPly - 1) return Evaluate(Side);
-
     const int32 OriginalAlpha = Alpha;
     const FTableEntry Cached = Table[Key & (TableSize - 1)];
     const bool bHit = Cached.Depth >= 0 && Cached.Key == Key;
     // 重复判定依赖祖先局面，只有祖先集合一致时才复用搜索分数。
-    if (bHit && Cached.Context == PathContext && Cached.Depth >= Depth)
+    if (Ply < MaxPly - 1 && bHit && Cached.Context == PathContext && Cached.Depth >= Depth)
     {
         const int32 Score = LoadScore(Cached.Score, Ply);
         if (Cached.Bound == 0 || (Cached.Bound == 1 && Score <= Alpha) || (Cached.Bound == 2 && Score >= Beta))
@@ -180,6 +232,12 @@ int32 FChessSearch::Negamax(int32 Depth, int32 Alpha, int32 Beta, EChessColor Si
             return Score;
         }
     }
+    TArray<FChessMove2P> Moves = Board.GenerateLegalMoves(Side);
+    if (Ply == 0)
+        Moves.RemoveAll([&](const FChessMove2P& Move)
+            { return RestrictedRootMoves.ContainsByPredicate([&](const FChessMove2P& Restricted) { return SameMove(Move, Restricted); }); });
+    if (Moves.IsEmpty()) return -MateScore + Ply; // 中国象棋困毙也判负
+    if (Ply >= MaxPly - 1) return Evaluate(Side);
     OrderMoves(Moves, bHit ? Cached.Move : FChessMove2P(), Side, Ply);
     Path.Add(Key);
     PathContext ^= Key;
@@ -262,8 +320,8 @@ int32 FChessSearch::Quiescence(int32 Alpha, int32 Beta, EChessColor Side, int32 
     TArray<FChessMove2P> Moves = Board.GenerateLegalMoves(Side);
     if (Moves.IsEmpty()) return -MateScore + Ply;
     const bool bInCheck = Board.IsInCheck(Side);
-    const int32 StandPat = Evaluate(Side);
-    if (Ply >= MaxPly - 1 || (!bInCheck && Remaining <= 0)) return StandPat;
+    if (Ply >= MaxPly - 1 || (!bInCheck && Remaining <= 0)) return Evaluate(Side);
+    const int32 StandPat = bInCheck ? 0 : Evaluate(Side);
     if (!bInCheck)
     {
         if (StandPat >= Beta) return StandPat;
@@ -276,7 +334,11 @@ int32 FChessSearch::Quiescence(int32 Alpha, int32 Beta, EChessColor Side, int32 
     {
         const auto Victim = Board.Get(Move.to);
         bool GivesCheck = false;
-        if (!bInCheck && Style.bSelectiveSearch)
+        const bool bQuietChecks = Remaining >= Style.CaptureDepth - 1;
+        if (!bInCheck && Victim.Type == EChessType::EMPTY && !(Style.bSelectiveSearch && bQuietChecks)) continue;
+        const bool bDeltaCandidate = Victim.Type != EChessType::EMPTY && Victim.Type != EChessType::JIANG &&
+            StandPat + FChessPosition::PieceValue(Victim.Type) + 180 < Alpha;
+        if (!bInCheck && Style.bSelectiveSearch && (Victim.Type == EChessType::EMPTY || bDeltaCandidate))
         {
             const auto Taken = Board.MakeMove(Move);
             GivesCheck = Board.IsInCheck(FChessPosition::Opponent(Side));
@@ -300,9 +362,14 @@ int32 FChessSearch::Quiescence(int32 Alpha, int32 Beta, EChessColor Side, int32 
 }
 
 // 学习影响真实搜索估值，但限制在半个兵以内，保留战术与将杀优先级。
-int32 FChessSearch::Evaluate(EChessColor Side) const
+int32 FChessSearch::Evaluate(EChessColor Side)
 {
+    const uint64 Key = Board.Hash(Side);
+    FEvaluationEntry& Cached = EvaluationTable[Key & (TableSize - 1)];
+    if (Cached.bValid && Cached.Key == Key) return Cached.Score;
     const int32 LearnedStyle = Learning.StyleEvaluation(Board);
-    return Board.Evaluate(Side) + (Style.bTacticalEvaluation ? Board.EvaluateActivity(Side) : 0) +
+    const int32 Score = Board.Evaluate(Side) + (Style.bTacticalEvaluation ? Board.EvaluateActivity(Side) : 0) +
         (Side == EChessColor::REDCHESS ? LearnedStyle : -LearnedStyle);
+    Cached = {Key, Score, true};
+    return Score;
 }

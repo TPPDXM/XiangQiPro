@@ -42,6 +42,8 @@ struct FForecast
     {
         FChessPosition Result;
         Result.bRequireKing = false;
+        // 每一层预测都明确关闭照面吃将，不从调用方或经典模式继承飞将规则。
+        // 中路棋子可以自由出动；只有车、炮、马等实际可达的攻击才需要防守。
         Result.bFlyingKingCapture = false;
         Result.bVariantRules = bVariantRules;
         for (const auto& U : Units)

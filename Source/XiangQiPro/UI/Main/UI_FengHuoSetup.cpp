@@ -1,4 +1,5 @@
-#include "UI_FengHuoSetup.h"
+﻿#include "UI_FengHuoSetup.h"
+#include "XiangQiPro/Util/AssetPaths.h"
 #include "XiangQiPro/UI/XQPMobile.h"
 #include "UI_LANLobby.h"
 #include "Components/SizeBox.h"
@@ -71,7 +72,7 @@ void UUI_FengHuoSetup::StartGame()
     if (!GI) return;
     GI->GetSubsystem<UXQPLANSubsystem>()->LeaveRoom();
     GI->SetGameMode(EXQPGameMode::FengHuoAI);
-    UXQPGameInstance::OpenGameLevel(this, TEXT("/Game/Map/Battle2P"));
+    UXQPGameInstance::OpenGameLevel(this, PATH_MAP_BATTLE2P);
 }
 
 void UUI_FengHuoSetup::ToggleLobby()
@@ -80,10 +81,10 @@ void UUI_FengHuoSetup::ToggleLobby()
     bLobbyVisible = !bLobbyVisible;
     if (bLobbyVisible && LobbyClass)
     {
-        GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->SelectFengHuoMode(true);
+        GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->SelectGameType(EXQPGameType::FengHuo);
         auto* Lobby = XQPMobile::CreateWidget<UUI_LANLobby>(GetOwningPlayer(), LobbyClass);
         if (!Lobby) { bLobbyVisible = false; ConfigureMode(); return; }
-        Lobby->bFengHuoLobby = true;
+        Lobby->GameType = EXQPGameType::FengHuo;
         if (DifficultyPanel) DifficultyPanel->SetVisibility(ESlateVisibility::Collapsed);
         LobbyHost->SetContent(Lobby);
         LobbyHost->SetVisibility(ESlateVisibility::Visible);
@@ -94,7 +95,7 @@ void UUI_FengHuoSetup::ToggleLobby()
         if (auto* Description = GetWidgetFromName(TEXT("ModeDescriptionScroll")))
             Description->SetVisibility(ESlateVisibility::Collapsed);
         Configure(FText::FromString(TEXT("烽火弈 · 联机对战")),
-            FText::FromString(TEXT("三分钟即时对弈 · 粮草恢复 · 抵达吃子\n吃将即胜，超时比较吃子得分，同分为平局。创建房间或输入房主 IP 加入，双方准备后开局。")),
+            FText::FromString(TEXT("三分钟即时对弈 · 粮草恢复 · 抵达吃子\n吃将即胜，超时比较吃子得分，同分为平局。创建房间或输入联机码加入，双方准备后开局。")),
             FText::GetEmpty(), FText::FromString(TEXT("返回玩法介绍")), FText::FromString(TEXT("关闭")));
     }
     else

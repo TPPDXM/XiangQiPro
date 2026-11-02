@@ -1,6 +1,7 @@
 ﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
+#include "XiangQiPro/Util/AssetPaths.h"
 
 #include "XiangQiPro/Interface/IF_GameState.h"
 #include "XiangQiPro/Interface/IF_EndingGame.h"
@@ -9,7 +10,6 @@
 #include "GameFramework/Actor.h"
 #include "ChessBoard2PActor.generated.h"
 
-#define PATH_SM_CHESSBOARD_2P TEXT("/Script/Engine.StaticMesh'/Game/Mesh/ChessBoard/SM_ChessBoard_2P.SM_ChessBoard_2P'")
 
 class UStaticMeshComponent;
 class UChessBoard2P;

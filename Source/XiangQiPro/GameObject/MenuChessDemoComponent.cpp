@@ -1,5 +1,6 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 #include "MenuChessDemoComponent.h"
+#include "XiangQiPro/Util/AssetPaths.h"
 #include "Components/DecalComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInterface.h"
@@ -87,7 +88,7 @@ FMenuChessGame UMenuChessDemoComponent::MakeGame(int32 Index)
 UMenuChessDemoComponent::UMenuChessDemoComponent()
 {
     PrimaryComponentTick.bCanEverTick = true;
-    static ConstructorHelpers::FObjectFinder<UStaticMesh> Mesh(TEXT("/Game/Mesh/Chess/SM_Chess"));
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> Mesh(PATH_PACKAGE_SM_CHESS);
     PieceMesh = Mesh.Object;
 }
 
@@ -138,7 +139,7 @@ void UMenuChessDemoComponent::ResetBoard()
         Label->SetRelativeScale3D(FVector(.0025f,.008f,.008f));
         const bool IsRed = Piece.Color == EChessColor::REDCHESS;
         Label->SetRelativeRotation(FRotator(-90, IsRed ? 90 : -90, 0));
-        const FString MaterialPath = FString::Printf(TEXT("/Game/Material/Decal/ChessMask/%s/MI_ChessMask_%s_%s"),
+        const FString MaterialPath = FString::Printf(PATH_MI_CHESSMASK_FORMAT,
             IsRed ? TEXT("red") : TEXT("black"), IsRed ? TEXT("rad") : TEXT("black"),
             IsRed ? RedNames[static_cast<int32>(Piece.Type)] : BlackNames[static_cast<int32>(Piece.Type)]);
         Label->SetDecalMaterial(LoadObject<UMaterialInterface>(nullptr, *MaterialPath));

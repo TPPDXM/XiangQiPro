@@ -1,6 +1,7 @@
 ﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
+#include "XiangQiPro/Util/AssetPaths.h"
 
 #include "XiangQiPro/Interface/IF_GameState.h"
 #include "XiangQiPro/Util/ChessMove.h"
@@ -9,7 +10,6 @@
 #include "GameFramework/Pawn.h"
 #include "SettingPoint.generated.h"
 
-#define PATH_NS_SETTINGPOINT TEXT("/Script/Niagara.NiagaraSystem'/Game/Niagara/NiagaraSystem/NS_SettingPoint.NS_SettingPoint'")
 
 class AChesses;
 class AXQPGameStateBase;

@@ -1,7 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root xmlns:android="http://schemas.android.com/apk/res/android">
+    <androidManifestUpdates>
+        <addPermission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    </androidManifestUpdates>
     <gameActivityClassAdditions>
         <insert><![CDATA[
+    // Refresh each search so joining an offline hotspot after launching the game works.
+    // Interface broadcasts include tethering interfaces; Wi-Fi gateways provide a unicast
+    // discovery path when the hotspot drops broadcasts. Never assume a fixed subnet.
+    public String[] AndroidThunkJava_XQPDiscoveryTargets() {
+        java.util.LinkedHashSet<String> targets = new java.util.LinkedHashSet<String>();
+        try {
+            java.util.Enumeration<java.net.NetworkInterface> interfaces = java.net.NetworkInterface.getNetworkInterfaces();
+            while (interfaces != null && interfaces.hasMoreElements()) {
+                java.net.NetworkInterface iface = interfaces.nextElement();
+                if (!iface.isUp() || iface.isLoopback()) continue;
+                for (java.net.InterfaceAddress address : iface.getInterfaceAddresses()) {
+                    java.net.InetAddress broadcast = address.getBroadcast();
+                    if (broadcast instanceof java.net.Inet4Address) targets.add(broadcast.getHostAddress());
+                }
+            }
+        } catch (Exception error) {
+            android.util.Log.w("XQP", "Unable to enumerate LAN broadcasts", error);
+        }
+        try {
+            android.net.ConnectivityManager manager = (android.net.ConnectivityManager)getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+            if (manager != null) for (android.net.Network network : manager.getAllNetworks()) {
+                android.net.NetworkCapabilities caps = manager.getNetworkCapabilities(network);
+                if (caps == null || !caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)) continue;
+                android.net.LinkProperties link = manager.getLinkProperties(network);
+                if (link == null) continue;
+                for (android.net.RouteInfo route : link.getRoutes()) {
+                    java.net.InetAddress gateway = route.getGateway();
+                    if (gateway instanceof java.net.Inet4Address && !gateway.isAnyLocalAddress())
+                        targets.add(gateway.getHostAddress());
+                }
+            }
+        } catch (Exception error) {
+            android.util.Log.w("XQP", "Unable to enumerate Wi-Fi gateways", error);
+        }
+        return targets.toArray(new String[0]);
+    }
+
     // Reapply after lifecycle changes; the engine's legacy immersive flags alone
     // can leave the portrait SurfaceView below the display cutout on some phones.
     private void xqpApplyFullScreen() {

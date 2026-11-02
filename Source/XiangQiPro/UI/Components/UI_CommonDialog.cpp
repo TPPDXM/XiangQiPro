@@ -120,6 +120,17 @@ void UUI_CommonDialog::SetMatchOutcome(bool bWon, bool bDraw)
     }
 }
 
+void UUI_CommonDialog::SetSpectatorOutcome()
+{
+    CacheDefaultAppearance();
+    if (DialogTitle) DialogTitle->SetColorAndOpacity(FSlateColor(XQPUIStyle::Gold()));
+    if (OutcomeAccent)
+    {
+        OutcomeAccent->SetBrushColor(XQPUIStyle::Gold());
+        OutcomeAccent->SetVisibility(ESlateVisibility::HitTestInvisible);
+    }
+}
+
 void UUI_CommonDialog::SetMessageFaction(EChessColor Faction)
 {
     if (MessageFactionLabel)

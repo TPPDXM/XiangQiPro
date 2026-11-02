@@ -28,6 +28,8 @@ public:
     void SetMatchOutcome(bool bWon, bool bDraw = false);
     UFUNCTION(BlueprintCallable, Category="Dialog")
     void SetMessageFaction(EChessColor Faction);
+    // 观战没有本地胜负，统一显示金色主题横条及标题。
+    void SetSpectatorOutcome();
     UFUNCTION(BlueprintCallable, Category="Dialog")
     void Dismiss();
 

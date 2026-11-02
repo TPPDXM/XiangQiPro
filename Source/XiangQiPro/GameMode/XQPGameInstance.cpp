@@ -1,7 +1,8 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "XQPGameInstance.h"
+#include "XiangQiPro/Util/AssetPaths.h"
 #include "Kismet/GameplayStatics.h"
 #include "../UI/XQP_HUD.h"
 #include "XiangQiPro/Network/XQPLANSubsystem.h"
@@ -32,7 +33,7 @@ namespace
 // 初始化默认属性和组件。
 UXQPGameInstance::UXQPGameInstance()
 {
-    static ConstructorHelpers::FClassFinder<UUI_TransitionScreen> Transition(TEXT("/Game/UMG/Util/BP_UI_TransitionScreen"));
+    static ConstructorHelpers::FClassFinder<UUI_TransitionScreen> Transition(PATH_UI_TRANSITIONSCREEN_ASSET);
     TravelTransitionClass = Transition.Class;
 }
 
@@ -40,8 +41,8 @@ void UXQPGameInstance::OpenGameLevel(const UObject* WorldContextObject, FName Le
 {
     if (XQPMobile::IsPortrait(WorldContextObject))
     {
-        if (LevelName == TEXT("Main") || LevelName == TEXT("/Game/Map/Main")) LevelName = TEXT("/Game/Map/MobileMain");
-        else if (LevelName == TEXT("Battle2P") || LevelName == TEXT("/Game/Map/Battle2P")) LevelName = TEXT("/Game/Map/MobileBattle");
+        if (LevelName == TEXT("Main") || LevelName == PATH_MAP_MAIN) LevelName = PATH_MAP_MOBILE_MAIN;
+        else if (LevelName == TEXT("Battle2P") || LevelName == PATH_MAP_BATTLE2P) LevelName = PATH_MAP_MOBILE_BATTLE;
     }
     auto* GI = Cast<UXQPGameInstance>(UGameplayStatics::GetGameInstance(WorldContextObject));
     UWorld* World = WorldContextObject ? WorldContextObject->GetWorld() : nullptr;
@@ -117,7 +118,7 @@ void UXQPGameInstance::Init()
 // 开始加载关卡时配置过渡界面。
 void UXQPGameInstance::BeginLoadMap(const FString& MapName)
 {
-    if ((MapName.Contains(TEXT("/Main")) || MapName.Contains(TEXT("/MobileMain"))) && GetSubsystem<UXQPLANSubsystem>()->GetState() != EXQPRoomState::Idle)
+    if ((MapName.Contains(PATH_MAP_MAIN_SUFFIX) || MapName.Contains(PATH_MAP_MOBILE_MAIN_SUFFIX)) && GetSubsystem<UXQPLANSubsystem>()->GetState() != EXQPRoomState::Idle)
     {
         GetSubsystem<UXQPLANSubsystem>()->LeaveRoom();
         MyGameMode = EXQPGameMode::Default;

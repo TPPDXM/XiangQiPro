@@ -1,10 +1,14 @@
 #include "UI_LANLobby.h"
+#include "XiangQiPro/Util/AssetPaths.h"
 #include "XiangQiPro/UI/XQPMobile.h"
 #include "XiangQiPro/Network/XQPLANSubsystem.h"
 #include "Components/EditableTextBox.h"
 #include "Components/TextBlock.h"
 #include "XiangQiPro/UI/Components/XQPButtonBinding.h"
 #include "Components/ComboBoxString.h"
+#include "Components/SizeBox.h"
+#include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
 #include "XiangQiPro/UI/Components/UI_XQP_ComboBox.h"
 #include "XiangQiPro/UI/Components/UI_CommonDialog.h"
 #include "XiangQiPro/UI/UIManager.h"
@@ -15,7 +19,11 @@ void UUI_LANLobby::NativeConstruct()
     Super::NativeConstruct();
     XQPUIStyle::SetFactionText(RedFactionLabel, EChessColor::REDCHESS, true);
     XQPUIStyle::SetFactionText(BlackFactionLabel, EChessColor::BLACKCHESS, true);
-    GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->SelectFengHuoMode(bFengHuoLobby);
+    if (auto* Label = Cast<UTextBlock>(GetWidgetFromName(TEXT("JoinRoomLabel"))))
+        Label->SetText(FText::FromString(TEXT("加入房间")));
+    if (auto* Heading = GetWidgetFromName(TEXT("LANHeading")))
+        Heading->SetToolTipText(FText::FromString(TEXT("双方连接同一局域网，搜索房间或输入六位联机码加入。")));
+    GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->SelectGameType(GameType);
     auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
     Room->OnModeMismatch.RemoveAll(this);
     Room->OnModeMismatch.AddUObject(this, &UUI_LANLobby::ShowModeMismatch);
@@ -31,12 +39,15 @@ void UUI_LANLobby::NativeConstruct()
     XQPButtonBinding::GetButton(ReadyButton)->OnClicked.AddUniqueDynamic(this, &UUI_LANLobby::OnReady);
     XQPButtonBinding::GetButton(ColorButton)->OnClicked.AddUniqueDynamic(this, &UUI_LANLobby::OnColor);
     XQPButtonBinding::GetButton(LeaveButton)->OnClicked.AddUniqueDynamic(this, &UUI_LANLobby::OnLeave);
+    // 原字符串仍作为选项标识；只约束生成控件的宽度，省略显示不会影响选中及加入目标。
+    RoomChoice->OnGenerateWidgetEvent.BindDynamic(this, &UUI_LANLobby::GenerateRoomOption);
     RoomChoice->OnSelectionChanged.AddUniqueDynamic(this, &UUI_LANLobby::OnRoomSelected);
     if (RoomChoice->GetOptionCount() == 0)
     {
         RoomChoice->AddOption(TEXT("选择房间"));
         RoomChoice->SetSelectedIndex(0);
     }
+    if (Address) Address->SetHintText(FText::FromString(TEXT("6位联机码")));
     RefreshTime = 1.f;
     XQPButtonBinding::SetCaption(CreateButton, FText::FromString(TEXT("创建房间")));
     XQPButtonBinding::SetCaption(SearchButton, FText::FromString(TEXT("搜索房间")));
@@ -44,18 +55,21 @@ void UUI_LANLobby::NativeConstruct()
     XQPButtonBinding::SetCaption(StartButton, FText::FromString(TEXT("开始对弈")));
     XQPButtonBinding::SetCaption(ColorButton, FText::FromString(TEXT("交换红黑")));
     XQPButtonBinding::SetCaption(LeaveButton, FText::FromString(TEXT("离开房间")));
+    if (Room->GetState() == EXQPRoomState::Idle || Room->GetState() == EXQPRoomState::Disconnected)
+        Room->FindRooms();
 }
 
 void UUI_LANLobby::NativeTick(const FGeometry& Geometry, float DeltaTime)
 {
     Super::NativeTick(Geometry, DeltaTime);
+    UpdateRoomOptionWidths();
     RefreshTime += DeltaTime;
     if (RefreshTime < 0.2f || !CreateButton)
         return;
     RefreshTime = 0;
     UXQPLANSubsystem* LAN = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
     const auto State = LAN->GetState();
-    const bool InRoom = State == EXQPRoomState::Lobby || State == EXQPRoomState::Connecting;
+    const bool InRoom = State == EXQPRoomState::Creating || State == EXQPRoomState::Lobby || State == EXQPRoomState::Connecting;
     const bool Hosting = InRoom && LAN->IsHost();
     // 在原介绍框中切换浏览和房间状态，外层经典菜单保持可用。
     BrowserPanel->SetVisibility(InRoom ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
@@ -63,15 +77,15 @@ void UUI_LANLobby::NativeTick(const FGeometry& Geometry, float DeltaTime)
     RoomName->SetIsEnabled(!InRoom);
     Address->SetIsEnabled(!InRoom);
     SearchButton->SetIsEnabled(State != EXQPRoomState::Searching);
-    JoinButton->SetIsEnabled(State != EXQPRoomState::Connecting && !Address->GetText().ToString().TrimStartAndEnd().IsEmpty());
+    JoinButton->SetIsEnabled(State != EXQPRoomState::Connecting && State != EXQPRoomState::Searching && !Address->GetText().ToString().TrimStartAndEnd().IsEmpty());
     XQPButtonBinding::SetCaption(SearchButton, FText::FromString(State == EXQPRoomState::Searching ? TEXT("搜索中…") : TEXT("搜索房间")));
     XQPButtonBinding::SetCaption(ReadyButton, FText::FromString(LAN->IsLocalReady() ? TEXT("取消准备") : TEXT("准备对弈")));
     XQPButtonBinding::SetVisibility(ColorButton, Hosting ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
     XQPButtonBinding::SetVisibility(StartButton, Hosting ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
     StartButton->SetIsEnabled(LAN->HasPeer() && LAN->IsPeerReady());
-    XQPButtonBinding::SetVisibility(ReadyButton, InRoom && !Hosting ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+    XQPButtonBinding::SetVisibility(ReadyButton, InRoom && !Hosting && !LAN->IsSpectator() ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
     ReadyButton->SetIsEnabled(LAN->HasPeer());
-    const FString ReadyStatus = Hosting ? (LAN->IsPeerReady() ? TEXT("对方已准备") : TEXT("等待对方准备"))
+    const FString ReadyStatus = LAN->IsSpectator() ? TEXT("观战席 · 等待双方开局") : Hosting ? (LAN->IsPeerReady() ? TEXT("对方已准备") : TEXT("等待对方准备"))
                                        : (LAN->IsLocalReady() ? TEXT("已准备，等待房主开局") : TEXT("尚未准备"));
     if (RedPlayersText && BlackPlayersText)
     {
@@ -81,27 +95,38 @@ void UUI_LANLobby::NativeTick(const FGeometry& Geometry, float DeltaTime)
     }
     else if (PlayersText)
         PlayersText->SetText(FText::FromString(FString::Printf(TEXT("红方：%s\n黑方：%s\n%s"), *LAN->GetRedName(), *LAN->GetBlackName(), *ReadyStatus)));
-    const FString Status = LAN->GetStatus().IsEmpty() ? TEXT("双方连接同一局域网，搜索房间或输入房主 IP 加入。") : LAN->GetStatus();
-    StatusText->SetText(FText::FromString(Status + (Hosting ? TEXT("\n房主 IP：") + LAN->GetLocalAddress() : FString())));
+    const FString Status = LAN->GetStatus().IsEmpty() ? TEXT("双方连接同一局域网，搜索房间或输入联机码加入。") : LAN->GetStatus();
+    StatusText->SetText(FText::FromString(Status));
+    if (RoomCodePanel)
+        RoomCodePanel->SetVisibility(Hosting ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+    if (RoomCodeText)
+        RoomCodeText->SetText(FText::FromString(Hosting ? (LAN->GetRoomCode().IsEmpty() ? TEXT("------") : LAN->GetRoomCode()) : FString()));
     // 发现结果改变时才刷新选项，避免每帧重建打断用户选择。
     const auto Rooms = LAN->GetRooms();
+    const FString JoinCode = Address->GetText().ToString().TrimStartAndEnd().ToUpper();
+    const auto* MatchingRoom = Rooms.FindByPredicate([&JoinCode](const FXQPLANRoom& Room) { return Room.Code == JoinCode; });
+    XQPButtonBinding::SetCaption(JoinButton, FText::FromString(MatchingRoom && (MatchingRoom->bFull || MatchingRoom->bInProgress) ? TEXT("加入观战") : TEXT("加入房间")));
     FString Signature;
     for (const auto& Room : Rooms)
-        Signature += Room.Address + Room.Name;
+        Signature += Room.Code + Room.RoomId + Room.Address + Room.Name + Room.HostName +
+            (Room.bFull ? TEXT("full") : TEXT("open")) + (Room.bInProgress ? TEXT("playing") : TEXT("waiting")) + FString::FromInt(Room.Spectators);
     if (Signature != RoomSignature)
     {
         RoomSignature = Signature;
-        const FString SelectedAddress = Address->GetText().ToString();
+        const FString SelectedCode = Address->GetText().ToString();
         RoomChoice->ClearOptions();
+        ListedRooms = Rooms;
         RoomChoice->AddOption(TEXT("选择房间"));
         int32 SelectedIndex = 0;
         for (int32 Index = 0; Index < Rooms.Num(); ++Index)
         {
             const auto& Room = Rooms[Index];
-            RoomChoice->AddOption(Room.Name + TEXT(" · ") + Room.HostName + TEXT(" · ") + Room.Address);
-            if (Room.Address == SelectedAddress) SelectedIndex = Index + 1;
+            RoomChoice->AddOption(Room.Code + TEXT(" - ") + Room.Name +
+                (Room.bFull || Room.bInProgress ? TEXT("  [可观战]") : TEXT("  [可加入]")));
+            if (SelectedRoom.IsSet() ? Room.RoomId == SelectedRoom->RoomId : Room.Code == SelectedCode)
+                SelectedIndex = Index + 1;
         }
-        // 保留已选房间及手输IP，搜索结果变化不替用户改写连接目标。
+        // 保留已选房间及输入的联机码，搜索结果变化不替用户改写连接目标。
         RoomChoice->SetSelectedIndex(SelectedIndex);
     }
 }
@@ -116,7 +141,10 @@ void UUI_LANLobby::OnSearch()
 }
 void UUI_LANLobby::OnJoin()
 {
-    GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->JoinRoom(Address->GetText().ToString().TrimStartAndEnd());
+    auto* LAN = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
+    const FString Code = Address->GetText().ToString().TrimStartAndEnd().ToUpper();
+    if (SelectedRoom.IsSet() && SelectedRoom->Code == Code) LAN->JoinDiscoveredRoom(SelectedRoom.GetValue());
+    else LAN->JoinRoom(Code);
 }
 void UUI_LANLobby::OnStart()
 {
@@ -139,11 +167,54 @@ void UUI_LANLobby::OnLeave()
 void UUI_LANLobby::OnRoomSelected(FString Item, ESelectInfo::Type Selection)
 {
     // 第一项为占位文本，后续索引对应真实的房间发现结果。
-    const auto Rooms = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->GetRooms();
     const int32 Index = RoomChoice->FindOptionIndex(Item) - 1;
-    if (Rooms.IsValidIndex(Index))
-        Address->SetText(FText::FromString(Rooms[Index].Address));
+    if (ListedRooms.IsValidIndex(Index))
+    {
+        SelectedRoom = ListedRooms[Index];
+        Address->SetText(FText::FromString(SelectedRoom->Code));
+    }
+    else if (Selection != ESelectInfo::Direct) SelectedRoom.Reset();
 }
+UWidget* UUI_LANLobby::GenerateRoomOption(FString Item)
+{
+    auto* Box = NewObject<USizeBox>(this);
+    auto* Label = NewObject<UTextBlock>(this);
+    // 状态独立占用自动宽度；主文本使用中间省略号，房间再长也不会挤掉可加入/可观战。
+    FString MainText, Status;
+    if (!Item.Split(TEXT("  ["), &MainText, &Status)) MainText = Item;
+    Label->SetText(FText::FromString(MainText));
+    Label->SetFont(RoomChoice->GetFont());
+    Label->SetColorAndOpacity(RoomChoice->GetForegroundColor());
+    Label->SetTextOverflowPolicy(ETextOverflowPolicy::MiddleEllipsis);
+    Label->SetClipping(EWidgetClipping::ClipToBounds);
+    Box->SetToolTipText(FText::FromString(Item));
+    auto* Row = NewObject<UHorizontalBox>(this);
+    Row->AddChildToHorizontalBox(Label)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+    if (!Status.IsEmpty())
+    {
+        auto* StateLabel = NewObject<UTextBlock>(this);
+        StateLabel->SetText(FText::FromString(TEXT("[") + Status));
+        StateLabel->SetFont(RoomChoice->GetFont());
+        StateLabel->SetColorAndOpacity(RoomChoice->GetForegroundColor());
+        Row->AddChildToHorizontalBox(StateLabel)->SetPadding(FMargin(8.f, 0.f, 0.f, 0.f));
+    }
+    Box->AddChild(Row);
+    RoomOptionBoxes.Add(Box);
+    UpdateRoomOptionWidths();
+    return Box;
+}
+
+void UUI_LANLobby::UpdateRoomOptionWidths()
+{
+    if (!RoomChoice) return;
+    // 使用控件自身的 Slate 单位，已经包含移动端 DPI/SafeZone 缩放。
+    // 额外给箭头、行边距和滚动条留空；首帧尚无几何时使用保守宽度，下一帧自动校正。
+    const float Width = RoomChoice->GetCachedGeometry().GetLocalSize().X;
+    const float ContentWidth = Width > 0.f ? FMath::Max(1.f, Width - 80.f) : 160.f;
+    RoomOptionBoxes.RemoveAll([](const TWeakObjectPtr<USizeBox>& Box) { return !Box.IsValid(); });
+    for (const auto& Box : RoomOptionBoxes) Box->SetWidthOverride(ContentWidth);
+}
+
 void UUI_LANLobby::NativeDestruct()
 {
     // 换到其他经典模式条目时退出未开局的房间，开局切关时保留连接。
@@ -160,7 +231,7 @@ void UUI_LANLobby::NativeDestruct()
 void UUI_LANLobby::ShowModeMismatch(const FString& Reason)
 {
     if (MismatchDialog.IsValid() && MismatchDialog->IsInViewport()) return;
-    auto* DialogClass = LoadClass<UUI_CommonDialog>(nullptr, TEXT("/Game/UMG/Components/BP_UI_CommonDialog.BP_UI_CommonDialog_C"));
+    auto* DialogClass = LoadClass<UUI_CommonDialog>(nullptr, PATH_UI_COMMON_DIALOG);
     auto* Dialog = XQPMobile::CreateWidget<UUI_CommonDialog>(GetGameInstance(), DialogClass);
     if (!Dialog) return;
     MismatchDialog = Dialog;

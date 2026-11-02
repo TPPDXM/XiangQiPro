@@ -1,5 +1,6 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 #include "MobileMenuCamera.h"
+#include "XiangQiPro/Util/AssetPaths.h"
 #include "Camera/CameraComponent.h"
 #include "Components/AudioComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -20,7 +21,7 @@ AMobileMenuCamera::AMobileMenuCamera()
     SetRootComponent(CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot")));
     Board = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Board"));
     Board->SetupAttachment(RootComponent);
-    static ConstructorHelpers::FObjectFinder<UStaticMesh> Mesh(TEXT("/Game/Mesh/ChessBoard/SM_ChessBoard_2P"));
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> Mesh(PATH_PACKAGE_SM_CHESSBOARD_2P);
     Board->SetStaticMesh(Mesh.Object);
     // This mesh's long edge is its local Y axis; the game coordinates use X for ranks.
     Board->SetRelativeRotation(FRotator(0, 90, 0));
@@ -37,7 +38,7 @@ AMobileMenuCamera::AMobileMenuCamera()
     Music = CreateDefaultSubobject<UAudioComponent>(TEXT("Music"));
     Music->SetupAttachment(Board);
     Music->bIsUISound = true;
-    static ConstructorHelpers::FObjectFinder<USoundBase> MenuMusic(TEXT("/Game/Audio/Lobby"));
+    static ConstructorHelpers::FObjectFinder<USoundBase> MenuMusic(PATH_AUDIO_LOBBY);
     Music->SetSound(MenuMusic.Object);
 }
 

@@ -16,6 +16,7 @@ struct FChessSearchResult
     bool bNoLegalMoves = false;
     bool bCancelled = false;
     bool bRepetitionLimitReached = false;
+    bool bFromOpeningCache = false;
 };
 
 // 棋力策略与耗时预算分离，简单档不会因为机器更快而获得大师的战术能力。
@@ -29,6 +30,15 @@ struct FChessSearchStyle
     // 棋圣独立启用选择性搜索；大师开始使用机动性与九宫安全评估。
     bool bSelectiveSearch = false;
     bool bTacticalEvaluation = false;
+};
+
+// 实际对局与离线验证共用同一份难度配置。
+struct XIANGQIPRO_API FChessAISettings
+{
+    int32 Depth = 1;
+    double Seconds = 0.08;
+    FChessSearchStyle Style;
+    static FChessAISettings ForDifficulty(uint8 Difficulty);
 };
 
 // 每次请求独享搜索状态，唯一跨线程可写数据是原子取消标志。
@@ -66,7 +76,14 @@ private:
     void OrderMoves(TArray<FChessMove2P>& Moves, const FChessMove2P& Preferred, EChessColor Side, int32 Ply);
     // 检查当前搜索路径是否出现重复局面。
     bool IsRepeated(uint64 Key) const;
-    int32 Evaluate(EChessColor Side) const;
+    int32 Evaluate(EChessColor Side);
+
+    struct FEvaluationEntry
+    {
+        uint64 Key = 0;
+        int32 Score = 0;
+        bool bValid = false;
+    };
 
     FChessPosition Board;
     FChessLearning Learning;
@@ -83,6 +100,7 @@ private:
     bool bAborted = false;
     int64 Nodes = 0;
     TArray<FTableEntry> Table;
+    TArray<FEvaluationEntry> EvaluationTable;
     TArray<uint64> Path;
     int32 History[2][90][90] = {};
     FChessMove2P Killers[96][2];

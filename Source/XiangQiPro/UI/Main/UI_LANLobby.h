@@ -1,12 +1,15 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "XiangQiPro/UI/XQPMobileWidget.h"
+#include "XiangQiPro/GameMode/XQPGameTypes.h"
+#include "XiangQiPro/Network/XQPLANSubsystem.h"
 #include "UI_LANLobby.generated.h"
 class UEditableTextBox;
 class UTextBlock;
 class UComboBoxString;
 class UUI_XQP_ComboBox;
 class UUI_CommonDialog;
+class USizeBox;
 
 // 联机页面由UMG资产提供，嵌入经典模式原有介绍框。
 UCLASS()
@@ -14,7 +17,7 @@ class XIANGQIPRO_API UUI_LANLobby : public UXQPMobileWidget
 {
     GENERATED_BODY()
 public:
-    bool bFengHuoLobby = false;
+    EXQPGameType GameType = EXQPGameType::Classic;
     virtual void NativeConstruct() override;
     virtual void NativeTick(const FGeometry& Geometry, float DeltaTime) override;
     virtual void NativeDestruct() override;
@@ -23,6 +26,8 @@ private:
     UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UEditableTextBox> RoomName;
     UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UEditableTextBox> Address;
     UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UTextBlock> StatusText;
+    UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UTextBlock> RoomCodeText;
+    UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UWidget> RoomCodePanel;
     UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UTextBlock> PlayersText;
     UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UTextBlock> RedPlayersText;
     UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UTextBlock> BlackPlayersText;
@@ -39,6 +44,12 @@ private:
     UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UUserWidget> LeaveButton;
     UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UWidget> BrowserPanel;
     UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UWidget> RoomPanel;
+    // 显示列表与选择快照独立于后台发现数组，刷新、重码与异步回复不会改变点击目标。
+    TArray<FXQPLANRoom> ListedRooms;
+    TOptional<FXQPLANRoom> SelectedRoom;
+    TArray<TWeakObjectPtr<USizeBox>> RoomOptionBoxes;
+    void UpdateRoomOptionWidths();
+    UFUNCTION() UWidget* GenerateRoomOption(FString Item);
     FString RoomSignature;
     float RefreshTime = 0;
     TWeakObjectPtr<UUI_CommonDialog> MismatchDialog;

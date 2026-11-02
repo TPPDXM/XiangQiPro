@@ -1,7 +1,8 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "UI_InGamePause.h"
+#include "XiangQiPro/Util/AssetPaths.h"
 #include "XiangQiPro/UI/XQPMobile.h"
 #include "XiangQiPro/UI/UIManager.h"
 #include "XiangQiPro/UI/InGame/UI_Battle2P_Base.h"
@@ -46,14 +47,14 @@ void UUI_InGamePause::RefreshActions()
     const auto* State = GetWorld()->GetGameState<AXQPGameStateBase>();
     const bool LAN = State && State->IsLANGame();
     const auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
-    XQPButtonBinding::SetVisibility(ResignButton, LAN && Room->GetState() == EXQPRoomState::Playing
+    XQPButtonBinding::SetVisibility(ResignButton, LAN && !Room->IsSpectator() && Room->GetState() == EXQPRoomState::Playing
         ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
     XQPButtonBinding::SetVisibility(RestartButton, !LAN || State->IsGameOver() || Room->GetState() == EXQPRoomState::Disconnected
         ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
     XQPButtonBinding::SetCaption(RestartButton, FText::FromString(State && (State->IsGameOver() || (LAN && Room->GetState() == EXQPRoomState::Disconnected))
         ? TEXT("查看对局结果") : TEXT("重新开始")));
     if (auto* Title = Cast<UTextBlock>(GetWidgetFromName(TEXT("TextBlock_146"))))
-        Title->SetText(FText::FromString(LAN ? TEXT("对局菜单") : TEXT("暂停中…")));
+        Title->SetText(FText::FromString(LAN ? (Room->IsSpectator() ? TEXT("观战菜单") : TEXT("对局菜单")) : TEXT("暂停中…")));
 }
 
 void UUI_InGamePause::RestartOrShowResult()
@@ -76,13 +77,13 @@ void UUI_InGamePause::LeaveToMainMenu()
         GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->LeaveRoom();
     GetGameInstance<UXQPGameInstance>()->SetGameMode(EXQPGameMode::Default);
     UGameplayStatics::SetGamePaused(this, false);
-    UXQPGameInstance::OpenGameLevel(this, TEXT("/Game/Map/Main"));
+    UXQPGameInstance::OpenGameLevel(this, PATH_MAP_MAIN);
 }
 
 void UUI_InGamePause::AskToResign()
 {
     auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
-    if (!CommonDialogClass || Room->GetState() != EXQPRoomState::Playing) return;
+    if (!CommonDialogClass || Room->IsSpectator() || Room->GetState() != EXQPRoomState::Playing) return;
     auto* Dialog = XQPMobile::CreateWidget<UUI_CommonDialog>(GetOwningPlayer(), CommonDialogClass);
     if (!Dialog) return;
     ResignDialog = Dialog;

@@ -29,6 +29,10 @@ private:
     float BattleFadeTime = 0.f;
     TWeakObjectPtr<class ACamera2PActor> BattleCamera;
     void FitDesktopCamera(const FGeometry& Geometry);
+    void ConfigureSpectatorSupply();
+    // 按棋子稳定 ID 和出发时间去重，不因重复实时快照生成重复记录。
+    TArray<float> ObservedDepartures;
+    void UpdateSpectatorRecords();
     void UpdateBattlePresentation(float Alpha);
     void UpdateSupply(const TArray<TObjectPtr<UProgressBar>>& Bars, float Value, int32 Max, FLinearColor Color);
 };

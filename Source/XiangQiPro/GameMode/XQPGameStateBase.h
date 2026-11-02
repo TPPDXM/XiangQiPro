@@ -109,6 +109,7 @@ public:
     TObjectPtr<UBattleStartComponent> BattleStart;
     void OnBattleStarted();
     bool IsFengHuoBattle() const;
+    bool IsSpectator() const;
     void FinishFengHuoBattle(EChessColor Winner);
 
 	UPROPERTY(EditAnywhere)

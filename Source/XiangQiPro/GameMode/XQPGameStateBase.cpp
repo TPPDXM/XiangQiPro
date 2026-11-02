@@ -173,7 +173,13 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
         UPlayerProfileSubsystem* Profile = GI->GetSubsystem<UPlayerProfileSubsystem>();
         if (bEnableMachineLearning)
             AIDifficulty = static_cast<EAI2PDifficulty>(Profile->BeginOrResumeRun(GI->AIDifficulty));
-        if (bEnableMachineLearning && Profile->RestoreBoard(Restored, RestoredTurn))
+        if (IsSpectator() && GI->GetSubsystem<UXQPLANSubsystem>()->PrepareSpectatorBoard(Restored, RestoredTurn))
+        {
+            board2PActor->GenerateFromPosition(Restored);
+            battleTurn = RestoredTurn == EChessColor::REDCHESS ? EPlayerTag::P1 : EPlayerTag::P2;
+            board2P->SetSideToMove(RestoredTurn);
+        }
+        else if (bEnableMachineLearning && Profile->RestoreBoard(Restored, RestoredTurn))
         {
             board2PActor->GenerateFromPosition(Restored);
             battleTurn = RestoredTurn == EChessColor::REDCHESS ? EPlayerTag::P1 : EPlayerTag::AI;
@@ -205,6 +211,7 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
 // 验证执棋方和走法后锁定动画阶段，避免重复点击导致连续落子。
 void AXQPGameStateBase::ApplyMove2P(TWeakObjectPtr<AChesses> Target, FChessMove2P Move)
 {
+    if (IsSpectator() && !bApplyingNetworkMove) return;
     if (IsFengHuoBattle())
     {
         if (!IsMyTurn() || !Target.IsValid()) return;
@@ -365,11 +372,7 @@ void AXQPGameStateBase::Finish2PGame(EChessColor Winner)
         CancelAIRequest();
         DismissSettingPoint2P();
         if (HUD2P.IsValid()) HUD2P->SetAITurn(false);
-        const int32 PreviousBest = USaveGameLibrary::GetEndingBestSteps(CurrentEndingIndex);
-        const bool Saved = USaveGameLibrary::SaveEndingBestSteps(CurrentEndingIndex, EndingMoveCount);
-        bEndingRecordBroken = Saved && PreviousBest > 0 && EndingMoveCount < PreviousBest;
-        EndingBestSteps = USaveGameLibrary::GetEndingBestSteps(CurrentEndingIndex);
-        USaveGameLibrary::UpdateEndingGameLevelData();
+        USaveGameLibrary::CompleteEndingLevel(CurrentEndingIndex, EndingMoveCount, EndingBestSteps, bEndingRecordBroken);
         EXEC_ONJUESHA();
         return;
     }
@@ -482,6 +485,7 @@ int32 AXQPGameStateBase::GetScore3() const { return score3; }
 // 动画、暂停及游戏结束时禁止玩家再次落子。
 bool AXQPGameStateBase::IsMyTurn() const
 {
+    if (IsSpectator()) return false;
     if (!BattleStart->HasStarted()) return false;
     if (IsFengHuoBattle())
         return !bGameOver && !bEndingPlay && !bAIPaused && FengHuoBattle->IsRunning() &&
@@ -494,6 +498,11 @@ bool AXQPGameStateBase::IsLANGame() const
 {
     const UXQPGameInstance* GI = GetGameInstance<UXQPGameInstance>();
     return GI && (GI->GetGameMode() == EXQPGameMode::LAN || GI->GetGameMode() == EXQPGameMode::FengHuoLAN);
+}
+
+bool AXQPGameStateBase::IsSpectator() const
+{
+    return IsLANGame() && GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->IsSpectator();
 }
 
 bool AXQPGameStateBase::CanApplyNetworkMove() const

@@ -1,6 +1,7 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+Ôªø// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
+#include "XiangQiPro/Util/AssetPaths.h"
 
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
@@ -20,10 +21,6 @@
 #include "GameFramework/HUD.h"
 #include "XQP_HUD.generated.h"
 
-#define PATH_UI_INGAMEPAUSE TEXT("/Game/UMG/Pause/BP_UI_InGamePause.BP_UI_InGamePause_C")
-#define PATH_UI_BATTLE2P_BASE TEXT("/Game/UMG/Battle2P/BP_UI_Battle2P_Base.BP_UI_Battle2P_Base_C")
-#define PATH_UI_MAIN_BASE TEXT("/Game/UMG/Main/BP_UI_Main_Base.BP_UI_Main_Base_C")
-#define PATH_UI_TRANSITIONSCREEN TEXT("/Game/UMG/Util/BP_UI_TransitionScreen.BP_UI_TransitionScreen_C")
 
 /**
  * 
@@ -49,7 +46,7 @@ protected:
 
 	virtual void BeginPlay() override;
 
-	// ≥ı ºªØ”√ªßΩÁ√Ê
+	// ÂàùÂßãÂåñÁî®Êà∑ÁïåÈù¢
 	void InitUI();
 	
 };

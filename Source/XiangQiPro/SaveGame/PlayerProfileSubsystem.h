@@ -4,6 +4,8 @@
 #include "XiangQiPro/AI/ChessLearning.h"
 #include "PlayerProfileSubsystem.generated.h"
 class USavePlayerProfile;
+struct FXQPChallengeProgress;
+struct FXQPModeLearningData;
 
 UCLASS()
 class XIANGQIPRO_API UPlayerProfileSubsystem : public UGameInstanceSubsystem
@@ -40,8 +42,10 @@ class XIANGQIPRO_API UPlayerProfileSubsystem : public UGameInstanceSubsystem
 
   private:
     UPROPERTY() TObjectPtr<USavePlayerProfile> Profile;
-    FString SlotPrefix = TEXT("XQP_PlayerProfile");
     FString SaveError;
-    FString SlotName(int32 Index) const;
+    FXQPChallengeProgress& ProgressData();
+    const FXQPChallengeProgress& ProgressData() const;
+    FXQPModeLearningData& LearningData();
+    const FXQPModeLearningData& LearningData() const;
     void ClearLearning();
 };

@@ -1,4 +1,5 @@
-#include "XQPMobile.h"
+﻿#include "XQPMobile.h"
+#include "XiangQiPro/Util/AssetPaths.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Engine/GameViewportClient.h"
@@ -7,6 +8,7 @@
 #include "GameFramework/GameUserSettings.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/ConfigCacheIni.h"
+#include "XiangQiPro/Network/XQPLANSubsystem.h"
 
 FVector2D XQPMobile::ViewportSize(const UObject* Context)
 {
@@ -44,8 +46,9 @@ FBox2D XQPMobile::BoardRect(const UObject* Context)
     // Keep this clearance in sync with the compact portrait HUD assets.
     const auto* GameInstance = Context && Context->GetWorld() ? Context->GetWorld()->GetGameInstance<UXQPGameInstance>() : nullptr;
     const bool FengHuoBattle = GameInstance && (GameInstance->GetGameMode() == EXQPGameMode::FengHuoAI || GameInstance->GetGameMode() == EXQPGameMode::FengHuoLAN);
-    const float Top = FMath::Min((FengHuoBattle ? 142.f : 100.f) * DPI, Height * .25f);
-    const float Bottom = Height - FMath::Min((FengHuoBattle ? 212.f : 106.f) * DPI, Height * .35f);
+    const bool SpectatingFengHuo = FengHuoBattle && GameInstance->GetSubsystem<UXQPLANSubsystem>()->IsSpectator();
+    const float Top = FMath::Min((SpectatingFengHuo ? 154.f : FengHuoBattle ? 142.f : 100.f) * DPI, Height * .25f);
+    const float Bottom = Height - FMath::Min((SpectatingFengHuo ? 114.f : FengHuoBattle ? 212.f : 106.f) * DPI, Height * .35f);
     const float Side = FMath::Min(8.f * DPI, Width * .025f);
     return FBox2D(FVector2D(Safe.Left + Side, Safe.Top + Top),
         FVector2D(Size.X - Safe.Right - Side, Safe.Top + FMath::Max(Top + 1.f, Bottom)));
@@ -53,11 +56,11 @@ FBox2D XQPMobile::BoardRect(const UObject* Context)
 
 UClass* XQPMobile::ResolveWidgetClass(const UObject* Context, UClass* WidgetClass)
 {
-    if (!WidgetClass || !IsPortrait(Context) || !WidgetClass->GetPathName().StartsWith(TEXT("/Game/UMG/")) ||
-        WidgetClass->GetPathName().StartsWith(TEXT("/Game/UMG/Mobile/"))) return WidgetClass;
+    if (!WidgetClass || !IsPortrait(Context) || !WidgetClass->GetPathName().StartsWith(PATH_UI_ROOT) ||
+        WidgetClass->GetPathName().StartsWith(PATH_UI_MOBILE_ROOT)) return WidgetClass;
     FString Name = WidgetClass->GetName();
     Name.RemoveFromEnd(TEXT("_C"));
-    const FString Path = FString::Printf(TEXT("/Game/UMG/Mobile/%s_Mobile.%s_Mobile_C"), *Name, *Name);
+    const FString Path = FString::Printf(PATH_UI_MOBILE_CLASS_FORMAT, *Name, *Name);
     if (UClass* MobileClass = LoadClass<UUserWidget>(nullptr, *Path)) return MobileClass;
     UE_LOG(LogTemp, Warning, TEXT("Mobile UI asset is missing: %s"), *Path);
     return WidgetClass;

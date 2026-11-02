@@ -1,13 +1,12 @@
 ﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
+#include "XiangQiPro/Util/AssetPaths.h"
 
 #include "CoreMinimal.h"
 #include "Chesses.h"
 #include "Chess_Jiang.generated.h"
 
-#define PATH_MI_CHESSMASK_RAD_JIANG TEXT("/Script/Engine.MaterialInstanceConstant'/Game/Material/Decal/ChessMask/red/MI_ChessMask_rad_shuai.MI_ChessMask_rad_shuai'")
-#define PATH_MI_CHESSMASK_BLACK_JIANG TEXT("/Script/Engine.MaterialInstanceConstant'/Game/Material/Decal/ChessMask/black/MI_ChessMask_black_jiang.MI_ChessMask_black_jiang'")
 
 /**
  *

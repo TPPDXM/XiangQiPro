@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "XiangQiPro/GameMode/XQPGameTypes.h"
 #include "SaveGameLibrary.generated.h"
 
 class USaveGameProgress;
@@ -18,9 +19,8 @@ class XIANGQIPRO_API USaveGameLibrary : public UBlueprintFunctionLibrary
 
 public:
 
-    static USaveGameProgress* GetSaveGameProgress(const FString&, int32);
-
-    static bool ApplySaveGameProgress(USaveGameProgress*, const FString&, int32);
+    static USaveGameProgress* LoadProgress(EXQPGameMode Mode, int32 UserIndex = 0);
+    static bool SaveProgress(USaveGameProgress* Progress, EXQPGameMode Mode, int32 UserIndex = 0);
 
     static int32 GetEndingGameLevel();
 
@@ -35,5 +35,6 @@ public:
     // 0 means this level has no completed run yet. Steps count red moves only.
     static int32 GetEndingBestSteps(int32 LevelIndex);
     static bool SaveEndingBestSteps(int32 LevelIndex, int32 Steps);
+    static bool CompleteEndingLevel(int32 LevelIndex, int32 Steps, int32& OutBestSteps, bool& bOutRecordBroken);
 	
 };

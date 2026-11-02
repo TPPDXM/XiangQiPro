@@ -1,12 +1,14 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #include "XQP_HUD.h"
+#include "XiangQiPro/Util/AssetPaths.h"
 #include "XiangQiPro/UI/XQPMobile.h"
 #include "XiangQiPro/GameMode/XQPGameStateBase.h"
 #include "XiangQiPro/GameMode/XQPGameInstance.h"
 #include "XiangQiPro/Util/ObjectManager.h"
 #include "InGame/UI_FengHuoBattle.h"
 #include "TimerManager.h"
+#include "XiangQiPro/Network/XQPLANSubsystem.h"
 
 AXQP_HUD::AXQP_HUD()
 {
@@ -38,7 +40,8 @@ void AXQP_HUD::InitUI()
     case EXQPGameMode::FengHuoAI:
     case EXQPGameMode::FengHuoLAN:
     {
-        auto* FengHuoClass = LoadClass<UUI_FengHuoBattle>(nullptr, TEXT("/Game/UMG/FengHuo/BP_UI_FengHuoBattle.BP_UI_FengHuoBattle_C"));
+        const bool bWatching = GameInstance->GetSubsystem<UXQPLANSubsystem>()->IsSpectator();
+        auto* FengHuoClass = LoadClass<UUI_FengHuoBattle>(nullptr, bWatching ? PATH_UI_SPECTATOR_FENGHUO : PATH_UI_FENGHUOBATTLE);
         BaseUI = XQPMobile::CreateWidget<UUI_FengHuoBattle>(GetWorld(), FengHuoClass);
         PauseMenuClass = Class_InGamePause;
         if (auto* State = GetWorld()->GetGameState<AXQPGameStateBase>()) State->SetHUD2P(Cast<UUI_Battle2P_Base>(BaseUI));
@@ -49,7 +52,9 @@ void AXQP_HUD::InitUI()
 	case EXQPGameMode::Ending:
 	case EXQPGameMode::AI2P:
     case EXQPGameMode::LAN:
-		BaseUI = XQPMobile::CreateWidget<UI_Battle2P_Base>(GetWorld(), Class_Battle2P_Base);
+        if (GameInstance->GetSubsystem<UXQPLANSubsystem>()->IsSpectator())
+            BaseUI = XQPMobile::CreateWidget<UI_Battle2P_Base>(GetWorld(), LoadClass<UUI_Battle2P_Base>(nullptr, PATH_UI_SPECTATOR_CLASSIC));
+        else BaseUI = XQPMobile::CreateWidget<UI_Battle2P_Base>(GetWorld(), Class_Battle2P_Base);
 		PauseMenuClass = Class_InGamePause;
 
 		if (AXQPGameStateBase* _GS = Cast<GS>(GetWorld()->GetGameState()))

@@ -23,6 +23,9 @@ public:
     bool TryMove(AChesses* Chess, const FChessMove2P& Move, EChessColor Requester);
     bool CanMove(AChesses* Chess, const FChessMove2P& Move, EChessColor Requester) const;
     TArray<FChessMove2P> GenerateMoves(AChesses* Chess) const;
+    // 供只读观战 HUD 观察出动事件；不暴露修改棋子状态的入口。
+    const TArray<FFengHuoUnit>& GetUnits() const { return Units; }
+    AChesses* GetUnitActor(int32 Id) const;
     bool IsActive() const { return bActive; }
     bool IsRunning() const { return bRunning && !bFinished; }
     bool IsNetwork() const { return bNetwork; }

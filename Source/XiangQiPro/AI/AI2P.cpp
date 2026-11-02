@@ -11,23 +11,13 @@ TSharedPtr<FChessSearch, ESPMode::ThreadSafe> UAI2P::CreateSearch(TWeakObjectPtr
     check(IsInGameThread());
     StopThinkingImmediately();
     if (!Board.IsValid() || (Color != EChessColor::REDCHESS && Color != EChessColor::BLACKCHESS)) return nullptr;
-    static constexpr int32 Depths[] = {1, 3, 7, 12, 12};
-    static constexpr double Seconds[] = {0.08, 0.35, 2.5, 7.0, 12.0};
-    static constexpr int32 CaptureDepths[] = {0, 2, 6, 10, 12};
-    static constexpr int32 Inaccuracies[] = {180, 25, 0, 0, 0};
-    const int32 Index = FMath::Clamp(static_cast<int32>(Difficulty), 0, 4);
+    const FChessAISettings Settings = FChessAISettings::ForDifficulty(static_cast<uint8>(Difficulty));
     CurrentBoard = Board;
     FChessLearning Learning;
-    int32 Depth = Depths[Index];
-    double Budget = Seconds[Index];
-    FChessSearchStyle Style;
-    Style.CaptureDepth = CaptureDepths[Index];
-    Style.Inaccuracy = Inaccuracies[Index];
+    int32 Depth = Settings.Depth;
+    double Budget = Settings.Seconds;
+    FChessSearchStyle Style = Settings.Style;
     Style.RandomSeed = FMath::Rand();
-    Style.bUseOpeningBook = Index >= 2;
-    Style.bAdvancedSearch = Index >= 2;
-    Style.bSelectiveSearch = Index >= 4;
-    Style.bTacticalEvaluation = Index >= 3;
     const AXQPGameStateBase* State = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr;
     if (State && State->bEnableMachineLearning)
     {

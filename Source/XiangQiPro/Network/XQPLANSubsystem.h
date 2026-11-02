@@ -3,6 +3,7 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Tickable.h"
 #include "XiangQiPro/AI/ChessPosition.h"
+#include "XiangQiPro/GameMode/XQPGameTypes.h"
 #include "XQPLANSubsystem.generated.h"
 
 class FSocket;
@@ -17,7 +18,8 @@ enum class EXQPRoomState : uint8
     Lobby,
     Playing,
     Finished,
-    Disconnected
+    Disconnected,
+    Creating
 };
 
 USTRUCT(BlueprintType)
@@ -27,6 +29,25 @@ struct FXQPLANRoom
     UPROPERTY(BlueprintReadOnly) FString Name;
     UPROPERTY(BlueprintReadOnly) FString HostName;
     UPROPERTY(BlueprintReadOnly) FString Address;
+    UPROPERTY(BlueprintReadOnly) EXQPGameType GameType = EXQPGameType::Classic;
+    UPROPERTY(BlueprintReadOnly) FString Code;
+    UPROPERTY(BlueprintReadOnly) bool bFull = false;
+    UPROPERTY(BlueprintReadOnly) bool bInProgress = false;
+    UPROPERTY(BlueprintReadOnly) int32 Spectators = 0;
+    FString RoomId;
+};
+
+// 观战连接独立拥有收发队列，不参与对局双方的就绪、步号或认输权限。
+struct FXQPLANGuest
+{
+    FSocket* Socket = nullptr;
+    TArray<uint8> Receive;
+    TArray<uint8> Send;
+    bool bWatching = false;
+    bool bBoardReady = false;
+    TSharedPtr<FJsonObject> LatestRealtimeSnapshot;
+    double LastReceive = 0;
+    double LastPing = 0;
 };
 
 // TCP保证落子有序；UDP仅负责局域网发现。棋盘规则与胜负由房主校验。
@@ -52,7 +73,9 @@ class XIANGQIPRO_API UXQPLANSubsystem : public UGameInstanceSubsystem, public FT
     }
     UFUNCTION(BlueprintCallable) bool CreateRoom(const FString& Name);
     UFUNCTION(BlueprintCallable) void FindRooms();
-    UFUNCTION(BlueprintCallable) bool JoinRoom(const FString& Address);
+    UFUNCTION(BlueprintCallable) bool JoinRoom(const FString& Code);
+    // 直接使用发现快照中的地址、端口及房间身份握手，不再广播搜索联机码。
+    bool JoinDiscoveredRoom(const FXQPLANRoom& Room);
     UFUNCTION(BlueprintCallable) void LeaveRoom();
     UFUNCTION(BlueprintCallable) void SetHostColor(EChessColor Color);
     UFUNCTION(BlueprintCallable) void SetReady(bool bReady);
@@ -69,6 +92,8 @@ class XIANGQIPRO_API UXQPLANSubsystem : public UGameInstanceSubsystem, public FT
     {
         return bHost;
     }
+    UFUNCTION(BlueprintPure) bool IsSpectator() const { return bSpectator; }
+    UFUNCTION(BlueprintPure) int32 GetSpectatorCount() const;
     UFUNCTION(BlueprintPure) bool HasPeer() const
     {
         return bHandshake;
@@ -87,11 +112,13 @@ class XIANGQIPRO_API UXQPLANSubsystem : public UGameInstanceSubsystem, public FT
     }
     UFUNCTION(BlueprintPure) EChessColor GetLocalColor() const
     {
+        if (bSpectator) return EChessColor::REDCHESS;
         return bHost ? HostColor : FChessPosition::Opponent(HostColor);
     }
     UFUNCTION(BlueprintPure) FString GetRedName() const;
     UFUNCTION(BlueprintPure) FString GetBlackName() const;
     UFUNCTION(BlueprintPure) FString GetLocalAddress() const;
+    UFUNCTION(BlueprintPure) FString GetRoomCode() const { return State == EXQPRoomState::Creating ? FString() : RoomCode; }
     UFUNCTION(BlueprintPure) TArray<FXQPLANRoom> GetRooms() const
     {
         return Rooms;
@@ -100,10 +127,15 @@ class XIANGQIPRO_API UXQPLANSubsystem : public UGameInstanceSubsystem, public FT
     bool SubmitMove(const FChessMove2P& Move);
     void NotifyBoardReady();
     void NotifyMatchFinished();
+    bool PrepareSpectatorBoard(FChessPosition& Board, EChessColor& Side);
     void Resign();
-    UFUNCTION(BlueprintCallable) void SelectFengHuoMode(bool bSelected);
-    bool IsFengHuoRoom() const { return bFengHuoRoom; }
-    bool IsBattleReady() const { return State == EXQPRoomState::Playing && bHandshake && bLocalBoardReady && bPeerBoardReady; }
+    UFUNCTION(BlueprintCallable) bool SelectGameType(EXQPGameType Type);
+    UFUNCTION(BlueprintPure) EXQPGameType GetGameType() const { return GameType; }
+    // 兼容已有蓝图调用；新玩法通过 SelectGameType 注册明确类型。
+    UFUNCTION(BlueprintCallable, meta=(DeprecatedFunction, DeprecationMessage="Use SelectGameType"))
+    void SelectFengHuoMode(bool bSelected);
+    bool IsFengHuoRoom() const { return GameType == EXQPGameType::FengHuo; }
+    bool IsBattleReady() const { return !bSpectator && State == EXQPRoomState::Playing && bHandshake && bLocalBoardReady && bPeerBoardReady; }
     bool SubmitFengHuoMove(const FChessMove2P& Move);
     void BroadcastFengHuoState(const TSharedRef<FJsonObject>& Message);
     void ConfirmBattleStart();
@@ -119,10 +151,23 @@ class XIANGQIPRO_API UXQPLANSubsystem : public UGameInstanceSubsystem, public FT
     EXQPRoomState State = EXQPRoomState::Idle;
     FString Status;
     FString RoomName;
+    FString RoomId;
+    FString RoomCode;
+    FString PendingJoinCode;
+    FString JoinDiscoveryError;
+    int32 JoinDiscoveryRetries = 0;
+    double CreationDeadline = 0;
+    double LastCodeClaim = 0;
     FString LocalName;
     FString PeerName;
     bool bHost = false;
-    bool bFengHuoRoom = false;
+    bool bSpectator = false;
+    FString SpectatorRedName;
+    FString SpectatorBlackName;
+    TOptional<EChessColor> PendingSpectatorWinner;
+    TArray<FXQPLANGuest> Guests;
+    EXQPGameType GameType = EXQPGameType::Classic;
+    int32 BoundGamePort = 0;
     int32 FengHuoRequestSerial = 0;
     int32 LastFengHuoPeerRequest = 0;
     TSharedPtr<FJsonObject> PendingProSnapshot;
@@ -146,6 +191,8 @@ class XIANGQIPRO_API UXQPLANSubsystem : public UGameInstanceSubsystem, public FT
     FSocket* Listener = nullptr;
     FSocket* Peer = nullptr;
     FSocket* Discovery = nullptr;
+    // 当前搜索/建房周期的广播与热点网关目标，全部使用主机字节序。
+    TArray<uint32> DiscoveryTargets;
     TArray<uint8> ReceiveBuffer;
     TArray<uint8> SendBuffer;
     TArray<FChessMove2P> PendingMoves;
@@ -153,11 +200,20 @@ class XIANGQIPRO_API UXQPLANSubsystem : public UGameInstanceSubsystem, public FT
     void CloseSockets();
     void Disconnect(const FString& Reason);
     void TickDiscovery(double Now);
+    void BroadcastDiscovery(const FString& Payload);
     void TickConnection(double Now);
+    bool ConnectToEndpoint(const FXQPLANRoom& Room);
     void Send(const TSharedRef<FJsonObject>& Message);
     void FlushSend();
     void HandleMessage(const TSharedPtr<FJsonObject>& Message);
     bool CommitMove(const FChessMove2P& Move, EChessColor Requester, int32 ExpectedSequence);
     void OpenBattleMap();
     void SendLobby();
+    static bool QueueMessage(const TSharedRef<FJsonObject>& Message, TArray<uint8>& Buffer);
+    static void FlushSocket(FSocket* Socket, TArray<uint8>& Buffer);
+    void TickGuests(double Now);
+    void CloseGuests();
+    void SendSpectatorWelcome(FXQPLANGuest& Guest);
+    void BroadcastSpectators(const TSharedRef<FJsonObject>& Message);
+    bool ReceiveSpectatorWelcome(const TSharedPtr<FJsonObject>& Message);
 };

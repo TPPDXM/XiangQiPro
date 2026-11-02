@@ -8,3 +8,13 @@ USaveGameProgress::USaveGameProgress() :
 	EndingGameLevel_Max(0)
 {
 }
+
+void USaveGameProgress::MigrateLegacyData()
+{
+    if (Version != 1) return;
+    Progress.CurrentLevel = EndingGameLevel;
+    Progress.MaxUnlockedLevel = EndingGameLevel_Max;
+    Progress.BestSteps = MoveTemp(UsingSteps);
+    Progress.LevelOrder = MoveTemp(EndingLevelOrder);
+    Version = 2;
+}

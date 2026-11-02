@@ -7,10 +7,14 @@ public class XiangQiPro : ModuleRules
 {
 	public XiangQiPro(ReadOnlyTargetRules Target) : base(Target)
 	{
+        if (Target.Platform == UnrealTargetPlatform.Win64)
+            PublicSystemLibraries.Add("iphlpapi.lib");
+
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
         if (Target.Platform == UnrealTargetPlatform.Android)
         {
+            PrivateDependencyModuleNames.Add("Launch");
             AdditionalPropertiesForReceipt.Add("AndroidPlugin", Path.Combine(ModuleDirectory, "Android", "XQPFullScreen_UPL.xml"));
         }
 	

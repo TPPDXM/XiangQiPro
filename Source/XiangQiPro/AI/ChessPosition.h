@@ -16,6 +16,8 @@ struct FChessPiece2P
 // 游戏规则与搜索共用的棋盘快照，红方从第0行向第9行前进。
 struct XIANGQIPRO_API FChessPosition
 {
+    // 联机、开局谱共用标准初始局面。
+    static FChessPosition Standard();
     FChessPiece2P Squares[90] = {};
     bool bVariantRules = false;
     bool bRequireKing = true;

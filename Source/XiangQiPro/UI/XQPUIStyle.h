@@ -9,6 +9,19 @@ namespace XQPUIStyle
 inline FLinearColor Red() { return FLinearColor(.58f, .02f, .015f); }
 inline FLinearColor Black() { return FLinearColor(.018f, .022f, .028f); }
 inline FLinearColor Paper() { return FLinearColor(.88f, .83f, .72f, .96f); }
+// 与菜单金色边框、箭头保持一致，观战结果不根据任一方胜负变色。
+inline FLinearColor Gold() { return FLinearColor(.83f, .69f, .35f); }
+
+// 名牌保留完整文本作为数据，只在绘制时省略尾部，避免长名字撑开布局。
+inline void ConstrainPlayerName(UTextBlock* Text)
+{
+    if (!Text) return;
+    Text->SetAutoWrapText(false);
+    Text->SetWrapTextAt(0.f);
+    Text->SetMinDesiredWidth(0.f);
+    Text->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
+    Text->SetClipping(EWidgetClipping::ClipToBounds);
+}
 inline FLinearColor Victory() { return FLinearColor(1.f, .68f, .14f); }
 inline FLinearColor Defeat() { return FLinearColor(.94f, .16f, .12f); }
 

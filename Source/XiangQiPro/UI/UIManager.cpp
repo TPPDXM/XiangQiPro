@@ -1,7 +1,8 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "UIManager.h"
+#include "XiangQiPro/Util/AssetPaths.h"
 #include "XiangQiPro/UI/XQPMobile.h"
 #include "Components/UI_CommonDialog.h"
 #include "Main/UI_ClassicGameMenu.h"
@@ -16,7 +17,7 @@ void UUIManager::Initialize(FSubsystemCollectionBase& Collection)
     Super::Initialize(Collection);
     // 不在首次弹窗的输入回调中同步加载竖屏蓝图及其字体、按钮依赖。
     MobileDialogPreload = UAssetManager::GetStreamableManager().RequestAsyncLoad(
-        FSoftObjectPath(TEXT("/Game/UMG/Mobile/BP_UI_CommonDialog_Mobile.BP_UI_CommonDialog_Mobile_C")));
+        FSoftObjectPath(PATH_UI_COMMON_DIALOG_MOBILE));
 }
 
 // 设置基础界面和暂停界面来源，并清空显示栈。
@@ -59,7 +60,7 @@ void UUIManager::AddUI(UUserWidget* InUI, bool bHideLastOne)
 {
     // OpenMap创建的启动页没有额外初始化参数；在入栈前选用移动端版本，
     // 复用同一套Splash动画、延迟和主菜单跳转逻辑。
-    if (IsValid(InUI) && InUI->GetClass()->GetPathName() == TEXT("/Game/UMG/Util/BP_UI_Splash.BP_UI_Splash_C"))
+    if (IsValid(InUI) && InUI->GetClass()->GetPathName() == PATH_UI_SPLASH)
     {
         UClass* ScreenClass = XQPMobile::ResolveWidgetClass(this, InUI->GetClass());
         if (ScreenClass != InUI->GetClass())
