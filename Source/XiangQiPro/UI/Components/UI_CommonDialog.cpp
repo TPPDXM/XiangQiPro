@@ -2,6 +2,7 @@
 #include "XQPButtonBinding.h"
 #include "XiangQiPro/UI/UIManager.h"
 #include "XiangQiPro/UI/XQPUIStyle.h"
+#include "XiangQiPro/UI/XQPMobile.h"
 #include "Components/Border.h"
 
 void UUI_CommonDialog::NativeConstruct()
@@ -20,24 +21,34 @@ void UUI_CommonDialog::NativeConstruct()
 void UUI_CommonDialog::ReplayEntrance(bool bFadeOnly)
 {
     EntranceTime = 0.f;
-    bOnlyFade = bFadeOnly;
+    // 手机保持文字缩放不变，避免动画中产生不同字号的字形缓存。
+    const bool bMobile = XQPMobile::IsPortrait(this);
+    bOnlyFade = bFadeOnly || bMobile;
+    EntranceDuration = bMobile ? 0.18f : 0.36f;
     SetRenderOpacity(0.f);
-    if (DialogCard) DialogCard->SetRenderTransformPivot(FVector2D(0.5f));
+    if (DialogCard)
+    {
+        DialogCard->SetRenderTransformPivot(FVector2D(0.5f));
+        DialogCard->SetRenderScale(FVector2D(bOnlyFade ? 1.f : 0.88f));
+        DialogCard->SetRenderTranslation(FVector2D(0.f, bOnlyFade ? 0.f : 18.f));
+    }
     UpdateCanTick();
 }
 
 void UUI_CommonDialog::NativeTick(const FGeometry& Geometry, float DeltaTime)
 {
     Super::NativeTick(Geometry, DeltaTime);
-    EntranceTime = FMath::Min(0.36f, EntranceTime + DeltaTime);
-    const float Alpha = EntranceTime / 0.36f;
+    if (EntranceTime >= EntranceDuration) return;
+    // 首帧布局/加载耗时不应跳过整段入场动画。
+    EntranceTime = FMath::Min(EntranceDuration, EntranceTime + FMath::Min(DeltaTime, 1.f / 30.f));
+    const float Alpha = EntranceTime / EntranceDuration;
     SetRenderOpacity(FMath::SmoothStep(0.f, 1.f, Alpha));
-    if (DialogCard)
+    if (DialogCard && !bOnlyFade)
     {
         const float T = Alpha - 1.f;
         const float Ease = 1.f + 2.3f * T * T * T + 1.3f * T * T;
-        DialogCard->SetRenderScale(FVector2D(bOnlyFade ? 1.f : FMath::Lerp(0.88f, 1.f, Ease)));
-        DialogCard->SetRenderTranslation(FVector2D(0.f, bOnlyFade ? 0.f : 18.f * (1.f - Ease)));
+        DialogCard->SetRenderScale(FVector2D(FMath::Lerp(0.88f, 1.f, Ease)));
+        DialogCard->SetRenderTranslation(FVector2D(0.f, 18.f * (1.f - Ease)));
     }
 }
 
@@ -64,6 +75,7 @@ void UUI_CommonDialog::Configure(const FText& Title, const FText& Message, const
     XQPButtonBinding::SetVisibility(SecondaryButton, Secondary.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
     XQPButtonBinding::SetCaption(DismissButton, DismissCaption);
     XQPButtonBinding::SetVisibility(DismissButton, DismissCaption.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+    ReplayEntrance();
 }
 
 void UUI_CommonDialog::SetPrimaryAction(const FText& Caption, bool bEnabled)

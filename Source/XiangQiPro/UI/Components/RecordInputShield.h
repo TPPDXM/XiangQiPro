@@ -8,6 +8,10 @@ UCLASS()
 class XIANGQIPRO_API URecordInputShield : public UBorder
 {
     GENERATED_BODY()
+public:
+    // 可选的外围点击操作；面板自身继续只拦截输入。
+    FSimpleDelegate OnPressed;
+    bool HasPointerCapture() const;
 protected:
     virtual TSharedRef<SWidget> RebuildWidget() override;
 };

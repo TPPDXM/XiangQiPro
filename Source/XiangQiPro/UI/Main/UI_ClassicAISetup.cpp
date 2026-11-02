@@ -11,6 +11,16 @@
 #include "XiangQiPro/GameMode/XQPGameInstance.h"
 #include "XiangQiPro/UI/Components/UI_XQP_ComboBox.h"
 
+namespace
+{
+    void ConfigureChallengeRules(UUI_CommonDialog* Dialog)
+    {
+        Dialog->Configure(FText::FromString(TEXT("AI 连战挑战")),
+            FText::FromString(TEXT("AI 会在连战中学习你的用子习惯、进攻路线和应对方式，调整策略，并随着连胜逐步增强。\n\n对局进度与执棋回合会在每次落子时自动保存。\n结束挑战后结算最高连胜，本次学习记录将清除。")),
+            FText::FromString(TEXT("知道了")), FText::GetEmpty());
+    }
+}
+
 void UUI_ClassicAISetup::NativeConstruct()
 {
     Super::NativeConstruct();
@@ -33,6 +43,27 @@ void UUI_ClassicAISetup::NativeConstruct()
     ApplyChallengeSelection(Profile->HasActiveRun());
     SwitchPosition = SwitchTarget;
     UpdateSwitchThumb();
+    // 页面进入时构建Slate控件，主动开关时复用，避免创建弹窗抢占首帧。
+    if (XQPMobile::IsPortrait(this))
+        if (auto* Dialog = GetChallengeDialog())
+        {
+            ConfigureChallengeRules(Dialog);
+            PreparedChallengeSlate = Dialog->TakeWidget();
+            Dialog->ForceLayoutPrepass();
+        }
+}
+
+void UUI_ClassicAISetup::NativeDestruct()
+{
+    PreparedChallengeSlate.Reset();
+    Super::NativeDestruct();
+}
+
+UUI_CommonDialog* UUI_ClassicAISetup::GetChallengeDialog()
+{
+    if (!ChallengeDialog && CommonDialogClass)
+        ChallengeDialog = XQPMobile::CreateWidget<UUI_CommonDialog>(GetOwningPlayer(), CommonDialogClass);
+    return ChallengeDialog;
 }
 
 void UUI_ClassicAISetup::OnChallengeChanged(bool bChecked)
@@ -42,20 +73,19 @@ void UUI_ClassicAISetup::OnChallengeChanged(bool bChecked)
     if (!bChecked && Profile->HasActiveRun())
     {
         ChallengeSwitch->SetIsChecked(true);
-        if (ChallengeDialog.IsValid() && ChallengeDialog->IsInViewport()) return;
+        if (ChallengeDialog && ChallengeDialog->IsInViewport()) return;
         if (!CommonDialogClass) return;
-        auto* Dialog = XQPMobile::CreateWidget<UUI_CommonDialog>(GetOwningPlayer(), CommonDialogClass);
+        auto* Dialog = GetChallengeDialog();
         if (!Dialog) return;
-        ChallengeDialog = Dialog;
-        GetGameInstance()->GetSubsystem<UUIManager>()->AddUI(Dialog, false);
         Dialog->Configure(FText::FromString(TEXT("结束连战挑战？")),
             FText::FromString(FString::Printf(TEXT("当前连胜 %d 局。结束后将结算本次挑战并保留最高纪录，当前对局进度将清除。"), Profile->GetCurrentStreak())),
             FText::FromString(TEXT("结束并结算")), FText::FromString(TEXT("继续挑战")));
+        GetGameInstance()->GetSubsystem<UUIManager>()->AddUI(Dialog, false);
         Dialog->OnPrimaryAction = FSimpleDelegate::CreateWeakLambda(this, [this]()
         {
             GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>()->EndChallenge();
             ApplyChallengeSelection(false);
-            if (ChallengeDialog.IsValid()) ChallengeDialog->Dismiss();
+            if (ChallengeDialog) ChallengeDialog->Dismiss();
         });
         return;
     }
@@ -63,13 +93,10 @@ void UUI_ClassicAISetup::OnChallengeChanged(bool bChecked)
     if (bJustEnabled && CommonDialogClass)
     {
         // 仅在主动开启时说明学习与续局规则，恢复已有挑战不会重复打断玩家。
-        auto* Dialog = XQPMobile::CreateWidget<UUI_CommonDialog>(GetOwningPlayer(), CommonDialogClass);
+        auto* Dialog = GetChallengeDialog();
         if (!Dialog) return;
-        ChallengeDialog = Dialog;
+        ConfigureChallengeRules(Dialog);
         GetGameInstance()->GetSubsystem<UUIManager>()->AddUI(Dialog, false);
-        Dialog->Configure(FText::FromString(TEXT("AI 连战挑战")),
-            FText::FromString(TEXT("AI 会在连战中学习你的用子习惯、进攻路线和应对方式，调整策略，并随着连胜逐步增强。\n\n对局进度与执棋回合会在每次落子时自动保存。\n结束挑战后结算最高连胜，本次学习记录将清除。")),
-            FText::FromString(TEXT("知道了")), FText::GetEmpty());
         Dialog->OnPrimaryAction = FSimpleDelegate::CreateWeakLambda(Dialog, [Dialog]() { Dialog->Dismiss(); });
     }
 }

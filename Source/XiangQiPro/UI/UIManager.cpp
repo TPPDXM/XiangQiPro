@@ -8,6 +8,16 @@
 #include <XiangQiPro/Util/Logger.h>
 #include <Kismet/GameplayStatics.h>
 #include <Blueprint/WidgetBlueprintLibrary.h>
+#include "Engine/AssetManager.h"
+#include "Engine/StreamableManager.h"
+
+void UUIManager::Initialize(FSubsystemCollectionBase& Collection)
+{
+    Super::Initialize(Collection);
+    // 不在首次弹窗的输入回调中同步加载竖屏蓝图及其字体、按钮依赖。
+    MobileDialogPreload = UAssetManager::GetStreamableManager().RequestAsyncLoad(
+        FSoftObjectPath(TEXT("/Game/UMG/Mobile/BP_UI_CommonDialog_Mobile.BP_UI_CommonDialog_Mobile_C")));
+}
 
 // 设置基础界面和暂停界面来源，并清空显示栈。
 void UUIManager::Init(UUserWidget* InBasicUI)
@@ -185,5 +195,6 @@ void UUIManager::ResetUI()
 void UUIManager::Deinitialize()
 {
     ResetUI();
+    MobileDialogPreload.Reset();
     Super::Deinitialize();
 }

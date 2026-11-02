@@ -38,6 +38,7 @@ private:
     UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> DialogCard;
     float EntranceTime = 0.f;
     bool bOnlyFade = false;
+    float EntranceDuration = 0.36f;
     UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> DialogTitle;
     UPROPERTY(meta=(BindWidget)) TObjectPtr<UTextBlock> DialogMessage;
     UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UBorder> OutcomeAccent;

@@ -9,6 +9,7 @@
 #include "Blueprint/UserWidget.h"
 #include "UIManager.generated.h"
 
+struct FStreamableHandle;
 
 /**
  * 玩家UI管理器, 从玩家屏幕添加或移除UI
@@ -19,6 +20,9 @@ class XIANGQIPRO_API UUIManager : public UGameInstanceSubsystem
 	GENERATED_BODY()
 
 private:
+
+    // 保留异步预载句柄，让通用移动弹窗在点击前完成磁盘读取。
+    TSharedPtr<FStreamableHandle> MobileDialogPreload;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UUserWidget> BasicUI;
@@ -41,6 +45,8 @@ private:
 	void SetUIVisibility(UUserWidget* ui, bool bVisible);
 
 public:
+
+    virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 
     UUserWidget* GetBasicUI() const { return BasicUI; }
     void CloseOverlays();

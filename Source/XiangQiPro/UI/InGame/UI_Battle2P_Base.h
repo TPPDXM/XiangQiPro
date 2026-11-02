@@ -16,6 +16,7 @@ class UImage;
 class UScrollBox;
 class UVerticalBox;
 class UUI_CommonDialog;
+class URecordInputShield;
 
 enum class EPlayerTag : uint8;
 
@@ -108,6 +109,7 @@ public:
 	FString GetEnhancedMoveNotation(TWeakObjectPtr<AChesses> targetChess, FChessMove2P move);
 protected:
     UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> RecordPanel;
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<URecordInputShield> RecordDismissArea;
     UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UUserWidget> RecordButton;
     UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UScrollBox> RecordScroll;
     UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UVerticalBox> RecordRows;
@@ -117,6 +119,7 @@ protected:
     float RecordExpansion = 0.f;
     int32 RecordMoveCount = 0;
     UFUNCTION() void ToggleOperatingRecord();
+    void SetRecordExpanded(bool bExpanded);
     void UpdateRecordExpansion(float DeltaTime);
     void AddRecordRow(EChessColor Color, const FString& Notation, const FString& PlayerName, TOptional<int32> MovePoints);
     UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<UWidget> PlayerScorePanel;

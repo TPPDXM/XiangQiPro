@@ -26,6 +26,7 @@
 #include "Styling/CoreStyle.h"
 #include "XiangQiPro/UI/Components/XQPButtonBinding.h"
 #include "XiangQiPro/UI/Components/UI_CommonDialog.h"
+#include "XiangQiPro/UI/Components/RecordInputShield.h"
 #include "XiangQiPro/GameMode/XQPPlayerController.h"
 #include "XiangQiPro/Util/EndingLibrary.h"
 #include "XiangQiPro/UI/XQPUIStyle.h"
@@ -55,6 +56,11 @@ void UUI_Battle2P_Base::NativeConstruct()
         RecordPanel->SetRenderOpacity(RecordExpansion);
         RecordPanel->SetVisibility(bRecordExpanded ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
     }
+    if (RecordDismissArea)
+    {
+        RecordDismissArea->OnPressed = FSimpleDelegate::CreateWeakLambda(this, [this]() { SetRecordExpanded(false); });
+        RecordDismissArea->SetVisibility(bRecordExpanded ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+    }
     ResetOperatingRecord();
     if (auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>())
     {
@@ -65,6 +71,7 @@ void UUI_Battle2P_Base::NativeConstruct()
 
 void UUI_Battle2P_Base::NativeDestruct()
 {
+    if (RecordDismissArea) RecordDismissArea->OnPressed.Unbind();
     if (auto* GI = GetGameInstance())
         if (auto* Room = GI->GetSubsystem<UXQPLANSubsystem>()) Room->OnRoomUpdated.RemoveAll(this);
     Super::NativeDestruct();
@@ -97,6 +104,8 @@ void UUI_Battle2P_Base::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
     {
         const bool Challenge = GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::AI2P && Profile->bChallengeSelected;
         ModeStatus->SetVisibility(LAN || Challenge ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+        if (auto* Background = GetWidgetFromName(TEXT("ModeStatusBackground")))
+            Background->SetVisibility(ModeStatus->GetVisibility());
         ModeStatus->SetText(FText::FromString(LAN
             ? FString::Printf(TEXT("你执%s · %s"), Room->GetLocalColor() == EChessColor::REDCHESS ? TEXT("红方") : TEXT("黑方"),
                 GameState->IsGameOver() ? TEXT("本局结束") :
@@ -163,8 +172,15 @@ void UUI_Battle2P_Base::OpenMenu()
 
 void UUI_Battle2P_Base::ToggleOperatingRecord()
 {
-    bRecordExpanded = !bRecordExpanded;
+    SetRecordExpanded(!bRecordExpanded);
+}
+
+void UUI_Battle2P_Base::SetRecordExpanded(bool bExpanded)
+{
+    if (!RecordPanel || bRecordExpanded == bExpanded) return;
+    bRecordExpanded = bExpanded;
     if (RecordPanel) RecordPanel->SetVisibility(ESlateVisibility::Visible);
+    if (RecordDismissArea) RecordDismissArea->SetVisibility(ESlateVisibility::Visible);
     if (bRecordExpanded && RecordScroll) RecordScroll->ScrollToEnd();
     if (auto* Button = XQPButtonBinding::GetButton(RecordButton))
         Button->SetToolTipText(FText::FromString(bRecordExpanded ? TEXT("收起走子记录") : TEXT("展开走子记录")));
@@ -173,7 +189,16 @@ void UUI_Battle2P_Base::ToggleOperatingRecord()
 void UUI_Battle2P_Base::UpdateRecordExpansion(float DeltaTime)
 {
     const float Target = bRecordExpanded ? 1.f : 0.f;
-    if (!RecordPanel || RecordExpansion == Target) return;
+    // 长按超过收起动画时，也要保留外围输入区直到手指抬起。
+    if (RecordDismissArea)
+        RecordDismissArea->SetVisibility(bRecordExpanded || RecordExpansion > 0.f || RecordDismissArea->HasPointerCapture()
+            ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+    if (!RecordPanel) return;
+    if (RecordExpansion == Target)
+    {
+        if (!bRecordExpanded) RecordPanel->SetVisibility(ESlateVisibility::Collapsed);
+        return;
+    }
     RecordExpansion = FMath::FInterpConstantTo(RecordExpansion, Target, DeltaTime, 1.f / 0.22f);
     const float Alpha = FMath::SmoothStep(0.f, 1.f, RecordExpansion);
     RecordPanel->SetRenderOpacity(Alpha);

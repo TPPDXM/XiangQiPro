@@ -15,6 +15,7 @@ class XIANGQIPRO_API UUI_ClassicAISetup : public UXQPMobileWidget
     GENERATED_BODY()
 public:
     virtual void NativeConstruct() override;
+    virtual void NativeDestruct() override;
     virtual void NativeTick(const FGeometry& MyGeometry, float DeltaTime) override;
 
 private:
@@ -22,7 +23,9 @@ private:
     UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UTextBlock> HighestStreakText;
     UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UImage> SwitchThumb;
     UPROPERTY(EditDefaultsOnly, Category="UI") TSubclassOf<UUI_CommonDialog> CommonDialogClass;
-    TWeakObjectPtr<UUI_CommonDialog> ChallengeDialog;
+    UPROPERTY(Transient) TObjectPtr<UUI_CommonDialog> ChallengeDialog;
+    TSharedPtr<SWidget> PreparedChallengeSlate;
+    UUI_CommonDialog* GetChallengeDialog();
     void ApplyChallengeSelection(bool bChecked);
     void UpdateSwitchThumb();
     UFUNCTION() void OnChallengeChanged(bool bChecked);
