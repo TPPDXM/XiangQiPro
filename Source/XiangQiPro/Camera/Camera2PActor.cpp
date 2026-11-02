@@ -111,7 +111,7 @@ void ACamera2PActor::UpdateDesktopOrbit()
         * FMath::Max(0.f, FMath::Cos(FMath::DegreesToRadians(Elevation)));
     // 水平径向指向镜头所在的一侧。偏移位于棋盘平面，不随俯角改变高度。
     const FVector Outward = -FRotator(0.f, View.Yaw, 0.f).Vector();
-    SpringArm->TargetOffset = DesktopBaseTargetOffset + DesktopFrameOffset + Outward * Radius;
+    SpringArm->TargetOffset = DesktopBaseTargetOffset + Outward * Radius;
 }
 
 void ACamera2PActor::FitProBoardToViewport(const FVector2D& Viewport, const FBox2D& BoardRect)
@@ -141,28 +141,20 @@ void ACamera2PActor::FitProBoardToViewport(const FVector2D& Viewport, const FBox
     const EAspectRatioAxisConstraint Constraint = GameCamera->bOverrideAspectRatioAxisConstraint
         ? GameCamera->AspectRatioAxisConstraint.GetValue() : GetDefault<ULocalPlayer>()->AspectRatioAxisConstraint.GetValue();
     FMinimalViewInfo::CalculateProjectionMatrixGivenViewRectangle(View, Constraint, FullRect, Projection);
-    const FRotator ArmRotation = SpringArm->GetComponentRotation();
-    const FVector Outward = -FRotator(0.f, ArmRotation.Yaw, 0.f).Vector();
-    const float PitchWeight = FMath::Max(0.f, FMath::Cos(FMath::DegreesToRadians(FMath::Abs(ArmRotation.Pitch))));
+    const FRotator OriginalArmRotation = SpringArm->GetComponentRotation();
     const FMatrix AxisSwap(FPlane(0,0,1,0), FPlane(1,0,0,0), FPlane(0,1,0,0), FPlane(0,0,0,1));
-    FVector FrameOffset = FVector::ZeroVector;
-    const auto Fits = [&](float Distance)
+    // 候选镜头仅改变弹簧臂距离与俯仰角。这里和 UpdateDesktopOrbit 使用
+    // 完全相同的原始中心、径向半径与 SocketOffset，不能为了 HUD 平移中心，
+    // 否则旋转到棋盘另一侧时会产生额外的远近变化。
+    const auto Fits = [&](float Distance, const FRotator& ArmRotation)
     {
+        const FVector Outward = -FRotator(0.f, ArmRotation.Yaw, 0.f).Vector();
+        const float PitchWeight = FMath::Max(0.f, FMath::Cos(FMath::DegreesToRadians(FMath::Abs(ArmRotation.Pitch))));
         const float Range = DesktopHomeMaxZoom - MinZoomDistance;
         const float Proximity = Range > KINDA_SMALL_NUMBER ? FMath::Clamp((DesktopHomeMaxZoom - Distance) / Range, 0.f, 1.f) : 0.f;
         const FVector Pivot = SpringArm->GetComponentLocation() + DesktopBaseTargetOffset + Outward * (FMath::Max(0.f, CloseOrbitRadius) * Proximity * PitchWeight);
         const FTransform Socket(ArmRotation, Pivot - ArmRotation.Vector() * Distance + ArmRotation.RotateVector(SpringArm->SocketOffset));
-        FTransform Camera = GameCamera->GetRelativeTransform() * Socket;
-        if (Watching)
-        {
-            // 平移相机成像平面，使棋盘中心落在 HUD 剩余区域中心，不改变观察角度。
-            // 随后以八角投影校验距离，避免依赖只适合某个分辨率的固定偏移。
-            const FVector Relative = Camera.InverseTransformPosition(Bounds.GetCenter());
-            const FVector2D Center = BoardRect.GetCenter() / Viewport;
-            FrameOffset = Camera.GetUnitAxis(EAxis::Y) * (Relative.Y - (2.f * Center.X - 1.f) * Relative.X / Projection.ProjectionMatrix.M[0][0])
-                + Camera.GetUnitAxis(EAxis::Z) * (Relative.Z - (1.f - 2.f * Center.Y) * Relative.X / Projection.ProjectionMatrix.M[1][1]);
-            Camera.AddToTranslation(FrameOffset);
-        }
+        const FTransform Camera = GameCamera->GetRelativeTransform() * Socket;
         const FMatrix Matrix = FTranslationMatrix(-Camera.GetLocation()) * FInverseRotationMatrix(Camera.Rotator()) * AxisSwap * Projection.ProjectionMatrix;
         for (int32 Corner = 0; Corner < 8; ++Corner)
         {
@@ -174,25 +166,44 @@ void ACamera2PActor::FitProBoardToViewport(const FVector2D& Viewport, const FBox
         }
         return true;
     };
-    float Distance = FMath::Max(MinZoomDistance, DesktopHomeArmLength);
-    if (!Fits(Distance))
+    float Distance = TNumericLimits<float>::Max();
+    FRotator BestRotation = OriginalArmRotation;
+    // 观战从原有 58 度俯角逐步增加到 82 度，选择能容纳完整棋盘的最近距离。
+    // 每个候选都检查扩展棋盘包围盒的八角，覆盖棋子高度及不同屏幕比例。
+    // 普通烽火弈对局沿用当前俯角，只拟合距离。
+    const int32 PitchCandidates = Watching ? 7 : 1;
+    for (int32 Candidate = 0; Candidate < PitchCandidates; ++Candidate)
     {
-        float Low = Distance, High = FMath::Max(DesktopHomeMaxZoom, Distance * 2.f);
-        for (int32 Attempt = 0; Attempt < 6 && !Fits(High); ++Attempt) High *= 2.f;
-        if (!Fits(High)) return;
-        for (int32 Step = 0; Step < 20; ++Step)
+        FRotator Rotation = OriginalArmRotation;
+        if (Watching) Rotation.Pitch = -58.f - Candidate * 4.f;
+        float Low = FMath::Max(MinZoomDistance, DesktopHomeArmLength);
+        float High = Low;
+        if (!Fits(High, Rotation))
         {
-            const float Mid = (Low + High) * .5f;
-            if (Fits(Mid)) High = Mid;
-            else Low = Mid;
+            High = FMath::Max(DesktopHomeMaxZoom, Low * 2.f);
+            for (int32 Attempt = 0; Attempt < 6 && !Fits(High, Rotation); ++Attempt) High *= 2.f;
+            if (!Fits(High, Rotation)) continue;
+            for (int32 Step = 0; Step < 20; ++Step)
+            {
+                const float Mid = (Low + High) * .5f;
+                if (Fits(Mid, Rotation)) High = Mid;
+                else Low = Mid;
+            }
         }
-        Distance = High;
+        if (High < Distance)
+        {
+            Distance = High;
+            BestRotation = Rotation;
+        }
     }
+    if (Distance == TNumericLimits<float>::Max()) return;
     if (Watching)
     {
-        // 最后一次二分可能未通过，重新计算最终距离对应的平移。
-        if (!Fits(Distance)) return;
-        DesktopFrameOffset = FrameOffset;
+        // 将世界空间候选旋转转换回相对旋转，不假设相机 Actor 本身没有旋转。
+        const FQuat ParentRotation = SpringArm->GetComponentQuat() * SpringArm->GetRelativeRotation().Quaternion().Inverse();
+        TargetRotation = (ParentRotation.Inverse() * BestRotation.Quaternion()).Rotator();
+        HomeRotation = TargetRotation;
+        SpringArm->SetRelativeRotation(TargetRotation);
     }
     MaxZoomDistance = FMath::Max(DesktopHomeMaxZoom, Distance);
     TargetArmLength = Distance;

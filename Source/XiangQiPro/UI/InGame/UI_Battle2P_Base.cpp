@@ -50,16 +50,11 @@ void UUI_Battle2P_Base::NativeConstruct()
         SetPlayerScoreVisible(false);
         SetOpponentScoreVisible(false);
     }
-    const auto Mode = GetGameInstance<UXQPGameInstance>()->GetGameMode();
-    if (Mode == EXQPGameMode::Default || Mode == EXQPGameMode::AI2P || Mode == EXQPGameMode::LAN || Mode == EXQPGameMode::Ending)
-        for (auto* Label : {Text_Score_P1, Text_Score_P2})
-            if (Label) Label->SetToolTipText(FText::FromString(TEXT("累计走子评分：好棋加分，失误扣分；双方独立累计，可为负分。每手得分见棋谱记录。")));
     if (auto* Button = XQPButtonBinding::GetButton(MenuButton))
         Button->OnClicked.AddUniqueDynamic(this, &UUI_Battle2P_Base::OpenMenu);
     if (auto* Button = XQPButtonBinding::GetButton(RecordButton))
     {
         Button->OnClicked.AddUniqueDynamic(this, &UUI_Battle2P_Base::ToggleOperatingRecord);
-        Button->SetToolTipText(FText::FromString(bRecordExpanded ? TEXT("收起走子记录") : TEXT("展开走子记录")));
     }
     if (RecordPanel)
     {
@@ -194,10 +189,16 @@ void UUI_Battle2P_Base::RefreshPlayerInfoLayout()
         {
             UWidget* Local = LocalHost->GetContent();
             UWidget* Opponent = OpponentHost->GetContent();
+            // SetContent 会移除旧内容槽，新槽默认没有宿主设计好的左右留白。
+            // 名牌互换时保留两个位置各自的槽模板，并让 AddChild 复制其边距、
+            // 对齐及其他槽属性，避免执黑方时底部名牌贴边。模板只在本次同步
+            // 交换中使用；新槽由宿主正常持有，不依赖已移除的旧槽生命周期。
+            UPanelSlot* LocalLayout = LocalHost->GetContentSlot();
+            UPanelSlot* OpponentLayout = OpponentHost->GetContentSlot();
             LocalHost->SetContent(nullptr);
             OpponentHost->SetContent(nullptr);
-            LocalHost->SetContent(Opponent);
-            OpponentHost->SetContent(Local);
+            LocalHost->AddChild(Opponent, LocalLayout);
+            OpponentHost->AddChild(Local, OpponentLayout);
             bInfoPanelsSwapped = LocalBlack;
             return;
         }
@@ -240,8 +241,6 @@ void UUI_Battle2P_Base::SetRecordExpanded(bool bExpanded)
     if (RecordPanel) RecordPanel->SetVisibility(ESlateVisibility::Visible);
     if (RecordDismissArea) RecordDismissArea->SetVisibility(ESlateVisibility::Visible);
     if (bRecordExpanded && RecordScroll) RecordScroll->ScrollToEnd();
-    if (auto* Button = XQPButtonBinding::GetButton(RecordButton))
-        Button->SetToolTipText(FText::FromString(bRecordExpanded ? TEXT("收起走子记录") : TEXT("展开走子记录")));
 }
 
 void UUI_Battle2P_Base::UpdateRecordExpansion(float DeltaTime)
@@ -282,7 +281,6 @@ void UUI_Battle2P_Base::AddRecordRow(EChessColor Color, const FString& Notation,
     auto* Background = WidgetTree->ConstructWidget<UBorder>();
     Background->SetPadding(FMargin(10.f, 9.f));
     Background->SetBrushColor(FLinearColor(.02f, .018f, .014f, RecordMoveCount % 2 ? .24f : .1f));
-    Background->SetToolTipText(FText::FromString(PlayerName));
     RecordRows->AddChildToVerticalBox(Background)->SetPadding(FMargin(0.f, 0.f, 0.f, 4.f));
     auto* Row = WidgetTree->ConstructWidget<UHorizontalBox>();
     Background->SetContent(Row);

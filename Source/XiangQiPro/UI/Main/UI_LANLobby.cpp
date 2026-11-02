@@ -21,8 +21,6 @@ void UUI_LANLobby::NativeConstruct()
     XQPUIStyle::SetFactionText(BlackFactionLabel, EChessColor::BLACKCHESS, true);
     if (auto* Label = Cast<UTextBlock>(GetWidgetFromName(TEXT("JoinRoomLabel"))))
         Label->SetText(FText::FromString(TEXT("加入房间")));
-    if (auto* Heading = GetWidgetFromName(TEXT("LANHeading")))
-        Heading->SetToolTipText(FText::FromString(TEXT("双方连接同一局域网，搜索房间或输入六位联机码加入。")));
     GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->SelectGameType(GameType);
     auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
     Room->OnModeMismatch.RemoveAll(this);
@@ -63,13 +61,22 @@ void UUI_LANLobby::NativeTick(const FGeometry& Geometry, float DeltaTime)
 {
     Super::NativeTick(Geometry, DeltaTime);
     UpdateRoomOptionWidths();
+    // 浏览搜索不锁定加入操作。逐帧更新以便选中房间/输入联机码后立即可点；
+    // 已提交的联机码查找属于加入事务，期间禁止重复提交或改写目标。
+    if (JoinButton && Address)
+    {
+        const auto* LAN = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
+        const auto State = LAN->GetState();
+        const bool Browsing = State == EXQPRoomState::Idle || State == EXQPRoomState::Searching || State == EXQPRoomState::Disconnected;
+        JoinButton->SetIsEnabled(Browsing && !LAN->IsJoiningRoom() && !Address->GetText().ToString().TrimStartAndEnd().IsEmpty());
+    }
     RefreshTime += DeltaTime;
     if (RefreshTime < 0.2f || !CreateButton)
         return;
     RefreshTime = 0;
     UXQPLANSubsystem* LAN = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
     const auto State = LAN->GetState();
-    const bool InRoom = State == EXQPRoomState::Creating || State == EXQPRoomState::Lobby || State == EXQPRoomState::Connecting;
+    const bool InRoom = State == EXQPRoomState::Creating || State == EXQPRoomState::Lobby || LAN->IsJoiningRoom();
     const bool Hosting = InRoom && LAN->IsHost();
     // 在原介绍框中切换浏览和房间状态，外层经典菜单保持可用。
     BrowserPanel->SetVisibility(InRoom ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
@@ -77,7 +84,6 @@ void UUI_LANLobby::NativeTick(const FGeometry& Geometry, float DeltaTime)
     RoomName->SetIsEnabled(!InRoom);
     Address->SetIsEnabled(!InRoom);
     SearchButton->SetIsEnabled(State != EXQPRoomState::Searching);
-    JoinButton->SetIsEnabled(State != EXQPRoomState::Connecting && State != EXQPRoomState::Searching && !Address->GetText().ToString().TrimStartAndEnd().IsEmpty());
     XQPButtonBinding::SetCaption(SearchButton, FText::FromString(State == EXQPRoomState::Searching ? TEXT("搜索中…") : TEXT("搜索房间")));
     XQPButtonBinding::SetCaption(ReadyButton, FText::FromString(LAN->IsLocalReady() ? TEXT("取消准备") : TEXT("准备对弈")));
     XQPButtonBinding::SetVisibility(ColorButton, Hosting ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
@@ -187,7 +193,6 @@ UWidget* UUI_LANLobby::GenerateRoomOption(FString Item)
     Label->SetColorAndOpacity(RoomChoice->GetForegroundColor());
     Label->SetTextOverflowPolicy(ETextOverflowPolicy::MiddleEllipsis);
     Label->SetClipping(EWidgetClipping::ClipToBounds);
-    Box->SetToolTipText(FText::FromString(Item));
     auto* Row = NewObject<UHorizontalBox>(this);
     Row->AddChildToHorizontalBox(Label)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
     if (!Status.IsEmpty())

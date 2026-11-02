@@ -98,7 +98,6 @@ void UUI_FengHuoBattle::ConfigureSpectatorSupply()
                         LayoutSlot->SetVerticalAlignment(VAlign_Fill);
                     }
                 }
-        if (RecordButton) RecordButton->SetToolTipText(FText::FromString(TEXT("查看进入观战后接收到的走子记录")));
         return;
     }
     for (const FName Name : {FName(TEXT("LocalSupplyBody")), FName(TEXT("EnemySupplyPanel"))})

@@ -84,6 +84,9 @@ class XIANGQIPRO_API UXQPLANSubsystem : public UGameInstanceSubsystem, public FT
     {
         return State;
     }
+    // TCP 握手与未缓存联机码的定向查找均属于一次加入事务。
+    // 普通房间浏览虽然也使用 Searching 状态，但不应阻止用户提前加入。
+    bool IsJoiningRoom() const { return State == EXQPRoomState::Connecting || (State == EXQPRoomState::Searching && !PendingJoinCode.IsEmpty()); }
     UFUNCTION(BlueprintPure) FString GetStatus() const
     {
         return Status;
