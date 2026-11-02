@@ -47,6 +47,14 @@ void UUIManager::Init(UUserWidget* InBasicUI, TSubclassOf<UUserWidget> InPauseWi
 // 将界面压入显示栈并按需隐藏上一层。
 void UUIManager::AddUI(UUserWidget* InUI, bool bHideLastOne)
 {
+    // OpenMap创建的启动页没有额外初始化参数；在入栈前选用移动端版本，
+    // 复用同一套Splash动画、延迟和主菜单跳转逻辑。
+    if (IsValid(InUI) && InUI->GetClass()->GetPathName() == TEXT("/Game/UMG/Util/BP_UI_Splash.BP_UI_Splash_C"))
+    {
+        UClass* ScreenClass = XQPMobile::ResolveWidgetClass(this, InUI->GetClass());
+        if (ScreenClass != InUI->GetClass())
+            if (auto* ScreenUI = CreateWidget<UUserWidget>(GetWorld(), ScreenClass)) InUI = ScreenUI;
+    }
 	if (!IsValid(InUI) || ui_stack.Contains(InUI))
 	{
 		return; // 空指针保护

@@ -7,7 +7,7 @@
 
 UUI_XQP_ComboBox::UUI_XQP_ComboBox(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-    static ConstructorHelpers::FObjectFinder<UTexture2D> Arrow(TEXT("/Game/UMG/Textures/T_ComboArrow"));
+    static ConstructorHelpers::FObjectFinder<UTexture2D> Arrow(TEXT("/Game/UMG/Texture/T_ComboArrow"));
     ArrowTexture = Arrow.Object;
 }
 

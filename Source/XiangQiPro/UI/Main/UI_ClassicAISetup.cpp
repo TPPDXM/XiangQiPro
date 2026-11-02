@@ -1,4 +1,4 @@
-#include "UI_ClassicAISetup.h"
+﻿#include "UI_ClassicAISetup.h"
 #include "XiangQiPro/UI/XQPMobile.h"
 #include "XiangQiPro/SaveGame/PlayerProfileSubsystem.h"
 #include "Components/CheckBox.h"
@@ -68,7 +68,7 @@ void UUI_ClassicAISetup::OnChallengeChanged(bool bChecked)
         ChallengeDialog = Dialog;
         GetGameInstance()->GetSubsystem<UUIManager>()->AddUI(Dialog, false);
         Dialog->Configure(FText::FromString(TEXT("AI 连战挑战")),
-            FText::FromString(TEXT("AI 会在连战中学习你的用子习惯、进攻路线和应对方式，调整策略，并随着连胜逐步增强。\n\n对局进度与执棋回合会在每次落子时自动保存。即使在 AI 思考或落子动画期间退出，下次也能从已提交的局面继续。\n\n结束挑战后结算最高连胜，本次学习记录将清除。")),
+            FText::FromString(TEXT("AI 会在连战中学习你的用子习惯、进攻路线和应对方式，调整策略，并随着连胜逐步增强。\n\n对局进度与执棋回合会在每次落子时自动保存。\n结束挑战后结算最高连胜，本次学习记录将清除。")),
             FText::FromString(TEXT("知道了")), FText::GetEmpty());
         Dialog->OnPrimaryAction = FSimpleDelegate::CreateWeakLambda(Dialog, [Dialog]() { Dialog->Dismiss(); });
     }
