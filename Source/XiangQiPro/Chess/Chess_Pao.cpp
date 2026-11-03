@@ -2,11 +2,24 @@
 
 
 #include "Chess_Pao.h"
+#include "ChessMoveEffectsComponent.h"
 
 AChess_Pao::AChess_Pao()
 {
 	MyType = EChessType::PAO;
 	MyRealType = EChessType::PAO;
+
+    // 强引用使炮特效随原生棋子类进入 Cook；其他棋子仍继承基类的空配置。
+    // 移动端不加载 GPU 发射器运行，改用同风格、低粒子预算的独立 CPU 系统。
+#if !PLATFORM_ANDROID && !PLATFORM_IOS
+    // 真正的移动端进程不加载 PC GPU 资源，减少棋子类默认对象的常驻资源和着色器开销。
+    // 编辑器仍保留两组引用，PC/竖屏预览可在同一进程中按已有界面规则切换。
+    MoveEffects->CaptureEffect = OM::GetConstructorObject<UNiagaraSystem>(TEXT("/Game/Niagara/Cannon/NS_CannonCapture.NS_CannonCapture"));
+    MoveEffects->MoveTrailEffect = OM::GetConstructorObject<UNiagaraSystem>(TEXT("/Game/Niagara/Cannon/NS_CannonMoveTrail.NS_CannonMoveTrail"));
+#endif
+    MoveEffects->MobileCaptureEffect = OM::GetConstructorObject<UNiagaraSystem>(TEXT("/Game/Niagara/Cannon/NS_CannonCapture_Mobile.NS_CannonCapture_Mobile"));
+    MoveEffects->MobileMoveTrailEffect = OM::GetConstructorObject<UNiagaraSystem>(TEXT("/Game/Niagara/Cannon/NS_CannonMoveTrail_Mobile.NS_CannonMoveTrail_Mobile"));
+    MoveEffects->LandingEffect = OM::GetConstructorObject<UNiagaraSystem>(TEXT("/Game/Niagara/Cannon/NS_CannonLandingFlash.NS_CannonLandingFlash"));
 }
 
 void AChess_Pao::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2P> board2P)

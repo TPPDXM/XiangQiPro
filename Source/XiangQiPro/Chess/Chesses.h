@@ -25,6 +25,7 @@
 
 
 struct FChessMove2P;
+class UChessMoveEffectsComponent;
 
 UCLASS()
 class XIANGQIPRO_API AChesses : public APawn, public IIF_GameState
@@ -88,6 +89,10 @@ protected:
 public:
 	// Sets default values for this pawn's properties
 	AChesses();
+
+    /** 所有棋子继承的两段式特效配置；基类资源默认为空，派生棋子按需赋值。 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Chess|Effects")
+    TObjectPtr<UChessMoveEffectsComponent> MoveEffects;
 	// 初始化棋子身份、棋盘引用和动画回调。
 	virtual void Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2P> board2P);
 
@@ -183,6 +188,8 @@ public:
     bool BeginTouchMoveSelection();
     void ClearMoveSelection();
     float GetSurfaceZ() const;
+    /** 特效落点使用棋盘目标格的世界坐标，连续叠放吃子时冲击波也保持贴在棋盘表面。 */
+    FVector GetEffectImpactLocation() const;
 	// 根据玩法与阵营更新棋子的可选状态。
 	void UpdateSelectable();
 	// 生成选中棋子的合法走法并显示提示。

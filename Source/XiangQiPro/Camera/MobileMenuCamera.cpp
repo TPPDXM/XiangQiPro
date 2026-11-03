@@ -96,9 +96,10 @@ void AMobileMenuCamera::FitBoard()
     const FMargin Safe = XQPMobile::SafeInsets(this);
     const float DPI = UWidgetLayoutLibrary::GetViewportScale(this);
     const float UsableHeight = Viewport.Y - Safe.Top - Safe.Bottom;
-    // Title above the board, actions below it. All measurements use the same safe area as UMG.
-    const FBox2D Frame(FVector2D(Safe.Left + 16.f * DPI, Safe.Top + UsableHeight * .16f),
-        FVector2D(Viewport.X - Safe.Right - 16.f * DPI, Safe.Top + UsableHeight * .53f));
+    // 与 UMG 共用安全区；略扩展示区域并保持原中心，标题与下方操作区仍留在棋盘之外。
+    // 高度调整后不通过缩放网格补偿，而是在相同完整旋转包络下重新计算镜头距离。
+    const FBox2D Frame(FVector2D(Safe.Left + 12.f * DPI, Safe.Top + UsableHeight * .14f),
+        FVector2D(Viewport.X - Safe.Right - 12.f * DPI, Safe.Top + UsableHeight * .55f));
     const FRotator Rotation(-38.f, 45.f, 0.f);
     const FVector2D FrameCenter = Frame.GetCenter() / Viewport;
     LensShift = FVector2D(1.f - 2.f * FrameCenter.X, 2.f * FrameCenter.Y - 1.f);
@@ -115,7 +116,8 @@ void AMobileMenuCamera::FitBoard()
     const double HorizontalLimit = TanH * Frame.GetSize().X / Viewport.X;
     const double VerticalLimit = TanV * Frame.GetSize().Y / Viewport.Y;
     const double Distance = Radius * FMath::Sqrt(1. + FMath::Max(1. / FMath::Square(HorizontalLimit), 1. / FMath::Square(VerticalLimit)));
-    Camera->SetWorldLocationAndRotation(Center - Forward * (Distance * 1.05), Rotation);
+    // 包络球公式本身已经覆盖任意朝向，保留 2% 边距即可，减少额外退远造成的小棋盘感。
+    Camera->SetWorldLocationAndRotation(Center - Forward * (Distance * 1.02), Rotation);
     LastViewport = Viewport;
     LastInsets = Safe;
 }

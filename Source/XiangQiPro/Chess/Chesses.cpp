@@ -2,6 +2,7 @@
 
 
 #include "Chesses.h"
+#include "ChessMoveEffectsComponent.h"
 #include "XiangQiPro/Network/XQPLANSubsystem.h"
 #include "XiangQiPro/GameMode/FengHuoBattleComponent.h"
 
@@ -16,6 +17,8 @@ AChesses::AChesses()
 	ChessMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ChessMeshComponent"));
 	ChessMesh->SetStaticMesh(Mesh);
 	RootComponent = ChessMesh;
+
+    MoveEffects = CreateDefaultSubobject<UChessMoveEffectsComponent>(TEXT("MoveEffects"));
 
 	ChessMask = CreateDefaultSubobject<UDecalComponent>(TEXT("Mask"));
 	ChessMask->SetDecalMaterial(MI_ChessMask);
@@ -78,15 +81,17 @@ void AChesses::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2
 			FVector result = WeakThis->CalculateParabolicPosition(Start, Vertex, End, value);
 
 			WeakThis->SetActorLocation(result); // 更新Actor位置
+            WeakThis->MoveEffects->UpdateMove(WeakThis->GetWorld()->GetDeltaSeconds());
 		}
 		}));
 	TimeLine_ChessMove->SetTimelineFinishedFunc(FOnTimelineEventStatic::CreateLambda([WeakThis]() {
 		if (WeakThis.IsValid())
 		{
+			WeakThis->bAnimationing = false;
+			WeakThis->Pos = WeakThis->TargetPos;
+			WeakThis->MoveEffects->FinishMove();
 			if (WeakThis->GameState.IsValid())
 			{
-				WeakThis->bAnimationing = false;
-				WeakThis->Pos = WeakThis->TargetPos;
 				WeakThis->GameState->OnFinishMove2P(WeakThis);
 			}
 		}
@@ -123,6 +128,7 @@ void AChesses::BeginPlay()
 // 离开场景时停止本对象的运行逻辑。
 void AChesses::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+    MoveEffects->CancelMove();
 	// 停止所有时间轴
 	TimeLine_ChessMove->Stop();
 	Timeline_Fade->Stop();
@@ -156,6 +162,8 @@ void AChesses::Tick(float DeltaTime)
             CaptureHoverRemaining = 0.16f;
             CaptureHoverHeight = GetActorLocation().Z;
             CaptureHoverOffset = CaptureSupport.IsValid() ? CaptureHoverHeight - CaptureSupport->GetActorLocation().Z : 0.f;
+            // 首次到达被吃棋子上方时爆发；之后的悬停和下落不再次触发。
+            MoveEffects->FinishMove(PendingCapture.Get());
             if (PendingCapture.IsValid()) PendingCapture->Defeated();
             PendingCapture.Reset();
         }
@@ -190,6 +198,8 @@ void AChesses::Tick(float DeltaTime)
             if (!bFengHuoMode && !bDead) SetActorTickEnabled(false);
         }
     }
+    // 普通吃子接近和烽火移动均在本 Tick 更新位移；及时把同帧数据送入 Niagara。
+    MoveEffects->UpdateMove(DeltaTime);
     if (bDead)
     {
         CaptureDeathTime += DeltaTime;
@@ -244,8 +254,18 @@ float AChesses::GetSurfaceZ() const
     return ChessMesh->Bounds.Origin.Z + ChessMesh->Bounds.BoxExtent.Z;
 }
 
+FVector AChesses::GetEffectImpactLocation() const
+{
+    // 动画中的被吃棋子可能悬在上一枚棋子上方，不能拿它当前的 Z 作为贴地冲击波的高度。
+    if (Board2P.IsValid() && Board2P->BoardLocs.IsValidIndex(TargetPos.X) &&
+        Board2P->BoardLocs[TargetPos.X].IsValidIndex(TargetPos.Y))
+        return Board2P->BoardLocs[TargetPos.X][TargetPos.Y];
+    return GetActorLocation();
+}
+
 void AChesses::BeginFengHuoMove(const FChessMove2P& Move, float Duration)
 {
+    MoveEffects->BeginMove();
     TargetPos = Move.to;
     bRealtimeTravelling = bAnimationing = true;
     FengHuoMoveTime = 0.f;
@@ -274,11 +294,14 @@ void AChesses::ArriveFengHuoMove(FIntPoint Destination, AChesses* Captured)
         CaptureHoverOffset = Location.Z - Captured->GetActorLocation().Z;
     }
     SetActorLocation(Location);
+    // 主机和联机快照共用到达入口；组件内部的移动锁存防止重复快照重复播放。
+    MoveEffects->FinishMove(Captured);
     ChessMesh->SetCollisionResponseToChannel(ECC_Visibility, bSelectable ? ECR_Block : ECR_Ignore);
 }
 
 void AChesses::StopFengHuoMove()
 {
+    MoveEffects->CancelMove();
     bRealtimeTravelling = bAnimationing = false;
     bSelectable = bSelected = false;
     ChessMesh->SetOverlayMaterial(nullptr);
@@ -405,6 +428,8 @@ void AChesses::Defeated()
 	if (bDead)
 		return;
 
+    MoveEffects->CancelMove();
+
     bCaptureApproach = bCaptureLanding = bRealtimeTravelling = bAnimationing = false;
     TimeLine_ChessMove->Stop();
 
@@ -514,6 +539,7 @@ void AChesses::GenerateMove2P(TWeakObjectPtr<UChessBoard2P> board2P, TWeakObject
 void AChesses::ApplyMove(FChessMove2P Move)
 {
 	TargetPos = Position(Move.to.X, Move.to.Y); // 获取目标位置
+    MoveEffects->BeginMove();
 
 
 	bSelected = false; // 移除选中状态
@@ -539,6 +565,7 @@ void AChesses::PlayMoveAnim()
         bAnimationing = false;
         if (Board2P.IsValid() && Board2P->BoardLocs.IsValidIndex(Pos.X) && Board2P->BoardLocs[Pos.X].IsValidIndex(Pos.Y))
             SetActorLocation(Board2P->BoardLocs[Pos.X][Pos.Y]);
+        MoveEffects->FinishMove();
         if (GameState.IsValid()) GameState->OnFinishMove2P(this);
         return;
     }
