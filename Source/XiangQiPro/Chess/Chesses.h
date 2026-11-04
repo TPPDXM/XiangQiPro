@@ -67,6 +67,14 @@ protected:
 
 	bool bDead = false;
 
+    // 暂停保存播放方向与 Tick 状态，恢复时从同一位置继续，不能 PlayFromStart。
+    bool bMovementPaused = false;
+    bool bResumeActorTick = false;
+    bool bResumeMoveTimeline = false;
+    bool bResumeFadeTimeline = false;
+    bool bReverseMoveTimeline = false;
+    bool bReverseFadeTimeline = false;
+    TArray<TWeakObjectPtr<UNiagaraComponent>> PausedMoveEffects;
     bool bFengHuoMode = false;
     bool bRealtimeTravelling = false;
     bool bCaptureFadeComplete = false;
@@ -87,6 +95,7 @@ protected:
 	TObjectPtr<UCurveFloat> CF_ChessMove = nullptr;
 
 public:
+    void SetMovementPaused(bool bPaused);
 	// Sets default values for this pawn's properties
 	AChesses();
 

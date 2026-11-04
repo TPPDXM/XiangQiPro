@@ -69,7 +69,7 @@ private:
     TWeakObjectPtr<UBattleStartComponent> MusicBattleStart;
     /** 与 IsPlaying 分开记录：曲目自然播完后，联机状态同步不能再次播放。 */
     bool bFengHuoMusicStarted = false;
-    /** 与世界暂停分离：联机开菜单不暂停棋局，但本机背景音乐仍需暂停。 */
+    /** 仅单人菜单暂停音乐；联机选项菜单保持播放。 */
     bool bMusicPausedByMenu = false;
     void RefreshFengHuoMusicState();
 

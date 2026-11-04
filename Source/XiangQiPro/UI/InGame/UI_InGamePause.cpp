@@ -16,6 +16,7 @@
 void UUI_InGamePause::NativeConstruct()
 {
     Super::NativeConstruct();
+    bLeavingToMainMenu = false;
     RestartButton = Cast<UUserWidget>(GetWidgetFromName(TEXT("Btn_Restart")));
     MainMenuButton = Cast<UUserWidget>(GetWidgetFromName(TEXT("Btn_QuitMap")));
     ResignButton = Cast<UUserWidget>(GetWidgetFromName(TEXT("Btn_Resign")));
@@ -32,6 +33,11 @@ void UUI_InGamePause::NativeConstruct()
     }
     if (auto* Button = XQPButtonBinding::GetButton(ResignButton))
         Button->OnClicked.AddUniqueDynamic(this, &UUI_InGamePause::AskToResign);
+    // 悔棋按钮预置在桌面/移动端 UMG 资产中，顺序、尺寸和边距由设计器管理。
+    // 与其余按钮使用同一个 WB_Btn 组件，仅在此绑定行为；隐藏时连同 SizeBox 占位收起。
+    UndoButton = Cast<UUserWidget>(GetWidgetFromName(TEXT("Btn_Undo")));
+    if (auto* Button = XQPButtonBinding::GetButton(UndoButton))
+        Button->OnClicked.AddUniqueDynamic(this, &UUI_InGamePause::UndoMove);
     RefreshActions();
     UpdateCanTick();
 }
@@ -44,8 +50,21 @@ void UUI_InGamePause::NativeTick(const FGeometry& MyGeometry, float DeltaTime)
 
 void UUI_InGamePause::RefreshActions()
 {
+    // LeaveRoom/SetGameMode 会立刻改变按钮资格，但旧菜单还会显示约 0.25 秒。
+    // 退出期间停止状态刷新，保留可见性、文案与启用状态，交给上层转场统一淡出。
+    if (bLeavingToMainMenu) return;
     const auto* State = GetWorld()->GetGameState<AXQPGameStateBase>();
     const bool LAN = State && State->IsLANGame();
+    const bool bClassic = State && State->SupportsUndo() && !State->IsSpectator();
+    XQPButtonBinding::SetVisibility(UndoButton, bClassic ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+    if (UndoButton)
+    {
+        const auto* UndoRoom = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
+        UndoButton->SetIsEnabled(bClassic && (LAN ? UndoRoom->CanRequestUndo() : State->CanUndoLocalMove()));
+        const int32 Remaining = State ? State->GetRemainingUndoCount() : 0;
+        XQPButtonBinding::SetCaption(UndoButton, FText::FromString(Remaining == INDEX_NONE
+            ? TEXT("悔棋") : FString::Printf(TEXT("悔棋（%d）"), Remaining)));
+    }
     const auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
     XQPButtonBinding::SetVisibility(ResignButton, LAN && !Room->IsSpectator() && Room->GetState() == EXQPRoomState::Playing
         ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
@@ -54,7 +73,7 @@ void UUI_InGamePause::RefreshActions()
     XQPButtonBinding::SetCaption(RestartButton, FText::FromString(State && (State->IsGameOver() || (LAN && Room->GetState() == EXQPRoomState::Disconnected))
         ? TEXT("查看对局结果") : TEXT("重新开始")));
     if (auto* Title = Cast<UTextBlock>(GetWidgetFromName(TEXT("TextBlock_146"))))
-        Title->SetText(FText::FromString(LAN ? (Room->IsSpectator() ? TEXT("观战菜单") : TEXT("对局菜单")) : TEXT("暂停中…")));
+        Title->SetText(FText::FromString(LAN ? TEXT("选项") : TEXT("暂停中…")));
 }
 
 void UUI_InGamePause::RestartOrShowResult()
@@ -73,6 +92,9 @@ void UUI_InGamePause::RestartOrShowResult()
 
 void UUI_InGamePause::LeaveToMainMenu()
 {
+    if (bLeavingToMainMenu) return;
+    // 必须先锁定呈现状态，再清理联机与玩法；也避免重复点击产生第二次退出请求。
+    bLeavingToMainMenu = true;
     if (const auto* State = GetWorld()->GetGameState<AXQPGameStateBase>(); State && State->IsLANGame())
         GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->LeaveRoom();
     GetGameInstance<UXQPGameInstance>()->SetGameMode(EXQPGameMode::Default);
@@ -100,3 +122,11 @@ void UUI_InGamePause::ConfirmResign()
     GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->Resign();
 }
 
+
+void UUI_InGamePause::UndoMove()
+{
+    auto* State = GetWorld()->GetGameState<AXQPGameStateBase>();
+    if (!State || !State->SupportsUndo() || State->IsSpectator()) return;
+    if (State->IsLANGame()) GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->RequestUndo();
+    else if (State->UndoLocalClassicMove()) GetGameInstance()->GetSubsystem<UUIManager>()->CloseOverlays();
+}

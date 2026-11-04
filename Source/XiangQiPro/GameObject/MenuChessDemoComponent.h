@@ -29,8 +29,12 @@ public:
     void SetPresentationRoot(class USceneComponent* InRoot) { PresentationRoot = InRoot; }
     // 快速旋转只触发一次整盘飞散；旋转速度使用世界空间的弧度/秒。
     void ScatterPieces(class UStaticMeshComponent* InBoard, const FVector& AngularVelocity, class UStaticMeshComponent* InBackground = nullptr);
+    // 背景触摸使用独立场景的真实三角面拾取；球心沿法线抬高半径，球面贴地。
+    bool UpdateFingerContact(const FVector& RayOrigin, const FVector& RayDirection, int32 FingerIndex, bool bBegin = false);
+    void EndFingerContact(int32 FingerIndex = INDEX_NONE);
+    bool IsTransitioning() const { return bResetTransition; }
     bool HasScatteredPieces() const { return bPiecesScattered; }
-    // 平滑回正完成后才重建下一盘；普通旋转回正不会调用此方法。
+    // 所有棋盘回正入口共用渐隐/渐显换盘，包括未触发飞散的普通旋转。
     void AdvanceAfterScatter();
     float GetScatterTriggerSpeed() const { return ScatterTriggerSpeed; }
 
@@ -87,8 +91,9 @@ private:
     UPROPERTY() TArray<TObjectPtr<class UStaticMeshComponent>> Pieces;
     UPROPERTY() TArray<TObjectPtr<class UDecalComponent>> Labels;
     UPROPERTY() TObjectPtr<class UStaticMesh> PieceMesh;
+    UPROPERTY() TObjectPtr<class UMaterialInterface> MenuLabelMaterial;
     // 菜单独立的 Chaos 刚体场景：棋子用模型凸壳，棋盘和背景用模型三角面。
-    // 可见组件仍不加入世界物理；只注册棋子与两个表面的碰撞对，不占项目碰撞通道。
+    // 可见组件仍不加入世界物理；注册棋子互碰、两个表面及手指球体的碰撞对，不占项目碰撞通道。
     TPimplPtr<FMenuScatterSimulation> ScatterSimulation;
     TWeakObjectPtr<class UStaticMeshComponent> ScatterBoard;
     TWeakObjectPtr<class UStaticMeshComponent> ScatterBackground;
@@ -104,6 +109,12 @@ private:
     bool bMoving = false;
     bool bFinished = false;
     EChessColor Side = EChessColor::REDCHESS;
+    // 移动端所有换盘入口共用两阶段过渡，完全透明时才替换组件和局部物理场景。
+    bool bResetTransition = false;
+    bool bFadingIn = false;
+    float TransitionTime = 0.f;
+    void BeginResetTransition();
+    void SetPieceOpacity(float Opacity);
     void ResetBoard();
     void ClearPieces();
     void FinishMove();

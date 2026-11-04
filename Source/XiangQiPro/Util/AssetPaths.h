@@ -74,3 +74,6 @@
 #define PATH_UI_SPECTATOR_FENGHUO TEXT("/Game/UMG/Spectator/BP_UI_SpectatorFengHuo.BP_UI_SpectatorFengHuo_C")
 #define PATH_UI_TRANSITIONSCREEN TEXT("/Game/UMG/Util/BP_UI_TransitionScreen.BP_UI_TransitionScreen_C")
 #define PATH_UI_TRANSITIONSCREEN_ASSET TEXT("/Game/UMG/Util/BP_UI_TransitionScreen")
+
+// 菜单字样保留原 Mask/Color 参数，额外提供独立的渐隐透明度。
+#define PATH_M_MENU_CHESSMASK TEXT("/Game/Material/Decal/ChessMask/M_MenuChessMask.M_MenuChessMask")

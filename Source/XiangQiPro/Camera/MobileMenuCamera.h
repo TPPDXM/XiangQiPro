@@ -17,6 +17,9 @@ public:
     // 以实际棋盘包围盒判断触摸起点，标题、按钮和棋盘外的滑动不会启动旋转。
     bool IsBoardTouchPosition(const FVector2D& ScreenPosition) const;
     // 手势按屏幕轴自由旋转，不限制横向或纵向翻转角度；棋子共用展示枢轴。
+    // 触控起点不在棋盘时，尝试在背景三角面上开启推棋；与旋转手势互斥。
+    bool UpdateBackgroundInteraction(const FVector2D& ScreenPosition, int32 FingerIndex, bool bBegin = false);
+    void EndBackgroundInteraction(int32 FingerIndex = INDEX_NONE);
     void RotateBoard(const FVector2D& ScreenDelta);
     void BeginBoardInteraction();
     void EndBoardInteraction(bool bAllowInertia);

@@ -66,8 +66,15 @@ void AXQPGameStateBase::CancelAIRequest()
 // 暂停时允许后台完成计算，但暂停期间不提交走法。
 void AXQPGameStateBase::GamePause(UObject* OwnerObject)
 {
-    if (IsLANGame()) return; // 联机菜单不暂停双方棋盘或连接。
+    if (IsLANGame())
+    {
+        // 旧版菜单蓝图可能尝试暂停世界；联机始终继续，并且不触发单人暂停蓝图。
+        UGameplayStatics::SetGamePaused(this, false);
+        return;
+    }
     bAIPaused = true;
+    // 独立冻结时间线与吃子 Actor Tick；后台搜索保留，完成结果仍缓存到恢复时。
+    for (TActorIterator<AChesses> It(GetWorld()); It; ++It) It->SetMovementPaused(true);
     UGameplayStatics::SetGamePaused(this, true);
     IIF_GameState::GamePause(OwnerObject);
 }
@@ -78,6 +85,7 @@ void AXQPGameStateBase::GameResume(UObject* OwnerObject)
     if (IsLANGame()) return;
     UGameplayStatics::SetGamePaused(this, false);
     bAIPaused = false;
+    for (TActorIterator<AChesses> It(GetWorld()); It; ++It) It->SetMovementPaused(false);
     if (bHasPendingAIResult)
     {
         const FChessSearchResult Result = PendingAIResult;
@@ -125,6 +133,8 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
     if (!IsValid(board2P) || !IsValid(AI2P)) return;
     board2PActor = InBoard2PActor;
     score1 = score2 = score3 = 0;
+    ClassicUndoHistory.Reset();
+    EndingUndoRemaining = 3;
     bUseMoveScores = !IsFengHuoBattle() && GI->GetGameMode() != EXQPGameMode::SoloRide && GI->GetGameMode() != EXQPGameMode::GuessWho;
     bGameOver = false;
     bClassicDraw = false;
@@ -241,6 +251,18 @@ void AXQPGameStateBase::ApplyMove2P(TWeakObjectPtr<AChesses> Target, FChessMove2
     {
         if (IsMyTurn()) GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->SubmitMove(Move);
         return;
+    }
+    if (SupportsUndo())
+    {
+        FClassicUndoFrame& Frame = ClassicUndoHistory.AddDefaulted_GetRef();
+        Frame.Position = board2P->CreateSnapshot();
+        Frame.DrawHistory = ClassicDrawHistory;
+        Frame.CheckHistory = board2P->GetCheckHistory();
+        Frame.Turn = battleTurn;
+        Frame.RedScore = score1;
+        Frame.BlackScore = score2;
+        Frame.RecordCount = HUD2P.IsValid() ? HUD2P->GetOperatingRecordCount() : 0;
+        Frame.EndingMoves = EndingMoveCount;
     }
     bMoveInProgress = true;
     // 只记录已经验证、即将提交的实际走法；搜索试走不进入和棋计数。
@@ -602,4 +624,106 @@ void AXQPGameStateBase::SwitchBattleTurn()
     case EBattleType::P2_AI: battleTurn = battleTurn == EPlayerTag::AI ? EPlayerTag::P1 : EPlayerTag::AI; break;
     default: break;
     }
+}
+
+bool AXQPGameStateBase::IsClassicBattle() const
+{
+    const auto* GI = GetGameInstance<UXQPGameInstance>();
+    return GI && (GI->GetGameMode() == EXQPGameMode::AI2P || GI->GetGameMode() == EXQPGameMode::LAN);
+}
+
+int32 AXQPGameStateBase::GetClassicUndoPlies(EChessColor Requester) const
+{
+    if (!SupportsUndo() || !BattleStart->HasStarted() || bGameOver || bEndingPlay || (bMoveInProgress && !IsGameplayFrozen()) ||
+        !IsValid(board2P) || !board2PActor.IsValid()) return 0;
+    // 回到申请方最近一次落子前：对方已经应手时同时撤回应手；不允许撤回自己未下过的棋。
+    for (int32 I = ClassicUndoHistory.Num() - 1; I >= FMath::Max(0, ClassicUndoHistory.Num() - 2); --I)
+    {
+        const EChessColor Color = ClassicUndoHistory[I].Turn == EPlayerTag::P1 ? EChessColor::REDCHESS : EChessColor::BLACKCHESS;
+        if (Color == Requester) return ClassicUndoHistory.Num() - I;
+    }
+    return 0;
+}
+
+void AXQPGameStateBase::RestoreClassicPosition(const FChessPosition& Position, EPlayerTag Turn, int32 RedScore, int32 BlackScore)
+{
+    // 先令后台结果失效，再销毁旧棋子（包括尚在播放消散的被吃棋子）。
+    // 重新生成值快照确保被吃棋子、马炮身份及落子点全部一致，不倒放带副作用的移动动画。
+    CancelAIRequest();
+    DismissSettingPoint2P();
+    for (TActorIterator<AChesses> It(GetWorld()); It; ++It) It->Destroy();
+    board2P->InitializeBoard(board2PActor);
+    board2PActor->GenerateFromPosition(Position);
+    battleTurn = Turn;
+    board2P->SetSideToMove(GetTurnColor());
+    bMoveInProgress = false;
+    score1 = RedScore;
+    score2 = BlackScore;
+    UpdateScore();
+    if (HUD2P.IsValid()) HUD2P->SetAITurn(battleTurn == EPlayerTag::AI);
+}
+
+bool AXQPGameStateBase::UndoClassicMoves(int32 Plies)
+{
+    if (!SupportsUndo() || (bMoveInProgress && !IsGameplayFrozen()) || bGameOver || bEndingPlay || !board2PActor.IsValid() ||
+        !IsValid(board2P) || Plies <= 0 || Plies > ClassicUndoHistory.Num()) return false;
+    const int32 KeepCount = ClassicUndoHistory.Num() - Plies;
+    const FClassicUndoFrame Frame = ClassicUndoHistory[KeepCount];
+    RestoreClassicPosition(Frame.Position, Frame.Turn, Frame.RedScore, Frame.BlackScore);
+    board2P->CheckHistory = Frame.CheckHistory;
+    ClassicDrawHistory = Frame.DrawHistory;
+    EndingMoveCount = Frame.EndingMoves;
+    ClassicUndoHistory.SetNum(KeepCount);
+    if (HUD2P.IsValid()) HUD2P->TruncateOperatingRecord(Frame.RecordCount);
+    // 连战继续存档也必须保存回退后的局面与分数，避免退出重进恢复到悔棋之前。
+    if (bEnableMachineLearning)
+        GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>()->SaveBoard(Frame.Position, GetTurnColor(), score1, score2, &ClassicDrawHistory);
+    return true;
+}
+
+bool AXQPGameStateBase::UndoLocalClassicMove()
+{
+    if (!CanUndoLocalMove()) return false;
+    if (!UndoClassicMoves(GetClassicUndoPlies(EChessColor::REDCHESS))) return false;
+    // 机会独立于局面快照；退回初始棋盘也不返还已用次数。
+    if (CurrentEndingIndex != INDEX_NONE) --EndingUndoRemaining;
+    return true;
+}
+
+bool AXQPGameStateBase::ApplyClassicUndoSnapshot(const FChessPosition& Position, EChessColor Turn, int32 RedScore, int32 BlackScore, int32 Plies)
+{
+    if (!IsLANGame() || !IsClassicBattle() || bEndingPlay || bMoveInProgress || !board2PActor.IsValid() || !IsValid(board2P)) return false;
+    // 正常棋手有完整历史；中途观战或尚未播完排队走法时，直接采用权威快照。
+    if (!bGameOver && ClassicUndoHistory.Num() >= Plies && Plies > 0 &&
+        ClassicUndoHistory[ClassicUndoHistory.Num() - Plies].Position.Hash(Turn) == Position.Hash(Turn))
+        return UndoClassicMoves(Plies);
+    const int32 KeepRecords = HUD2P.IsValid() ? FMath::Max(0, HUD2P->GetOperatingRecordCount() - Plies) : 0;
+    RestoreClassicPosition(Position, Turn == EChessColor::REDCHESS ? EPlayerTag::P1 : EPlayerTag::P2, RedScore, BlackScore);
+    ClassicUndoHistory.Reset();
+    ClassicDrawHistory.Reset(Position, Turn);
+    if (HUD2P.IsValid()) HUD2P->TruncateOperatingRecord(KeepRecords);
+    return true;
+}
+
+// 只有经典人机、经典联机与残局有悔棋；Pro/烽火无论单人或多人均不提供。
+bool AXQPGameStateBase::SupportsUndo() const
+{
+    const auto* GI = GetGameInstance<UXQPGameInstance>();
+    return GI && (IsClassicBattle() || GI->GetGameMode() == EXQPGameMode::Ending);
+}
+
+int32 AXQPGameStateBase::GetRemainingUndoCount() const
+{
+    if (!SupportsUndo() || IsSpectator()) return 0;
+    if (IsLANGame())
+    {
+        const auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
+        return Room->GetRemainingUndoCount(Room->GetLocalColor());
+    }
+    return CurrentEndingIndex != INDEX_NONE ? EndingUndoRemaining : INDEX_NONE;
+}
+
+bool AXQPGameStateBase::CanUndoLocalMove() const
+{
+    return !IsLANGame() && !IsSpectator() && GetRemainingUndoCount() != 0 && GetClassicUndoPlies(EChessColor::REDCHESS) > 0;
 }

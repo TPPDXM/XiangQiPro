@@ -8,6 +8,7 @@
 #include "CoreMinimal.h"
 #include "XiangQiPro/AI/ChessSearch.h"
 #include "XiangQiPro/AI/ChessDrawHistory.h"
+#include "XiangQiPro/AI/ChessCheckHistory.h"
 #include "GameFramework/GameStateBase.h"
 #include "XQPGameStateBase.generated.h"
 
@@ -39,6 +40,20 @@ enum class EPlayerTag : uint8
 	P1 = 1,
 	P2 = 2,
 	P3 = 3
+};
+
+// 每次正式提交前保留值类型快照。不能持有棋子 Actor，因为吃子动画会销毁它。
+// 分数及规则历史与局面一起回退，避免悔棋重复计分或遗留长将/自然限着次数。
+struct FClassicUndoFrame
+{
+    FChessPosition Position;
+    FChessDrawHistory DrawHistory;
+    FChessCheckHistory CheckHistory;
+    EPlayerTag Turn = EPlayerTag::P1;
+    int32 RedScore = 0;
+    int32 BlackScore = 0;
+    int32 RecordCount = 0;
+    int32 EndingMoves = 0;
 };
 
 /**
@@ -197,6 +212,18 @@ public:
     bool CanApplyNetworkMove() const;
     void ApplyNetworkMove(const FChessMove2P& Move);
     EChessColor GetTurnColor() const { return battleTurn == EPlayerTag::P1 ? EChessColor::REDCHESS : EChessColor::BLACKCHESS; }
+    // 经典与残局开放；单人暂停冻结动画后可安全回退，联机须等待动画完成。
+    bool IsClassicBattle() const;
+    bool SupportsUndo() const;
+    // -1 表示普通单人无限次；残局和联机返回本局剩余次数，计数不随棋局回退。
+    int32 GetRemainingUndoCount() const;
+    bool CanUndoLocalMove() const;
+    bool IsGameplayFrozen() const { return bAIPaused && !IsLANGame(); }
+    int32 GetClassicUndoPlies(EChessColor Requester) const;
+    bool UndoClassicMoves(int32 Plies);
+    bool UndoLocalClassicMove();
+    // 观战可能中途加入而没有完整历史，使用权威快照恢复，并清除本地旧提示。
+    bool ApplyClassicUndoSnapshot(const FChessPosition& Position, EChessColor Turn, int32 RedScore, int32 BlackScore, int32 Plies);
     bool IsGameOver() const { return bGameOver; }
     bool IsClassicDraw() const { return bClassicDraw; }
     FString GetClassicDrawReasonText() const;
@@ -214,6 +241,10 @@ private:
     bool bClassicDraw = false;
     EClassicDrawReason ClassicDrawReason = EClassicDrawReason::None;
     FChessDrawHistory ClassicDrawHistory;
+    TArray<FClassicUndoFrame> ClassicUndoHistory;
+    int32 EndingUndoRemaining = 3;
+    void RestoreClassicPosition(const FChessPosition& Position, EPlayerTag Turn, int32 RedScore, int32 BlackScore);
+
     bool CheckClassicDraw();
     void FinishClassicDraw(EClassicDrawReason Reason);
 

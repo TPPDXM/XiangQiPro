@@ -7,6 +7,8 @@
 #include "Materials/MaterialInterface.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Chaos/ImplicitObjectUnion.h"
+#include "Chaos/Sphere.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Chaos/PBDRigidsSOAs.h"
 #include "Chaos/Collision/PBDCollisionSolverSettings.h"
 #include "Physics/Experimental/ChaosInterfaceUtils.h"
@@ -26,7 +28,17 @@ struct FMenuScatterSimulation
     TArray<ImmediatePhysics::FActorHandle*> Pieces;
     TArray<float> RestSeconds;
     TArray<bool> SleepingPieces;
+    TArray<FVector> BoardContactNormals;
     FTransform PreviousBackgroundTransform;
+    // 预分配移动端支持的十个触点，按触点编号独立开启碰撞，不在物理步中增删刚体。
+    struct FFinger
+    {
+        ImmediatePhysics::FActorHandle* Actor = nullptr;
+        FVector Target = FVector::ZeroVector;
+        bool bActive = false;
+    };
+    FFinger Fingers[10];
+    static constexpr float FingerRadius = 4.5f;
 };
 
 namespace
@@ -174,6 +186,8 @@ UMenuChessDemoComponent::UMenuChessDemoComponent()
     PrimaryComponentTick.bCanEverTick = true;
     static ConstructorHelpers::FObjectFinder<UStaticMesh> Mesh(PATH_PACKAGE_SM_CHESS);
     PieceMesh = Mesh.Object;
+    static ConstructorHelpers::FObjectFinder<UMaterialInterface> LabelMaterial(PATH_M_MENU_CHESSMASK);
+    MenuLabelMaterial = LabelMaterial.Object;
 }
 
 UMenuChessDemoComponent::~UMenuChessDemoComponent() = default;
@@ -243,7 +257,16 @@ void UMenuChessDemoComponent::ResetBoard()
         const FString MaterialPath = FString::Printf(PATH_MI_CHESSMASK_FORMAT,
             IsRed ? TEXT("red") : TEXT("black"), IsRed ? TEXT("rad") : TEXT("black"),
             IsRed ? RedNames[static_cast<int32>(Piece.Type)] : BlackNames[static_cast<int32>(Piece.Type)]);
-        Label->SetDecalMaterial(LoadObject<UMaterialInterface>(nullptr, *MaterialPath));
+        UMaterialInterface* SourceLabel = LoadObject<UMaterialInterface>(nullptr, *MaterialPath);
+        if (PresentationRoot && MenuLabelMaterial)
+        {
+            // 独立菜单材质继承每个字样实例的完整纹理/颜色参数；不改正式棋子的贴花材质。
+            auto* Material = UMaterialInstanceDynamic::Create(MenuLabelMaterial, Label);
+            Material->CopyMaterialUniformParameters(SourceLabel);
+            Material->SetScalarParameterValue(TEXT("MenuOpacity"), 1.f);
+            Label->SetDecalMaterial(Material);
+        }
+        else Label->SetDecalMaterial(SourceLabel);
         Label->SetFadeScreenSize(0.f);
         Label->RegisterComponent();
         Labels[I] = Label;
@@ -253,6 +276,28 @@ void UMenuChessDemoComponent::ResetBoard()
 void UMenuChessDemoComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+    if (bResetTransition)
+    {
+        // 暂停棋谱和散落模拟，所有棋子及字样在同一时间轴上渐隐/渐显。
+        // 不提前销毁散落棋子；换盘只发生在淡出完全结束的那一帧。
+        constexpr float FadeSeconds = .35f;
+        TransitionTime = FMath::Min(TransitionTime + DeltaTime, FadeSeconds);
+        const float Alpha = FMath::SmoothStep(0.f, 1.f, TransitionTime / FadeSeconds);
+        SetPieceOpacity(bFadingIn ? Alpha : 1.f - Alpha);
+        if (TransitionTime >= FadeSeconds)
+        {
+            if (!bFadingIn)
+            {
+                Episode = Episode % 3 + 1;
+                ResetBoard();
+                SetPieceOpacity(0.f);
+                bFadingIn = true;
+                TransitionTime = 0.f;
+            }
+            else bResetTransition = false;
+        }
+        return;
+    }
     if (bPiecesScattered)
     {
         TickScatteredPieces(DeltaTime);
@@ -262,7 +307,7 @@ void UMenuChessDemoComponent::TickComponent(float DeltaTime, ELevelTick TickType
     {
         Wait -= DeltaTime;
         if (Wait > 0) return;
-        if (bFinished) { Episode = Episode % 3 + 1; ResetBoard(); return; }
+        if (bFinished) { BeginResetTransition(); return; }
         if (!Game.Moves.IsValidIndex(Ply)) return;
         Moving = Game.Moves[Ply];
         // Validate the replay against the same rules used by real matches.
@@ -305,7 +350,7 @@ void UMenuChessDemoComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void UMenuChessDemoComponent::ScatterPieces(UStaticMeshComponent* InBoard, const FVector& AngularVelocity, UStaticMeshComponent* InBackground)
 {
-    if (bPiecesScattered || !PresentationRoot || !InBoard || !PieceMesh) return;
+    if (bResetTransition || bPiecesScattered || !PresentationRoot || !InBoard || !PieceMesh) return;
     UBodySetup* PieceBody = PieceMesh->GetBodySetup();
     if (!PieceBody || PieceBody->AggGeom.ConvexElems.IsEmpty() || PieceBody->GetCollisionTraceFlag() == CTF_UseComplexAsSimple)
     {
@@ -325,6 +370,7 @@ void UMenuChessDemoComponent::ScatterPieces(UStaticMeshComponent* InBoard, const
     Simulation->Pieces.SetNumZeroed(Pieces.Num());
     Simulation->RestSeconds.SetNumZeroed(Pieces.Num());
     Simulation->SleepingPieces.SetNumZeroed(Pieces.Num());
+    Simulation->BoardContactNormals.SetNumZeroed(Pieces.Num());
     if (InBackground) Simulation->PreviousBackgroundTransform = InBackground->GetComponentTransform();
     Simulation->Scene.SetSolverSettings(1.f / 120.f, .2f, FMath::Max(0.f, MaxSeparationSpeed), -1, 8, 4, 1, 1);
     const FVector Center = PresentationRoot->GetComponentLocation();
@@ -373,8 +419,22 @@ void UMenuChessDemoComponent::ScatterPieces(UStaticMeshComponent* InBoard, const
         Actor->SetMaxDepenetrationVelocity(FMath::Max(0.f, MaxSeparationSpeed));
         Actor->SetCCDEnabled(true);
     }
-    // 只添加两个表面与动态棋子的配对。棋子之间没有接触，背景也不会突然与
-    // 棋盘或正式对局碰撞；不需要修改项目全局碰撞通道或共享静态网格资产。
+    // 手指是局部物理场景中的运动学球体，不渲染、不加入世界碰撞通道。
+    for (auto& Finger : Simulation->Fingers)
+    {
+        ImmediatePhysics::FActorSetup FingerSetup;
+        FingerSetup.ActorType = ImmediatePhysics::EActorType::KinematicActor;
+        FingerSetup.CollisionEnabled = ECollisionEnabled::PhysicsOnly;
+        FingerSetup.Geometry = MakeImplicitObjectPtr<Chaos::TSphere<Chaos::FReal, 3>>(
+            Chaos::FVec3(0), FMenuScatterSimulation::FingerRadius);
+        FingerSetup.Transform = FTransform(InBackground ? InBackground->GetComponentLocation() : Center);
+        FingerSetup.Material = MakeUnique<Chaos::FChaosPhysicsMaterial>();
+        FingerSetup.Material->Friction = .6f;
+        FingerSetup.Material->Restitution = 0.f;
+        Finger.Actor = Simulation->Scene.CreateActor(MoveTemp(FingerSetup));
+    }
+    // 每颗棋子都注册与其它动态棋子的接触，保持表面之间互不碰撞。
+    // 这些配对始终留在同一个菜单专用场景，不会影响正式棋局或共享网格资源。
     // 新建的 ImmediatePhysics 动态体默认 Disabled；显式启用后才能进入接触配对。
     // UE 5.8 默认按 ActiveBodyIndices 激活，只有数量而索引为空会把所有棋子
     // 标记为 Disabled：轻量积分器仍更新弹道，但碰撞配对会全部被剔除。
@@ -383,6 +443,19 @@ void UMenuChessDemoComponent::ScatterPieces(UStaticMeshComponent* InBoard, const
     Simulation->Scene.SetNumActiveBodies(ActiveBodies.Num(), ActiveBodies);
     Simulation->Scene.AddToCollidingPairs(Simulation->Board);
     if (Simulation->Background) Simulation->Scene.AddToCollidingPairs(Simulation->Background);
+    for (auto* PieceActor : Simulation->Pieces)
+        if (PieceActor) Simulation->Scene.AddToCollidingPairs(PieceActor);
+    for (auto& Finger : Simulation->Fingers)
+    {
+        Simulation->Scene.AddToCollidingPairs(Finger.Actor);
+        Simulation->Scene.SetHasCollision(Finger.Actor, false);
+    }
+    // 自适应子步要求求解器精确使用本次步长，不能沿用布娃娃的平滑步长或最小步长。
+    PRAGMA_DISABLE_DEPRECATION_WARNINGS
+    Simulation->Scene.SetMaxNumRollingAverageStepTimes(1);
+    Simulation->Scene.SetUseMinStepTime(false);
+    Simulation->Scene.SetUseFixedStepTolerance(false);
+    PRAGMA_ENABLE_DEPRECATION_WARNINGS
     ScatterBoard = InBoard;
     ScatterBackground = InBackground;
     ScatterSimulation = MoveTemp(Simulation);
@@ -393,30 +466,148 @@ void UMenuChessDemoComponent::TickScatteredPieces(float DeltaTime)
 {
     if (!ScatterSimulation || !ScatterBoard.IsValid() || DeltaTime <= 0.f) return;
     auto& Simulation = *ScatterSimulation;
-    // 运动学目标在子步中插值，棋盘继续自由旋转时仍按实际模型接触。将单帧
-    // 补算限制为 0.1 秒，恢复前台时不会一次跨过薄棋盘或产生巨大的抛出速度。
-    // 轻量求解器不提供世界场景的自动睡眠/唤醒。休眠的棋子仍保留模型，
-    // 棋盘靠近或背景发生移动时主动唤醒；包围盒仅用于唤醒粗筛，接触仍由模型求解。
-    const bool BackgroundMoved = ScatterBackground.IsValid() &&
-        !ScatterBackground->GetComponentTransform().Equals(Simulation.PreviousBackgroundTransform, .001f);
-    for (int32 I = 0; I < Pieces.Num(); ++I)
-        if (Pieces[I] && Simulation.SleepingPieces[I] &&
-            (BackgroundMoved || ScatterBoard->Bounds.GetBox().Intersect(Pieces[I]->Bounds.GetBox())))
+    // CCD 对运动学三角网格的大角度旋转并不足够。按“最远盘角 + 最快棋子”
+    // 每步最多移动 0.5cm 细分，并逐步设置棋盘目标，避免薄棋盘跨过棋子。
+    // 同样细分手指的扫动路径，快速划过时也不会直接跳到棋子的另一侧。
+    const FTransform BoardStart = Simulation.Board->GetWorldTransform();
+    const FTransform BoardEnd = ScatterBoard->GetComponentTransform();
+    const FTransform BackgroundStart = Simulation.Background ? Simulation.Background->GetWorldTransform() : FTransform::Identity;
+    const FTransform BackgroundEnd = ScatterBackground.IsValid() ? ScatterBackground->GetComponentTransform() : BackgroundStart;
+    FVector FingerStarts[10];
+    double FingerTravel = 0.;
+    bool bFingerActive = false;
+    for (int32 I = 0; I < UE_ARRAY_COUNT(Simulation.Fingers); ++I)
+    {
+        const auto& Finger = Simulation.Fingers[I];
+        FingerStarts[I] = Finger.Actor->GetWorldTransform().GetLocation();
+        if (Finger.bActive)
         {
-            Simulation.Pieces[I]->GetParticle()->CastToRigidParticle()->SetSleeping(false);
-            Simulation.SleepingPieces[I] = false;
-            Simulation.RestSeconds[I] = 0.f;
+            bFingerActive = true;
+            FingerTravel = FMath::Max(FingerTravel, FVector::Distance(FingerStarts[I], Finger.Target));
         }
-    Simulation.Board->SetKinematicTarget(ScatterBoard->GetComponentTransform());
-    if (Simulation.Background && ScatterBackground.IsValid())
-        Simulation.Background->SetKinematicTarget(ScatterBackground->GetComponentTransform());
-    // ImmediatePhysics 默认面向布娃娃，会关闭静摩擦。此处局部开启静摩擦求解，
-    // 让落平后的棋子保持原位；不靠任意角度锁死姿态来消除滚动。
+    }
+    const float Duration = FMath::Min(DeltaTime, .1f);
+    const double BoardTravel = BoardStart.GetRotation().AngularDistance(BoardEnd.GetRotation()) * ScatterBoard->Bounds.SphereRadius
+        + FVector::Distance(BoardStart.GetLocation(), BoardEnd.GetLocation());
+    const double BackgroundTravel = FVector::Distance(BackgroundStart.GetLocation(), BackgroundEnd.GetLocation())
+        + BackgroundStart.GetRotation().AngularDistance(BackgroundEnd.GetRotation())
+            * (ScatterBackground.IsValid() ? ScatterBackground->Bounds.SphereRadius : 0.);
+    double PieceSpeed = 0.;
+    bool bMovingPiece = false;
+    for (int32 I = 0; I < Simulation.Pieces.Num(); ++I)
+        if (auto* Actor = Simulation.Pieces[I])
+        {
+            PieceSpeed = FMath::Max(PieceSpeed, Actor->GetLinearVelocity().Size());
+            bMovingPiece |= !Simulation.SleepingPieces[I] && Actor->GetLinearVelocity().SizeSquared() > .01;
+        }
+    const int32 Steps = FMath::Max(FMath::CeilToInt(Duration * 120.f),
+        FMath::CeilToInt((FMath::Max3(BoardTravel, FingerTravel, BackgroundTravel) + PieceSpeed * Duration) / .5));
+    const float StepTime = Duration / FMath::Max(1, Steps);
+    Simulation.Scene.SetSolverSettings(StepTime, .2f, FMath::Max(0.f, MaxSeparationSpeed), -1, 8, 4, 1, 1);
+    // 睡眠体也必须能被另一颗活动棋子、扫动的棋盘或手指唤醒，否则互碰仍会穿透。
+    if (BoardTravel > .001 || BackgroundTravel > .001 || bFingerActive || bMovingPiece)
+        for (int32 I = 0; I < Simulation.Pieces.Num(); ++I)
+            if (Simulation.Pieces[I] && Simulation.SleepingPieces[I])
+            {
+                Simulation.Pieces[I]->GetParticle()->CastToRigidParticle()->SetSleeping(false);
+                Simulation.SleepingPieces[I] = false;
+                Simulation.RestSeconds[I] = 0.f;
+            }
     auto ContactSettings = Simulation.Scene.GetCollisionSolverSettings();
     ContactSettings.NumPositionFrictionIterations = 4;
     ContactSettings.NumVelocityFrictionIterations = 1;
     ContactSettings.MaxPushOutVelocity = FMath::Max(0.f, MaxSeparationSpeed);
-    Simulation.Scene.Simulate(FMath::Min(DeltaTime, .1f), 1.f / 120.f, 12, FVector(0, 0, -FMath::Max(0.f, ScatterGravity)), nullptr, &ContactSettings);
+    TArray<FVector> PieceStepStarts;
+    PieceStepStarts.SetNum(Simulation.Pieces.Num());
+    for (int32 Step = 1; Step <= Steps; ++Step)
+    {
+        const FTransform PreviousBoard = Simulation.Board->GetWorldTransform();
+        if (BoardTravel > .001)
+            for (int32 I = 0; I < Simulation.Pieces.Num(); ++I)
+                if (Simulation.Pieces[I]) PieceStepStarts[I] = Simulation.Pieces[I]->GetWorldTransform().GetLocation();
+        const float Alpha = float(Step) / Steps;
+        FTransform Target;
+        Target.Blend(BoardStart, BoardEnd, Alpha);
+        Simulation.Board->SetKinematicTarget(Target);
+        if (Simulation.Background)
+        {
+            Target.Blend(BackgroundStart, BackgroundEnd, Alpha);
+            Simulation.Background->SetKinematicTarget(Target);
+        }
+        for (int32 I = 0; I < UE_ARRAY_COUNT(Simulation.Fingers); ++I)
+            if (Simulation.Fingers[I].bActive)
+                Simulation.Fingers[I].Actor->SetKinematicTarget(FTransform(FMath::Lerp(FingerStarts[I], Simulation.Fingers[I].Target, Alpha)));
+        Simulation.Scene.Simulate(StepTime, StepTime, 1, FVector(0, 0, -FMath::Max(0.f, ScatterGravity)), nullptr, &ContactSettings);
+        if (BoardTravel > .001)
+        {
+            // 极速转盘的运动学表面速度可能远高于棋子限速，仅靠接触冲量仍可能
+            // 把表面压过棋子。对本子步的相对路径再做模型三角面射线，若中心确实
+            // 穿越了盘面，则按真实凸壳支撑距离投回原接触侧。几何仍来自烘焙资产，
+            // 不用外接盒代替棋盘；位置约束也不要求取消飞行速度上限。
+            const FTransform CurrentBoard = Simulation.Board->GetWorldTransform();
+            for (int32 I = 0; I < Simulation.Pieces.Num(); ++I)
+            {
+                auto* Actor = Simulation.Pieces[I];
+                if (!Actor || !Actor->GetHasCollision()) continue;
+                FTransform PieceTransform = Actor->GetWorldTransform();
+                const FVector LocalStart = PreviousBoard.InverseTransformPositionNoScale(PieceStepStarts[I]);
+                const FVector LocalEnd = CurrentBoard.InverseTransformPositionNoScale(PieceTransform.GetLocation());
+                const FVector Travel = LocalEnd - LocalStart;
+                const double Length = Travel.Size();
+                if (Length < UE_SMALL_NUMBER) continue;
+                Chaos::FReal HitTime;
+                Chaos::FVec3 HitPoint, HitNormal;
+                int32 Face;
+                const bool bCrossed = Simulation.Board->GetParticle()->GetGeometry()->Raycast(
+                    LocalStart, Travel / Length, Length, 0.f, HitTime, HitPoint, HitNormal, Face);
+                if (bCrossed)
+                {
+                    if (FVector::DotProduct(HitNormal, Travel) > 0.) HitNormal = -HitNormal;
+                    Simulation.BoardContactNormals[I] = HitNormal;
+                }
+                else
+                {
+                    // 中心尚未再次穿面时，也要沿已接触侧检查完整凸壳。否则限速后的
+                    // 棋子虽没有换侧，盘面仍可能逐步压进半个棋子，直到下一次中心穿越。
+                    HitNormal = Simulation.BoardContactNormals[I];
+                    if (HitNormal.IsNearlyZero()) continue;
+                    const float Radius = PieceMesh->GetBounds().SphereRadius * Pieces[I]->GetComponentScale().GetAbsMax() + 1.f;
+                    Chaos::FVec3 SurfaceNormal;
+                    if (!Simulation.Board->GetParticle()->GetGeometry()->Raycast(
+                        LocalEnd + HitNormal * Radius, -HitNormal, Radius * 2.f, 0.f, HitTime, HitPoint, SurfaceNormal, Face))
+                    {
+                        Simulation.BoardContactNormals[I] = FVector::ZeroVector;
+                        continue;
+                    }
+                }
+                const FVector Normal = CurrentBoard.TransformVectorNoScale(HitNormal).GetSafeNormal();
+                const FVector Contact = CurrentBoard.TransformPositionNoScale(HitPoint);
+                const FVector Center = PieceTransform.GetLocation();
+                PieceTransform.SetScale3D(Pieces[I]->GetComponentScale());
+                double MinSupport = 0.;
+                for (const auto& Hull : PieceMesh->GetBodySetup()->AggGeom.ConvexElems)
+                    for (const FVector& Vertex : Hull.VertexData)
+                        MinSupport = FMath::Min(MinSupport, FVector::DotProduct(
+                            PieceTransform.TransformPosition(Hull.GetTransform().TransformPosition(Vertex)) - Center, Normal));
+                const double Push = .02 - MinSupport - FVector::DotProduct(Center - Contact, Normal);
+                if (Push < -.2) Simulation.BoardContactNormals[I] = FVector::ZeroVector;
+                if (Push > 0.)
+                {
+                    // SetWorldTransform 保留求解后的速度/姿态；缩放已烘进几何，不能重复应用。
+                    FTransform Corrected = Actor->GetWorldTransform();
+                    Corrected.SetLocation(Center + Normal * Push);
+                    Actor->SetWorldTransform(Corrected);
+                }
+            }
+        }
+        // 每个子步都限速，避免接触高速运动学表面后，在本帧剩余子步继续失控加速。
+        for (auto* Actor : Simulation.Pieces)
+            if (Actor)
+            {
+                Actor->SetLinearVelocity(Actor->GetLinearVelocity().GetClampedToMaxSize(FMath::Max(0.f, FlightLinearSpeedLimit)));
+                Actor->SetAngularVelocity(Actor->GetAngularVelocity().GetClampedToMaxSize(FMath::Max(0.f, FlightAngularSpeedLimit)));
+            }
+    }
     for (int32 I = 0; I < Pieces.Num(); ++I)
     {
         if (UStaticMeshComponent* Piece = Pieces[I])
@@ -476,10 +667,76 @@ void UMenuChessDemoComponent::TickScatteredPieces(float DeltaTime)
     if (ScatterBackground.IsValid()) Simulation.PreviousBackgroundTransform = ScatterBackground->GetComponentTransform();
 }
 
+bool UMenuChessDemoComponent::UpdateFingerContact(const FVector& RayOrigin, const FVector& RayDirection, int32 FingerIndex, bool bBegin)
+{
+    if (!ScatterSimulation || !ScatterSimulation->Background || bResetTransition || FingerIndex < 0 || FingerIndex >= 10) return false;
+    auto& Simulation = *ScatterSimulation;
+    const FTransform Surface = Simulation.Background->GetWorldTransform();
+    Chaos::FReal Time;
+    Chaos::FVec3 Point, Normal;
+    int32 Face;
+    if (!Simulation.Background->GetParticle()->GetGeometry()->Raycast(
+        Surface.InverseTransformPositionNoScale(RayOrigin),
+        Surface.InverseTransformVectorNoScale(RayDirection).GetSafeNormal(), 100000.f, 0.f, Time, Point, Normal, Face))
+    {
+        EndFingerContact(FingerIndex);
+        return false;
+    }
+    FVector WorldNormal = Surface.TransformVectorNoScale(Normal).GetSafeNormal();
+    if (FVector::DotProduct(WorldNormal, RayDirection) > 0.) WorldNormal = -WorldNormal;
+    auto& Finger = Simulation.Fingers[FingerIndex];
+    Finger.Target = Surface.TransformPositionNoScale(Point) + WorldNormal * FMenuScatterSimulation::FingerRadius;
+    // 新的按下没有上一段扫动；不能从旧手指位置扫过半个屏幕。
+    if (bBegin || !Finger.bActive)
+    {
+        Finger.Actor->InitWorldTransform(FTransform(Finger.Target));
+        Simulation.Scene.SetHasCollision(Finger.Actor, true);
+        Simulation.Scene.AddToCollidingPairs(Finger.Actor);
+    }
+    Finger.bActive = true;
+    return true;
+}
+
+void UMenuChessDemoComponent::EndFingerContact(int32 FingerIndex)
+{
+    if (!ScatterSimulation) return;
+    for (int32 I = 0; I < UE_ARRAY_COUNT(ScatterSimulation->Fingers); ++I)
+        if (FingerIndex == INDEX_NONE || FingerIndex == I)
+        {
+            auto& Finger = ScatterSimulation->Fingers[I];
+            Finger.bActive = false;
+            ScatterSimulation->Scene.SetHasCollision(Finger.Actor, false);
+        }
+}
+
+void UMenuChessDemoComponent::SetPieceOpacity(float Opacity)
+{
+    // 复用棋子材质已有的 Fade（0=显示、1=消失），只生成组件自己的 MID。
+    // 贴花使用菜单专用 MID 的透明度同步字样，不修改任何共享材质实例。
+    for (const auto& Piece : Pieces)
+        if (Piece) Piece->SetScalarParameterValueOnMaterials(TEXT("Fade"), 1.f - Opacity);
+    for (const auto& Label : Labels)
+        if (Label)
+            if (auto* Material = Cast<UMaterialInstanceDynamic>(Label->GetDecalMaterial()))
+                Material->SetScalarParameterValue(TEXT("MenuOpacity"), Opacity);
+}
+
+void UMenuChessDemoComponent::BeginResetTransition()
+{
+    if (bResetTransition) return;
+    if (!PresentationRoot)
+    {
+        Episode = Episode % 3 + 1;
+        ResetBoard();
+        return;
+    }
+    EndFingerContact();
+    bResetTransition = true;
+    bFadingIn = false;
+    TransitionTime = 0.f;
+}
+
 void UMenuChessDemoComponent::AdvanceAfterScatter()
 {
-    if (!bPiecesScattered) return;
-    Episode = Episode % 3 + 1;
-    ResetBoard();
-    Wait = .8f;
+    BeginResetTransition();
 }

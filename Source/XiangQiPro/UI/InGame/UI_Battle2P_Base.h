@@ -22,6 +22,15 @@ enum class EPlayerTag : uint8;
 
 typedef UUI_Battle2P_Base UI_Battle2P_Base;
 
+// 已提交棋谱的值数据，不引用可能被悔棋销毁的 Actor 或 Slate 控件。
+struct FOperatingRecordEntry
+{
+    EChessColor Color;
+    FString Notation;
+    FString PlayerName;
+    TOptional<int32> Points;
+};
+
 /**
  * 双人对战主界面
  */
@@ -106,6 +115,9 @@ public:
 	// 增加落子历史记录
 	void AddOperatingRecord(EPlayerTag player, TWeakObjectPtr<AChesses> targetChess, FChessMove2P move, TOptional<int32> MovePoints = {});
     void ResetOperatingRecord();
+    int32 GetOperatingRecordCount() const { return RecordMoveCount; }
+    void TruncateOperatingRecord(int32 KeepCount);
+    void RefreshOperatingRecord();
 	// 将棋子移动转换为基本中文棋谱。
 	FString GetMoveNotation(TWeakObjectPtr<AChesses> targetChess, FChessMove2P move);
 	// 增强版：考虑同列多个相同棋子的情况
@@ -121,6 +133,7 @@ protected:
     bool bRecordExpanded = false;
     float RecordExpansion = 0.f;
     int32 RecordMoveCount = 0;
+    TArray<FOperatingRecordEntry> OperatingRecords;
     UFUNCTION() void ToggleOperatingRecord();
     void SetRecordExpanded(bool bExpanded);
     void UpdateRecordExpansion(float DeltaTime);

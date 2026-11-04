@@ -374,7 +374,7 @@ void ACamera2PActor::RefreshFengHuoMusicState()
     if (FengHuoBattleMusic)
     {
         BattleAudio->Play(0.f);
-        // 联机倒计时继续推进时，允许建立播放实例，但保持本机菜单的暂停状态。
+        // 单人暂停时保留暂停状态；联机选项菜单不改变播放状态。
         BattleAudio->SetPaused(bMusicPausedByMenu);
     }
 }
@@ -411,12 +411,14 @@ void ACamera2PActor::Tick(float DeltaTime)
 // 响应游戏暂停事件。
 void ACamera2PActor::GamePause(UObject* OwnerObject)
 {
-    // 背景音乐原本是 UI Sound，世界暂停不会自动停止它；显式暂停保留读头。
-    bMusicPausedByMenu = true;
-    if (IsValid(BattleAudio)) BattleAudio->SetPaused(true);
+    const auto* State = GetWorld()->GetGameState<AXQPGameStateBase>();
+    const bool bOnline = State && State->IsLANGame();
+    // 联机仅打开选项，音乐继续播放；单人显式暂停 UI Sound 并保留读头。
+    bMusicPausedByMenu = !bOnline;
+    if (IsValid(BattleAudio)) BattleAudio->SetPaused(bMusicPausedByMenu);
 	// 屏蔽输入
 	DisableInput(GetController<APlayerController>());
-	IIF_GameState::GamePause(OwnerObject);
+    if (!bOnline) IIF_GameState::GamePause(OwnerObject);
 }
 
 // 响应游戏恢复事件。

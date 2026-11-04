@@ -132,6 +132,16 @@ class XIANGQIPRO_API UXQPLANSubsystem : public UGameInstanceSubsystem, public FT
     void NotifyMatchFinished();
     bool PrepareSpectatorBoard(FChessPosition& Board, EChessColor& Side);
     void Resign();
+    // 悔棋协商仅使用 Peer（对手）连接；观战连接不具备申请或答复权限。
+    bool CanRequestUndo() const;
+    bool RequestUndo();
+    int32 GetRemainingUndoCount(EChessColor Color) const
+    {
+        const uint8 Side = static_cast<uint8>(Color);
+        return Side < 2 ? UndoRemaining[Side] : 0;
+    }
+    bool IsUndoPending() const { return bUndoPending || bUndoAwaitingHost || PendingUndoSnapshot.IsValid(); }
+    void ReplyToUndo(bool bAccept);
     UFUNCTION(BlueprintCallable) bool SelectGameType(EXQPGameType Type);
     UFUNCTION(BlueprintPure) EXQPGameType GetGameType() const { return GameType; }
     // 兼容已有蓝图调用；新玩法通过 SelectGameType 注册明确类型。
@@ -151,6 +161,8 @@ class XIANGQIPRO_API UXQPLANSubsystem : public UGameInstanceSubsystem, public FT
     FSimpleMulticastDelegate OnRoomUpdated;
 
   private:
+    // v4 同步双方悔棋机会，旧协议不理解次数限制，握手时明确拒绝混用。
+    static constexpr int32 ProtocolVersion = 4;
     EXQPRoomState State = EXQPRoomState::Idle;
     FString Status;
     FString RoomName;
@@ -200,6 +212,25 @@ class XIANGQIPRO_API UXQPLANSubsystem : public UGameInstanceSubsystem, public FT
     TArray<uint8> SendBuffer;
     TArray<FChessMove2P> PendingMoves;
     TArray<FXQPLANRoom> Rooms;
+    bool bUndoPending = false;
+    bool bUndoAwaitingHost = false;
+    bool bUndoIncoming = false;
+    int32 UndoSerial = 0;
+    int32 UndoRemaining[2] = {5, 5};
+    int32 UndoId = 0;
+    int32 UndoSequence = 0;
+    int32 UndoClientSerial = 0;
+    EChessColor UndoRequester = EChessColor::REDCHESS;
+    double UndoDeadline = 0.;
+    TSharedPtr<FJsonObject> PendingUndoSnapshot;
+    int32 PendingUndoPlayedPlies = 0;
+    TWeakObjectPtr<class UUI_CommonDialog> UndoDialog;
+    void ResetUndo();
+    void ShowUndoDialog();
+    bool StartUndo(EChessColor Requester, int32 ExpectedSequence);
+    void ResolveUndo(bool bAccept);
+    bool HandleUndoMessage(const TSharedPtr<FJsonObject>& Message, const FString& Type);
+    void TickUndo(double Now);
     void CloseSockets();
     void Disconnect(const FString& Reason);
     void TickDiscovery(double Now);

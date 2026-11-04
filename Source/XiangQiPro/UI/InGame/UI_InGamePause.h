@@ -21,9 +21,13 @@ public:
     virtual void NativeConstruct() override;
     virtual void NativeTick(const FGeometry& MyGeometry, float DeltaTime) override;
 private:
+    // 返回转场开始后保留最后一帧菜单布局，不能再用已清理的玩法/房间状态刷新按钮。
+    bool bLeavingToMainMenu = false;
     UPROPERTY(Transient) TObjectPtr<UUserWidget> RestartButton;
     UPROPERTY(Transient) TObjectPtr<UUserWidget> MainMenuButton;
     UPROPERTY(Transient) TObjectPtr<UUserWidget> ResignButton;
+    UPROPERTY(Transient) TObjectPtr<UUserWidget> UndoButton;
+    UFUNCTION() void UndoMove();
     UPROPERTY(EditDefaultsOnly, Category="UI") TSubclassOf<UUI_CommonDialog> CommonDialogClass;
     TWeakObjectPtr<UUI_CommonDialog> ResignDialog;
     UFUNCTION() void RestartOrShowResult();

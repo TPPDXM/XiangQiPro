@@ -42,6 +42,7 @@ private:
     FIntPoint TouchSource = FIntPoint(-1, -1);
     FVector2D TouchStart = FVector2D::ZeroVector;
     FVector2D PreviousBoardTouch = FVector2D::ZeroVector;
+    TSet<FTouchId> MenuBackgroundContacts;
     bool bBoardTouchMoved = false;
     bool bSelectedBeforeTouch = false;
     bool bTouchBeganOnPiece = false;

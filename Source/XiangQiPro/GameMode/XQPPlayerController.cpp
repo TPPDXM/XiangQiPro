@@ -75,6 +75,11 @@ void AXQPPlayerController::CancelMobileBoardGesture(bool bAllowMenuInertia)
     ActiveBoardContact.Reset();
     TouchChess.Reset();
     if (TouchMenu.IsValid()) TouchMenu->EndBoardInteraction(bAllowMenuInertia);
+    if (!bAllowMenuInertia)
+    {
+        if (auto* Menu = Cast<AMobileMenuCamera>(GetViewTarget())) Menu->EndBackgroundInteraction();
+        MenuBackgroundContacts.Reset();
+    }
     TouchMenu.Reset();
     TouchSource = FIntPoint(-1, -1);
     bBoardTouchMoved = bSelectedBeforeTouch = bTouchBeganOnPiece = false;
@@ -120,6 +125,47 @@ void AXQPPlayerController::ProcessTouchHitResult(FTouchId TouchId, ETouchType::T
         return;
     }
 
+    if (Menu)
+    {
+        // 菜单背景按每根手指独立维护球体；棋盘上开始的接触只驱动棋盘旋转。
+        // 背景触点即使横跨棋盘投影也不切换手势，避免多个球体互相抢占或突然转盘。
+        const int32 FingerIndex = int32(TouchId.GetIndex());
+        if (Type == ETouchType::Began)
+        {
+            BoardContacts.Add(TouchId);
+            if (!CanUseMobileBoardInput()) return;
+            if (!Menu->IsBoardTouchPosition(TouchLocation) && Menu->UpdateBackgroundInteraction(TouchLocation, FingerIndex, true))
+                MenuBackgroundContacts.Add(TouchId);
+            else if (!ActiveBoardContact.IsSet() && Menu->IsBoardTouchPosition(TouchLocation))
+            {
+                ActiveBoardContact = TouchId;
+                TouchMenu = Menu;
+                TouchStart = PreviousBoardTouch = TouchLocation;
+                bBoardTouchMoved = false;
+                Menu->BeginBoardInteraction();
+            }
+        }
+        else if (Type == ETouchType::Ended)
+        {
+            BoardContacts.Remove(TouchId);
+            if (MenuBackgroundContacts.Remove(TouchId)) Menu->EndBackgroundInteraction(FingerIndex);
+            if (ActiveBoardContact.IsSet() && ActiveBoardContact.GetValue() == TouchId) CancelMobileBoardGesture(true);
+        }
+        else if (CanUseMobileBoardInput())
+        {
+            if (MenuBackgroundContacts.Contains(TouchId)) Menu->UpdateBackgroundInteraction(TouchLocation, FingerIndex);
+            else if (ActiveBoardContact.IsSet() && ActiveBoardContact.GetValue() == TouchId)
+            {
+                const float Slop = 10.f * UWidgetLayoutLibrary::GetViewportScale(this);
+                bBoardTouchMoved |= FVector2D::DistSquared(TouchLocation, TouchStart) >= FMath::Square(Slop);
+                if (bBoardTouchMoved) Menu->RotateBoard(TouchLocation - PreviousBoardTouch);
+                PreviousBoardTouch = TouchLocation;
+            }
+        }
+        else CancelMobileBoardGesture();
+        return;
+    }
+
     // 只有已经经过 Slate 且到达游戏视口的触摸才进入此入口，按钮继续使用原 UMG 事件。
     // 这里不再分发棋子/落点的旧 TouchEnd，防止按下选中后抬手又切换选择或重复落子。
     if (Type == ETouchType::Began)
@@ -135,15 +181,6 @@ void AXQPPlayerController::ProcessTouchHitResult(FTouchId TouchId, ETouchType::T
         if (bRejectBoardContacts || !CanUseMobileBoardInput()) return;
         ActiveBoardContact = TouchId;
         TouchStart = PreviousBoardTouch = TouchLocation;
-        if (Menu)
-        {
-            if (Menu->IsBoardTouchPosition(TouchLocation))
-            {
-                TouchMenu = Menu;
-                Menu->BeginBoardInteraction();
-            }
-            return;
-        }
         if (!State->IsMyTurn()) return;
         if (auto* Chess = bHit ? Cast<AChesses>(HitResult.GetActor()) : nullptr)
         {
@@ -216,7 +253,6 @@ void AXQPPlayerController::ProcessTouchHitResult(FTouchId TouchId, ETouchType::T
     const float Slop = 8.f * FMath::Max(.5f, UWidgetLayoutLibrary::GetViewportScale(this));
     if (!bBoardTouchMoved && FVector2D::DistSquared(TouchLocation, TouchStart) >= FMath::Square(Slop))
         bBoardTouchMoved = true;
-    if (TouchMenu.IsValid() && bBoardTouchMoved) TouchMenu->RotateBoard(TouchLocation - PreviousBoardTouch);
     if (TouchChess.IsValid()) SetHoveredDropPoint(FindTouchDropPoint(TouchLocation));
     PreviousBoardTouch = TouchLocation;
 }
@@ -233,11 +269,13 @@ void AXQPPlayerController::PlayerTick(float DeltaTime)
         GetInputTouchState(It->GetIndex(), X, Y, Pressed);
         if (!Pressed)
         {
-            if (ActiveBoardContact.IsSet() && ActiveBoardContact.GetValue() == *It) CancelMobileBoardGesture();
+            if (MenuBackgroundContacts.Remove(*It))
+                if (auto* Menu = Cast<AMobileMenuCamera>(GetViewTarget())) Menu->EndBackgroundInteraction(int32(It->GetIndex()));
+            if (ActiveBoardContact.IsSet() && ActiveBoardContact.GetValue() == *It) CancelMobileBoardGesture(true);
             It.RemoveCurrent();
         }
     }
-    if (ActiveBoardContact.IsSet() && !CanUseMobileBoardInput()) CancelMobileBoardGesture();
+    if (!CanUseMobileBoardInput()) CancelMobileBoardGesture();
     if (BoardContacts.IsEmpty()) bRejectBoardContacts = false;
 }
 

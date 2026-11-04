@@ -66,7 +66,7 @@ void UUI_Battle2P_Base::NativeConstruct()
         RecordDismissArea->OnPressed = FSimpleDelegate::CreateWeakLambda(this, [this]() { SetRecordExpanded(false); });
         RecordDismissArea->SetVisibility(bRecordExpanded ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
     }
-    ResetOperatingRecord();
+    RefreshOperatingRecord();
     if (auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>())
     {
         Room->OnRoomUpdated.RemoveAll(this);
@@ -265,11 +265,28 @@ void UUI_Battle2P_Base::UpdateRecordExpansion(float DeltaTime)
 
 void UUI_Battle2P_Base::ResetOperatingRecord()
 {
+    OperatingRecords.Reset();
+    RefreshOperatingRecord();
+}
+
+// 悔棋、重新挂载 HUD 共用这一入口。先清空呈现层，再从实际保留的记录重建，
+// 避免只删某个行控件后计数、文本和移动端列表不同步。
+void UUI_Battle2P_Base::RefreshOperatingRecord()
+{
     RecordMoveCount = 0;
-    if (Text_OperatingRecord) Text_OperatingRecord->SetText(FText::GetEmpty());
     if (RecordRows) RecordRows->ClearChildren();
-    if (RecordCount) RecordCount->SetText(FText::FromString(TEXT("共 0 手")));
-    if (RecordEmpty) RecordEmpty->SetVisibility(ESlateVisibility::HitTestInvisible);
+    FString Text;
+    for (const auto& Entry : OperatingRecords)
+    {
+        if (RecordRows) AddRecordRow(Entry.Color, Entry.Notation, Entry.PlayerName, Entry.Points);
+        else ++RecordMoveCount;
+        Text.Append(Entry.PlayerName).Append(TEXT(": ")).Append(Entry.Notation);
+        if (Entry.Points.IsSet()) Text.Append(FString::Printf(TEXT(" · 本手 %+d"), Entry.Points.GetValue()));
+        Text.Append(TEXT("\n"));
+    }
+    if (Text_OperatingRecord) Text_OperatingRecord->SetText(FText::FromString(Text));
+    if (RecordCount) RecordCount->SetText(FText::FromString(FString::Printf(TEXT("共 %d 手"), RecordMoveCount)));
+    if (RecordEmpty) RecordEmpty->SetVisibility(RecordMoveCount ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
     if (RecordScroll) RecordScroll->ScrollToEnd();
 }
 
@@ -548,11 +565,13 @@ void UUI_Battle2P_Base::AddOperatingRecord(EPlayerTag player, TWeakObjectPtr<ACh
 	}
 
     const FString Notation = GetEnhancedMoveNotation(targetChess, move);
+    OperatingRecords.Add({targetChess->GetColor(), Notation, playerName, MovePoints});
     if (RecordRows)
     {
         AddRecordRow(targetChess->GetColor(), Notation, playerName, MovePoints);
         return;
     }
+    ++RecordMoveCount;
     if (!Text_OperatingRecord) return;
     FString text = Text_OperatingRecord->GetText().ToString();
     text.Append(playerName).Append(TEXT(": ")).Append(Notation);
@@ -762,4 +781,11 @@ FString UUI_Battle2P_Base::GetEnhancedMoveNotation(TWeakObjectPtr<AChesses> targ
     }
 
     return basicNotation;
+}
+
+// 同时兼容移动端逐行棋谱和桌面旧版纯文本棋谱，只删除回退的实际走法。
+void UUI_Battle2P_Base::TruncateOperatingRecord(int32 KeepCount)
+{
+    OperatingRecords.SetNum(FMath::Clamp(KeepCount, 0, OperatingRecords.Num()));
+    RefreshOperatingRecord();
 }

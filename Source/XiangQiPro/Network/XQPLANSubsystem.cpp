@@ -21,7 +21,6 @@ constexpr int32 DiscoveryPort = 42137;
 constexpr int32 GamePort = 42138;
 // 每个本机房主独占一个发现端口，避免 UDP reuse 在不同平台只把广播交给一个进程。
 constexpr int32 DiscoveryPortCount = 32;
-constexpr int32 ProtocolVersion = 2;
 constexpr int32 MaxPacket = 8192;
 TSharedRef<FJsonObject> Packet(const TCHAR* Type)
 {
@@ -99,6 +98,7 @@ void UXQPLANSubsystem::CloseSockets()
 {
     if (State == EXQPRoomState::Playing && IsFengHuoRoom())
         if (auto* GS = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr) GS->FengHuoBattle->Suspend();
+    ResetUndo();
     CloseGuests();
     DestroySocket(Peer);
     DestroySocket(Listener);
@@ -704,6 +704,8 @@ bool UXQPLANSubsystem::StartMatch()
 }
 void UXQPLANSubsystem::OpenBattleMap()
 {
+    ResetUndo();
+    UndoRemaining[0] = UndoRemaining[1] = 5; // 每局双方各五次，只在成功悔棋后扣除。
     PendingSpectatorWinner.Reset();
     FengHuoRequestSerial = LastFengHuoPeerRequest = 0;
     PendingProSnapshot.Reset();
@@ -725,6 +727,7 @@ void UXQPLANSubsystem::NotifyBoardReady()
 }
 void UXQPLANSubsystem::NotifyMatchFinished()
 {
+    ResetUndo();
     if (bHost)
     {
         auto Result = Packet(TEXT("spectator_result"));
@@ -743,7 +746,7 @@ bool UXQPLANSubsystem::CanLocalMove() const
 {
     const auto* GS = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr;
     if (bSpectator || GameType != EXQPGameType::Classic || !GS || !GS->BattleStart->HasStarted()) return false;
-    return State == EXQPRoomState::Playing && bHandshake && bLocalBoardReady && bPeerBoardReady && !bMoveRequested &&
+    return State == EXQPRoomState::Playing && bHandshake && bLocalBoardReady && bPeerBoardReady && !bMoveRequested && !IsUndoPending() &&
            Turn == GetLocalColor() && PendingMoves.IsEmpty();
 }
 bool UXQPLANSubsystem::SubmitMove(const FChessMove2P& Move)
@@ -763,7 +766,7 @@ bool UXQPLANSubsystem::SubmitMove(const FChessMove2P& Move)
 bool UXQPLANSubsystem::CommitMove(const FChessMove2P& Move, EChessColor Requester, int32 ExpectedSequence)
 {
     // 不信任客户端提交的坐标、颜色或步号，逐项对照权威棋盘。
-    if (State != EXQPRoomState::Playing || !bLocalBoardReady || !bPeerBoardReady || ExpectedSequence != Sequence ||
+    if (IsUndoPending() || State != EXQPRoomState::Playing || !bLocalBoardReady || !bPeerBoardReady || ExpectedSequence != Sequence ||
         Turn != Requester || !Move.IsValid() || AuthoritativeBoard.Get(Move.from).Color != Requester ||
         !PendingMoves.IsEmpty())
         return false;
@@ -883,6 +886,7 @@ void UXQPLANSubsystem::HandleMessage(const TSharedPtr<FJsonObject>& M)
     }
     if (Type == TEXT("ping"))
         return;
+    if (HandleUndoMessage(M, Type)) return;
     if (Type == TEXT("leave"))
     {
         Disconnect(TEXT("对方已离开房间"));
@@ -1035,6 +1039,7 @@ void UXQPLANSubsystem::Tick(float DeltaTime)
     const double Now = FPlatformTime::Seconds();
     TickDiscovery(Now);
     TickConnection(Now);
+    TickUndo(Now);
     if (PendingStartSnapshot.IsValid() && bLocalBoardReady)
         if (auto* GS = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr; GS && GS->BattleStart->IsActive())
         {
@@ -1058,7 +1063,7 @@ void UXQPLANSubsystem::Tick(float DeltaTime)
             PendingSpectatorWinner.Reset();
             if (!GS->IsGameOver()) GS->NotifyGameOver(Winner);
         }
-    if (State == EXQPRoomState::Playing && !PendingMoves.IsEmpty())
+    if (State == EXQPRoomState::Playing && !PendingUndoSnapshot.IsValid() && !PendingMoves.IsEmpty())
         if (AXQPGameStateBase* GS = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr;
             GS && GS->CanApplyNetworkMove())
         {

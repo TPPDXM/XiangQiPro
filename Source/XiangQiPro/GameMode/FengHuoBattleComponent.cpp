@@ -105,7 +105,7 @@ TArray<FChessMove2P> UFengHuoBattleComponent::GenerateMoves(AChesses* Chess) con
 
 bool UFengHuoBattleComponent::CanMove(AChesses* Chess, const FChessMove2P& Move, EChessColor Requester) const
 {
-    if (!IsRunning() || !Cast<AXQPGameStateBase>(GetOwner())->BattleStart->HasStarted() || !Move.IsValid()) return false;
+    if (Cast<AXQPGameStateBase>(GetOwner())->IsGameplayFrozen() || !IsRunning() || !Cast<AXQPGameStateBase>(GetOwner())->BattleStart->HasStarted() || !Move.IsValid()) return false;
     const int32 Id = Actors.IndexOfByKey(Chess);
     if (!Units.IsValidIndex(Id)) return false;
     const auto& Unit = Units[Id];
@@ -212,6 +212,8 @@ void UFengHuoBattleComponent::ResolveArrival(int32 Id)
 void UFengHuoBattleComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* TickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, TickFunction);
+    // 单人 Pro 暂停冻结行军、到达、计时和 AI 提交；既有异步搜索继续运行。
+    if (Cast<AXQPGameStateBase>(GetOwner())->IsGameplayFrozen()) return;
     if (!bActive || bFinished || !IsAuthority()) return;
     if (!Cast<AXQPGameStateBase>(GetOwner())->BattleStart->HasStarted()) return;
     auto* Room = GetWorld()->GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();

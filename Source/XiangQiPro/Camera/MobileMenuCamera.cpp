@@ -166,6 +166,7 @@ void AMobileMenuCamera::ApplyBoardRotation(const FVector2D& AngleDegrees)
 
 void AMobileMenuCamera::BeginBoardInteraction()
 {
+    if (Demo->IsTransitioning()) return;
     bBoardHeld = true;
     InertialVelocity = FVector2D::ZeroVector;
     RotationIdleSeconds = 0.f;
@@ -187,7 +188,7 @@ void AMobileMenuCamera::EndBoardInteraction(bool bAllowInertia)
 void AMobileMenuCamera::RotateBoard(const FVector2D& ScreenDelta)
 {
     const float Width = XQPMobile::ViewportSize(this).X;
-    if (!BoardPivot || Width <= 0.f) return;
+    if (Demo->IsTransitioning() || !BoardPivot || Width <= 0.f) return;
     const FQuat Before = BoardPivot->GetComponentQuat();
     // 向右拖时正对玩家的盘边向右移动；向下拖时同一盘边向下移动。
     // 纵向接近横向灵敏度，两个方向都允许连续翻转，无角度夹取。
@@ -271,7 +272,7 @@ void AMobileMenuCamera::UpdateBoardInteraction(float DeltaSeconds)
         RotationIdleSeconds += DeltaSeconds;
     }
 
-    if (!bHasUserRotation || RotationIdleSeconds < ResetIdleSeconds) return;
+    if (bBoardHeld || !bHasUserRotation || RotationIdleSeconds < ResetIdleSeconds) return;
     if (!bReturningBoard)
     {
         bReturningBoard = true;
@@ -287,7 +288,23 @@ void AMobileMenuCamera::UpdateBoardInteraction(float DeltaSeconds)
         BoardPivot->SetRelativeRotation(HomeBoardRotation);
         bHasUserRotation = bReturningBoard = false;
         RotationIdleSeconds = 0.f;
-        // 未飞散时这次调用为空操作，当前棋谱和正在进行的走子动画继续正常运行。
+        // 回正后无论是否飞散，都先渐隐旧棋子，再渐显下一盘演示。
         Demo->AdvanceAfterScatter();
     }
+}
+
+// 输入已由 PlayerController 排除 UMG 及失焦，并按触点编号分发；这里仅负责屏幕到模型射线。
+bool AMobileMenuCamera::UpdateBackgroundInteraction(const FVector2D& ScreenPosition, int32 FingerIndex, bool bBegin)
+{
+    APlayerController* Player = GetWorld()->GetFirstPlayerController();
+    FVector Origin, Direction;
+    if (!Player || !Player->DeprojectScreenPositionToWorld(ScreenPosition.X, ScreenPosition.Y, Origin, Direction)) return false;
+    const bool bContact = Demo->UpdateFingerContact(Origin, Direction, FingerIndex, bBegin);
+    if (bContact) RotationIdleSeconds = 0.f; // 推棋时不自动回正并清除脚下的棋子。
+    return bContact;
+}
+
+void AMobileMenuCamera::EndBackgroundInteraction(int32 FingerIndex)
+{
+    Demo->EndFingerContact(FingerIndex);
 }

@@ -127,7 +127,7 @@ void UXQPLANSubsystem::TickGuests(double Now)
                 }
                 FString Role, Id, Mode, Name;
                 double Version;
-                if (Type != TEXT("hello") || !M->TryGetNumberField(TEXT("version"), Version) || Version != 2 ||
+                if (Type != TEXT("hello") || !M->TryGetNumberField(TEXT("version"), Version) || Version != ProtocolVersion ||
                     !M->TryGetStringField(TEXT("name"), Name) ||
                     !M->TryGetStringField(TEXT("role"), Role) || (Role != TEXT("player") && Role != TEXT("spectator")) ||
                     !M->TryGetStringField(TEXT("room_id"), Id) || Id != RoomId ||

@@ -155,7 +155,7 @@ void AChesses::GamePlayAgain(UObject* OwnerObject)
 void AChesses::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-    if (!Board2P.IsValid()) return;
+    if (bMovementPaused || (GameState.IsValid() && GameState->IsGameplayFrozen()) || !Board2P.IsValid()) return;
     if (bCaptureApproach)
     {
         FengHuoMoveTime += DeltaTime;
@@ -632,3 +632,44 @@ void AChesses::SwitchToRealIdentity()
 	UpdateSelectable();
 }
 
+
+void AChesses::SetMovementPaused(bool bPaused)
+{
+    if (bMovementPaused == bPaused) return;
+    bMovementPaused = bPaused;
+    if (bPaused)
+    {
+        bResumeActorTick = IsActorTickEnabled();
+        bResumeMoveTimeline = TimeLine_ChessMove->IsPlaying();
+        bResumeFadeTimeline = Timeline_Fade->IsPlaying();
+        bReverseMoveTimeline = TimeLine_ChessMove->IsReversing();
+        bReverseFadeTimeline = Timeline_Fade->IsReversing();
+        TimeLine_ChessMove->Stop();
+        Timeline_Fade->Stop();
+        SetActorTickEnabled(false);
+        // 世界暂停之外再锁住棋子自身的粒子，兼容资源勾选 TickWhenPaused 的情况。
+        TInlineComponentArray<UNiagaraComponent*> Effects(this);
+        for (auto* Effect : Effects)
+            if (Effect->IsActive() && !Effect->IsPaused())
+            {
+                PausedMoveEffects.Add(Effect);
+                Effect->SetPaused(true);
+            }
+    }
+    else
+    {
+        SetActorTickEnabled(bResumeActorTick);
+        if (bResumeMoveTimeline)
+        {
+            if (bReverseMoveTimeline) TimeLine_ChessMove->Reverse();
+            else TimeLine_ChessMove->Play();
+        }
+        if (bResumeFadeTimeline)
+        {
+            if (bReverseFadeTimeline) Timeline_Fade->Reverse();
+            else Timeline_Fade->Play();
+        }
+        for (const auto& Effect : PausedMoveEffects) if (Effect.IsValid()) Effect->SetPaused(false);
+        PausedMoveEffects.Reset();
+    }
+}

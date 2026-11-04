@@ -4,6 +4,7 @@
 #include "Components/PanelWidget.h"
 #include "Components/AudioComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "XiangQiPro/GameMode/XQPGameStateBase.h"
 
 void UXQPMobileWidget::NativeConstruct()
 {
@@ -19,6 +20,9 @@ UPanelWidget* UXQPMobileWidget::GetPresentationRoot() const
 
 void UXQPMobileWidget::SetSceneMusicVolume(float VolumeMultiplier)
 {
+    // 旧版菜单蓝图会尝试淡出音乐，联机选项菜单不改变背景曲音量。
+    if (const auto* State = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr;
+        State && State->IsLANGame()) return;
     const APlayerController* Player = GetOwningPlayer();
     AActor* ViewTarget = Player ? Player->GetViewTarget() : nullptr;
     if (IsValid(ViewTarget))
