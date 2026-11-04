@@ -2,6 +2,7 @@
 
 
 #include "UI_XQP_ComboBox.h"
+#include "XiangQiPro/Audio/XQPFeedbackAudioSubsystem.h"
 #include "XiangQiPro/Util/AssetPaths.h"
 #include "Engine/Texture2D.h"
 #include "UObject/ConstructorHelpers.h"
@@ -31,6 +32,7 @@ void UUI_XQP_ComboBox::NativePreConstruct()
 void UUI_XQP_ComboBox::NativeConstruct()
 {
     Super::NativeConstruct();
+    UXQPFeedbackAudioSubsystem::ConfigureFor(this);
     if (!ComboBox || !XQPMobile::IsPortrait(this)) return;
     // SComboButton 的鼠标策略本来就是 MouseDown，但默认触摸策略为 DownAndUp。
     // 菜单在第二次按下时被 Slate 关闭，抬手跨帧后 bDismissedThisTick 已清除，因而又打开。

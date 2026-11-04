@@ -1,4 +1,5 @@
 #include "BattleStartComponent.h"
+#include "XiangQiPro/Audio/XQPFeedbackAudioSubsystem.h"
 #include "XQPGameStateBase.h"
 #include "XiangQiPro/Network/XQPLANSubsystem.h"
 #include "Dom/JsonObject.h"
@@ -16,6 +17,7 @@ void UBattleStartComponent::BeginSetup()
     bActive = true;
     bRunning = bRedReady = bBlackReady = false;
     Countdown = -1.f;
+    LastAudibleCountdown = 4;
     SetupTime = SendTime = 0.f;
     const auto* State = Cast<AXQPGameStateBase>(GetOwner());
     if (State && !State->IsFengHuoBattle() && !State->IsLANGame())
@@ -42,7 +44,11 @@ void UBattleStartComponent::ConfirmSide(EChessColor Side)
     (Side == EChessColor::REDCHESS ? bRedReady : bBlackReady) = true;
     if (bRedReady && bBlackReady && Countdown < 0.f)
     {
-        if (Cast<AXQPGameStateBase>(GetOwner())->IsFengHuoBattle()) Countdown = 3.f;
+        if (Cast<AXQPGameStateBase>(GetOwner())->IsFengHuoBattle())
+        {
+            Countdown = 3.f;
+            UpdateCountdownAudio();
+        }
         else { StartBattle(); return; }
     }
     OnSetupChanged.Broadcast();
@@ -58,6 +64,7 @@ void UBattleStartComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
     if (!IsAuthority())
     {
         if (Countdown > 0.f) Countdown = FMath::Max(0.001f, Countdown - DeltaTime);
+        UpdateCountdownAudio();
         return;
     }
     if (State->IsLANGame() && !GetWorld()->GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->IsBattleReady()) return;
@@ -73,6 +80,7 @@ void UBattleStartComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
         }
     }
     SendTime += DeltaTime;
+    UpdateCountdownAudio();
     if (SendTime >= 0.1f) { SendTime = 0.f; Broadcast(); }
 }
 
@@ -109,7 +117,22 @@ bool UBattleStartComponent::ReceiveSnapshot(const TSharedPtr<FJsonObject>& M)
         !FMath::IsFinite(Time) || Time < -1.f || Time > 3.f || (Running && (!Red || !Black || Time > 0.f))) return false;
     const bool WasRunning = bRunning;
     bRedReady = Red; bBlackReady = Black; bRunning = Running; Countdown = Time;
+    UpdateCountdownAudio();
     OnSetupChanged.Broadcast();
     if (Running && !WasRunning) Cast<AXQPGameStateBase>(GetOwner())->OnBattleStarted();
     return true;
+}
+
+void UBattleStartComponent::UpdateCountdownAudio()
+{
+    if (!bActive || bRunning || Countdown <= 0.f) return;
+    const auto* State = Cast<AXQPGameStateBase>(GetOwner());
+    if (!State || State->IsGameOver() || State->IsSpectator()) return;
+    const int32 Number = FMath::Clamp(FMath::CeilToInt(Countdown), 1, 3);
+    if (Number >= LastAudibleCountdown) return;
+    // 跨过多个数字时只为当前数字敲一次，避免卡顿后密集补播。
+    // 客户端与 UI 共用 CeilToInt，正式开局仍等待权威 running 快照。
+    LastAudibleCountdown = Number;
+    if (auto* Feedback = GetWorld()->GetGameInstance()->GetSubsystem<UXQPFeedbackAudioSubsystem>())
+        Feedback->PlayCountdownTick();
 }

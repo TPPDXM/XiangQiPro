@@ -5,6 +5,13 @@
 // 《烽火·争势》仅供烽火弈使用；资源本身关闭循环，由开局确认状态触发一次。
 #define PATH_AUDIO_FENGHUO_BATTLE TEXT("/Game/Audio/S_FengHuoZhengShi.S_FengHuoZhengShi")
 #define PATH_AUDIO_LOBBY TEXT("/Game/Audio/Lobby")
+// 界面与对局反馈：全部为非循环 SoundWave，归入现有音效总线。
+#define PATH_AUDIO_UI_CLICK TEXT("/Game/Audio/Feedback/S_UI_Click.S_UI_Click")
+#define PATH_AUDIO_UI_SELECT TEXT("/Game/Audio/Feedback/S_UI_Select.S_UI_Select")
+#define PATH_AUDIO_COUNTDOWN TEXT("/Game/Audio/Feedback/S_Battle_Countdown.S_Battle_Countdown")
+#define PATH_AUDIO_MATCH_VICTORY TEXT("/Game/Audio/Feedback/S_Match_Victory.S_Match_Victory")
+#define PATH_AUDIO_MATCH_DEFEAT TEXT("/Game/Audio/Feedback/S_Match_Defeat.S_Match_Defeat")
+#define PATH_AUDIO_MATCH_DRAW TEXT("/Game/Audio/Feedback/S_Match_Draw.S_Match_Draw")
 // 将帅的移动祥云、吃子冲击和落印分开维护；PC／移动端路径必须成对更新。
 #define PATH_AUDIO_ROYAL_MOVE TEXT("/Game/Audio/Chess/Royal/S_RoyalMove.S_RoyalMove")
 #define PATH_AUDIO_ROYAL_LAND TEXT("/Game/Audio/Chess/Royal/S_RoyalLand.S_RoyalLand")

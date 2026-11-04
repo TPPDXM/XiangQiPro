@@ -31,6 +31,9 @@ private:
     float Countdown = -1.f;
     float SetupTime = 0.f;
     float SendTime = 0.f;
+    /** 每局只允许 3→2→1 单向推进；联机快照回调或校时不能重复敲同一个数字。 */
+    int32 LastAudibleCountdown = 4;
+    void UpdateCountdownAudio();
     bool IsAuthority() const;
     void Broadcast();
     void StartBattle();

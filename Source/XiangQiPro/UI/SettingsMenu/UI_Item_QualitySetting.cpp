@@ -2,6 +2,7 @@
 
 
 #include "UI_Item_QualitySetting.h"
+#include "XiangQiPro/Audio/XQPFeedbackAudioSubsystem.h"
 
 // 构造界面并初始化控件与事件绑定。
 void UUI_Item_QualitySetting::NativeConstruct()
@@ -18,6 +19,8 @@ void UUI_Item_QualitySetting::NativeConstruct()
 	XQP_ComboBox->ComboBox->OnSelectionChanged.AddDynamic(this, &UUI_Item_QualitySetting::OnSelectionChanged);
 	// 父菜单重新加入视口时，条目可能保留数据绑定；此时也要恢复对应的两项或四项选项。
 	if (UQualitySettingObject* Item = GetListItem<UQualitySettingObject>()) NativeOnListItemObjectSet(Item);
+    // 本条目会重建选择委托，在业务绑定完成后恢复统一音效；Direct 初始化仍静音。
+    UXQPFeedbackAudioSubsystem::ConfigureFor(this);
 }
 
 // 接收列表数据并刷新复用条目的显示。

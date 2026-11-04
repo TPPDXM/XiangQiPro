@@ -377,6 +377,7 @@ FodyWeavers.xsd
 /Content/Audio/*
 !/Content/Audio/Chess/
 !/Content/Audio/Settings/
+!/Content/Audio/Feedback/
 !/Content/Audio/Lobby.uasset
 !/Content/Audio/BattleMusic.uasset
 !/Content/Audio/S_FengHuoZhengShi.uasset

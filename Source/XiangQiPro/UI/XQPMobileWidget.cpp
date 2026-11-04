@@ -1,8 +1,15 @@
 #include "XQPMobileWidget.h"
+#include "XiangQiPro/Audio/XQPFeedbackAudioSubsystem.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/PanelWidget.h"
 #include "Components/AudioComponent.h"
 #include "GameFramework/PlayerController.h"
+
+void UXQPMobileWidget::NativeConstruct()
+{
+    Super::NativeConstruct();
+    UXQPFeedbackAudioSubsystem::ConfigureFor(this);
+}
 
 UPanelWidget* UXQPMobileWidget::GetPresentationRoot() const
 {

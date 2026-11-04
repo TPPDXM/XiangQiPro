@@ -2,6 +2,7 @@
 
 
 #include "UI_Item_GameMode.h"
+#include "XiangQiPro/Audio/XQPFeedbackAudioSubsystem.h"
 #include "XiangQiPro/UI/XQPMobile.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
@@ -15,6 +16,7 @@
 void UUI_Item_GameMode::NativeConstruct()
 {
 	Super::NativeConstruct();
+    UXQPFeedbackAudioSubsystem::ConfigureFor(this);
     if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("ItemBtn"))))
     {
         Button->OnClicked.Clear();

@@ -1,6 +1,7 @@
 // Copyright 2026 Ultimate Player All Rights Reserved.
 
 #include "XQPGameStateBase.h"
+#include "XiangQiPro/Audio/XQPFeedbackAudioSubsystem.h"
 #include "XQPGameInstance.h"
 #include "SoloRideMode.h"
 #include "Async/Async.h"
@@ -365,6 +366,7 @@ void AXQPGameStateBase::Finish2PGame(EChessColor Winner)
     if (bGameOver) return;
     UpdateScore();
     WinnerColor = Winner;
+    PlayMatchResultSound(Winner);
     const UXQPGameInstance* GI = GetGameInstance<UXQPGameInstance>();
     if (Winner == EChessColor::REDCHESS && IsValid(GI) && GI->GetGameMode() == EXQPGameMode::Ending)
     {
@@ -407,6 +409,7 @@ void AXQPGameStateBase::FinishFengHuoBattle(EChessColor Winner)
     if (bGameOver || bEndingPlay) return;
     bGameOver = true;
     WinnerColor = Winner;
+    PlayMatchResultSound(Winner);
     CancelAIRequest();
     DismissSettingPoint2P();
     if (IsLANGame()) GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->NotifyMatchFinished();
@@ -416,6 +419,17 @@ void AXQPGameStateBase::FinishFengHuoBattle(EChessColor Winner)
     {
         if (HUD2P.IsValid() && bGameOver) HUD2P->ShowMatchResult(Winner);
     }), 1.05f, false);
+}
+
+// 声音按本机阵营判断，不把红方胜利硬编码成本机胜利。
+void AXQPGameStateBase::PlayMatchResultSound(EChessColor Winner)
+{
+    const auto* GI = GetGameInstance<UXQPGameInstance>();
+    // 观战没有本机输赢；单骑是计分挑战，不把其正常结束套成失败。
+    if (!GI || IsSpectator() || GI->GetGameMode() == EXQPGameMode::SoloRide) return;
+    const EChessColor LocalSide = IsLANGame() ? GI->GetSubsystem<UXQPLANSubsystem>()->GetLocalColor() : EChessColor::REDCHESS;
+    if (auto* Feedback = GI->GetSubsystem<UXQPFeedbackAudioSubsystem>())
+        Feedback->PlayMatchResult(Winner == LocalSide, IsFengHuoBattle() && FengHuoBattle->IsDraw());
 }
 
 // 经典对弈保留双方独立累计的走子分，界面刷新和结算不会再次加分。

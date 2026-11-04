@@ -2,6 +2,7 @@
 
 
 #include "UI_Item_ClassicGame.h"
+#include "XiangQiPro/Audio/XQPFeedbackAudioSubsystem.h"
 #include "ClassicGameData.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
@@ -12,6 +13,8 @@
 void UUI_Item_ClassicGame::NativeConstruct()
 {
     Super::NativeConstruct();
+    // ListView entries configure feedback whenever the recycled widget is constructed.
+    UXQPFeedbackAudioSubsystem::ConfigureFor(this);
 
     if (ItemButton)
     {

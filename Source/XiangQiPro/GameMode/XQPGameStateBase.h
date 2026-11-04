@@ -205,4 +205,8 @@ public:
     bool IsLANGame() const;
     FTimerHandle FengHuoResultTimer;
 
+private:
+    /** 在受 bGameOver 保护的唯一结算路径播放，重新打开结果界面不重复起音。 */
+    void PlayMatchResultSound(EChessColor Winner);
+
 };

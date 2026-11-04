@@ -2,6 +2,7 @@
 
 
 #include "UI_Item_EndingGame.h"
+#include "XiangQiPro/Audio/XQPFeedbackAudioSubsystem.h"
 #include "EndingGameData.h"
 #include "UI_Introduce_Ending.h"
 #include "XiangQiPro/UI/XQPMobile.h"
@@ -17,6 +18,7 @@
 void UUI_Item_EndingGame::NativeConstruct()
 {
 	Super::NativeConstruct();
+    UXQPFeedbackAudioSubsystem::ConfigureFor(this);
 	if (IsValid(ItemButton)) ItemButton->OnClicked.AddUniqueDynamic(this, &UUI_Item_EndingGame::OnItemClicked);
 }
 
