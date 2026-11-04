@@ -352,6 +352,7 @@ void ACamera2PActor::InitAudio()
     }
     BattleAudio->SetSound(BattleMusic);
     if (BattleMusic) BattleAudio->Play();
+    BattleAudio->SetPaused(bMusicPausedByMenu);
 }
 
 void ACamera2PActor::RefreshFengHuoMusicState()
@@ -370,7 +371,12 @@ void ACamera2PActor::RefreshFengHuoMusicState()
     // 联机客户端由权威开局快照置位。不能用本地 UI 倒计时推测开局时间。
     // 标记保持到下一局，曲目结束或重复收到 running 快照都不会触发重播。
     bFengHuoMusicStarted = true;
-    if (FengHuoBattleMusic) BattleAudio->Play(0.f);
+    if (FengHuoBattleMusic)
+    {
+        BattleAudio->Play(0.f);
+        // 联机倒计时继续推进时，允许建立播放实例，但保持本机菜单的暂停状态。
+        BattleAudio->SetPaused(bMusicPausedByMenu);
+    }
 }
 
 // 如果需要每帧更新，可以重写Tick函数
@@ -405,6 +411,9 @@ void ACamera2PActor::Tick(float DeltaTime)
 // 响应游戏暂停事件。
 void ACamera2PActor::GamePause(UObject* OwnerObject)
 {
+    // 背景音乐原本是 UI Sound，世界暂停不会自动停止它；显式暂停保留读头。
+    bMusicPausedByMenu = true;
+    if (IsValid(BattleAudio)) BattleAudio->SetPaused(true);
 	// 屏蔽输入
 	DisableInput(GetController<APlayerController>());
 	IIF_GameState::GamePause(OwnerObject);
@@ -413,6 +422,9 @@ void ACamera2PActor::GamePause(UObject* OwnerObject)
 // 响应游戏恢复事件。
 void ACamera2PActor::GameResume(UObject* OwnerObject)
 {
+    // 只恢复既有实例，不重新 Play；未开局或已自然播完的音乐不会被重新启动。
+    bMusicPausedByMenu = false;
+    if (IsValid(BattleAudio)) BattleAudio->SetPaused(false);
 	// 启用输入
     if (!bFengHuoResultCamera) EnableInput(GetController<APlayerController>());
 	IIF_GameState::GameResume(OwnerObject);

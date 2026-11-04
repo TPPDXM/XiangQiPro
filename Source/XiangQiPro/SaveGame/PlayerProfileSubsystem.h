@@ -5,6 +5,7 @@
 #include "PlayerProfileSubsystem.generated.h"
 class USavePlayerProfile;
 struct FXQPChallengeProgress;
+struct FChessDrawHistory;
 struct FXQPModeLearningData;
 
 UCLASS()
@@ -28,10 +29,14 @@ class XIANGQIPRO_API UPlayerProfileSubsystem : public UGameInstanceSubsystem
     uint8 BeginOrResumeRun(uint8 Difficulty);
     // 棋盘恢复与逐手保存均使用纯数据快照。
     bool RestoreBoard(FChessPosition& OutBoard, EChessColor& OutTurn) const;
-    void SaveBoard(const FChessPosition& Board, EChessColor Turn, int32 RedMoveScore = 0, int32 BlackMoveScore = 0);
+    void SaveBoard(const FChessPosition& Board, EChessColor Turn, int32 RedMoveScore = 0, int32 BlackMoveScore = 0,
+        const FChessDrawHistory* DrawHistory = nullptr);
+    bool RestoreDrawHistory(FChessDrawHistory& OutHistory, const FChessPosition& Board, EChessColor Turn) const;
     void RestoreMoveScores(int32& RedMoveScore, int32& BlackMoveScore) const;
     void ObserveMove(const FChessPosition& Before, const FChessMove2P& Move);
     void CompleteRound(bool bPlayerWon);
+    /** 和棋清除本局棋盘，保留当前连胜、难度及学习数据，下一局重赛。 */
+    void CompleteDrawRound();
     void EndChallenge();
     // 反馈上一组AI落子/玩家回应是否造成明显损失。
     void ReviewAIOutcome(int32 CurrentScore);

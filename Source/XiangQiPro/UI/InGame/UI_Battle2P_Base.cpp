@@ -343,6 +343,14 @@ void UUI_Battle2P_Base::ShowMatchResult(EChessColor Winner)
     }
     auto* Dialog = OpenResultDialog();
     if (!Dialog) return;
+    if (GameState.IsValid() && GameState->IsClassicDraw())
+    {
+        Dialog->Configure(FText::FromString(TEXT("对弈和棋")), FText::FromString(GameState->GetClassicDrawReasonText()),
+            FText::FromString(TEXT("重新对弈")), FText::FromString(TEXT("返回主菜单")), FText::FromString(TEXT("查看棋盘")));
+        Dialog->SetMatchOutcome(false, true);
+        RefreshRematchAction();
+        return;
+    }
     const bool LAN = GameState.IsValid() && GameState->IsLANGame();
     auto* Room = GetGameInstance()->GetSubsystem<UXQPLANSubsystem>();
     const bool Won = Winner == (LAN ? Room->GetLocalColor() : EChessColor::REDCHESS);
@@ -426,6 +434,11 @@ void UUI_Battle2P_Base::RefreshRematchAction()
     }
     else
     {
+        if (GameState->IsClassicDraw())
+        {
+            ResultDialog->SetPrimaryAction(FText::FromString(TEXT("重新对弈")), true);
+            return;
+        }
         if (GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::Ending)
         {
             const bool Won = GameState->GetWinnerColor() == EChessColor::REDCHESS;

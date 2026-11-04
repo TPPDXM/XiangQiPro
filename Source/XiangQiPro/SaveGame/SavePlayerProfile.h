@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "SaveStorage.h"
+#include "XiangQiPro/AI/ChessDrawHistory.h"
 #include "SavePlayerProfile.generated.h"
 
 USTRUCT()
@@ -18,6 +19,7 @@ struct FXQPChallengeProgress
     UPROPERTY(SaveGame) uint8 SavedTurn = 0;
     UPROPERTY(SaveGame) int32 SavedRedMoveScore = 0;
     UPROPERTY(SaveGame) int32 SavedBlackMoveScore = 0;
+    UPROPERTY(SaveGame) FChessDrawHistory SavedDrawHistory;
 };
 
 USTRUCT()

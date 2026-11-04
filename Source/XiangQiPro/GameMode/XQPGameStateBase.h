@@ -7,6 +7,7 @@
 
 #include "CoreMinimal.h"
 #include "XiangQiPro/AI/ChessSearch.h"
+#include "XiangQiPro/AI/ChessDrawHistory.h"
 #include "GameFramework/GameStateBase.h"
 #include "XQPGameStateBase.generated.h"
 
@@ -197,6 +198,8 @@ public:
     void ApplyNetworkMove(const FChessMove2P& Move);
     EChessColor GetTurnColor() const { return battleTurn == EPlayerTag::P1 ? EChessColor::REDCHESS : EChessColor::BLACKCHESS; }
     bool IsGameOver() const { return bGameOver; }
+    bool IsClassicDraw() const { return bClassicDraw; }
+    FString GetClassicDrawReasonText() const;
     EChessColor GetWinnerColor() const { return WinnerColor; }
     int32 GetCurrentEndingIndex() const { return CurrentEndingIndex; }
     int32 GetEndingMoveCount() const { return EndingMoveCount; }
@@ -208,5 +211,10 @@ public:
 private:
     /** 在受 bGameOver 保护的唯一结算路径播放，重新打开结果界面不重复起音。 */
     void PlayMatchResultSound(EChessColor Winner);
+    bool bClassicDraw = false;
+    EClassicDrawReason ClassicDrawReason = EClassicDrawReason::None;
+    FChessDrawHistory ClassicDrawHistory;
+    bool CheckClassicDraw();
+    void FinishClassicDraw(EClassicDrawReason Reason);
 
 };

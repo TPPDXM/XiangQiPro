@@ -127,6 +127,8 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
     score1 = score2 = score3 = 0;
     bUseMoveScores = !IsFengHuoBattle() && GI->GetGameMode() != EXQPGameMode::SoloRide && GI->GetGameMode() != EXQPGameMode::GuessWho;
     bGameOver = false;
+    bClassicDraw = false;
+    ClassicDrawReason = EClassicDrawReason::None;
     CurrentEndingIndex = INDEX_NONE;
     EndingMoveCount = 0;
     EndingBestSteps = 0;
@@ -188,9 +190,16 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
             Profile->RestoreMoveScores(score1, score2);
         }
         else board2PActor->GenerateChesses();
-        if (bEnableMachineLearning) Profile->SaveBoard(board2P->CreateSnapshot(), GetTurnColor(), score1, score2);
         break;
     }
+    }
+    const FChessPosition InitialPosition = board2P->CreateSnapshot();
+    ClassicDrawHistory.Reset(InitialPosition, GetTurnColor());
+    if (bEnableMachineLearning)
+    {
+        auto* Profile = GI->GetSubsystem<UPlayerProfileSubsystem>();
+        Profile->RestoreDrawHistory(ClassicDrawHistory, InitialPosition, GetTurnColor());
+        Profile->SaveBoard(InitialPosition, GetTurnColor(), score1, score2, &ClassicDrawHistory);
     }
     if (IsFengHuoBattle()) FengHuoBattle->Start(GI->FengHuoSettings, IsLANGame(), GI->GetGameMode() == EXQPGameMode::FengHuoAI);
     BattleStart->BeginSetup();
@@ -205,6 +214,11 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
     {
         const EChessColor Winner = FChessPosition::Opponent(GetTurnColor());
         GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this, Winner]() { Finish2PGame(Winner); }));
+    }
+    else if (GI->GetGameMode() == EXQPGameMode::AI2P && ClassicDrawHistory.Evaluate(InitialPosition) != EClassicDrawReason::None)
+    {
+        const EClassicDrawReason Reason = ClassicDrawHistory.Evaluate(InitialPosition);
+        GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this, Reason]() { FinishClassicDraw(Reason); }));
     }
     else if (battleTurn == EPlayerTag::AI) GetWorld()->GetTimerManager().SetTimerForNextTick(this, &AXQPGameStateBase::RunAI2P);
 }
@@ -229,6 +243,9 @@ void AXQPGameStateBase::ApplyMove2P(TWeakObjectPtr<AChesses> Target, FChessMove2
         return;
     }
     bMoveInProgress = true;
+    // 只记录已经验证、即将提交的实际走法；搜索试走不进入和棋计数。
+    if (GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::AI2P)
+        ClassicDrawHistory.Record(board2P->CreateSnapshot(), Move);
     TOptional<int32> MovePoints;
     // 所有合法本地、AI和网络走子仅在统一提交入口计分一次。
     if (bUseMoveScores)
@@ -248,7 +265,7 @@ void AXQPGameStateBase::ApplyMove2P(TWeakObjectPtr<AChesses> Target, FChessMove2
         FChessPosition Snapshot = board2P->CreateSnapshot();
         if (Side == EChessColor::REDCHESS) Profile->ObserveMove(Snapshot, Move);
         Snapshot.MakeMove(Move);
-        Profile->SaveBoard(Snapshot, FChessPosition::Opponent(Side), score1, score2);
+        Profile->SaveBoard(Snapshot, FChessPosition::Opponent(Side), score1, score2, &ClassicDrawHistory);
     }
     if (battleType == EBattleType::SoloRide) USoloRideMode::OnApplyMove(Move);
     if (HUD2P.IsValid()) HUD2P->AddOperatingRecord(battleTurn, Target, Move, MovePoints);
@@ -277,6 +294,7 @@ void AXQPGameStateBase::OnFinishMove2P(TWeakObjectPtr<AChesses> Target)
         Finish2PGame(FChessPosition::Opponent(Side));
         return;
     }
+    if (CheckClassicDraw()) return;
     if (HUD2P.IsValid()) HUD2P->SetAITurn(battleTurn == EPlayerTag::AI);
     if (battleTurn == EPlayerTag::AI) RunAI2P();
 }
@@ -391,7 +409,46 @@ void AXQPGameStateBase::Finish2PGame(EChessColor Winner)
     EXEC_GAMEOVER();
 }
 
-// 吃将和无合法走法共用同一结算入口。
+FString AXQPGameStateBase::GetClassicDrawReasonText() const
+{
+    switch (ClassicDrawReason)
+    {
+    case EClassicDrawReason::Repetition: return TEXT("双方重复闲着局面三次，本局和棋。");
+    case EClassicDrawReason::NoCapture: return TEXT("双方连续 60 回合未吃子，达到自然限着，本局和棋。");
+    case EClassicDrawReason::InsufficientMaterial: return TEXT("双方仅剩将帅、仕士、相象，已无进攻子力，本局和棋。");
+    default: return TEXT("本局和棋。");
+    }
+}
+
+bool AXQPGameStateBase::CheckClassicDraw()
+{
+    const auto* GI = GetGameInstance<UXQPGameInstance>();
+    if (!GI || GI->GetGameMode() != EXQPGameMode::AI2P || bGameOver || !IsValid(board2P)) return false;
+    const EClassicDrawReason Reason = ClassicDrawHistory.Evaluate(board2P->CreateSnapshot());
+    if (Reason == EClassicDrawReason::None) return false;
+    FinishClassicDraw(Reason);
+    return true;
+}
+
+void AXQPGameStateBase::FinishClassicDraw(EClassicDrawReason Reason)
+{
+    if (bGameOver || bEndingPlay || Reason == EClassicDrawReason::None) return;
+    bGameOver = bClassicDraw = true;
+    ClassicDrawReason = Reason;
+    CancelAIRequest();
+    DismissSettingPoint2P();
+    UpdateScore();
+    if (bEnableMachineLearning) GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>()->CompleteDrawRound();
+    if (auto* Feedback = GetGameInstance()->GetSubsystem<UXQPFeedbackAudioSubsystem>()) Feedback->PlayMatchResult(false, true);
+    if (HUD2P.IsValid())
+    {
+        HUD2P->SetAITurn(false);
+        HUD2P->ShowMatchResult(WinnerColor); // HUD 先检查和棋标志，不把占位阵营显示成胜者。
+    }
+    EXEC_GAMEOVER();
+}
+
+// 吃将和无合法走法共用同一结算入口；困毙仍然判负，不走和棋结算。
 void AXQPGameStateBase::NotifyGameOver(EChessColor Winner)
 {
     if (IsFengHuoBattle()) { FengHuoBattle->Finish(Winner); return; }

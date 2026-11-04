@@ -14,7 +14,8 @@ bool ValidProfile(USavePlayerProfile* Profile)
     {
         const auto& P = Pair.Value;
         if (P.CurrentStreak < 0 || P.BestStreak < P.CurrentStreak || P.BestStreak > 1000000 ||
-            P.RunDifficulty > 4 || P.SavedTurn > 1 || (!P.SavedBoard.IsEmpty() && P.SavedBoard.Num() != 90)) return false;
+            P.RunDifficulty > 4 || P.SavedTurn > 1 || (!P.SavedBoard.IsEmpty() && P.SavedBoard.Num() != 90) ||
+            !P.SavedDrawHistory.IsValid()) return false;
         for (uint8 Square : P.SavedBoard)
             if ((Square & 15) > 7 || (Square >> 4) > 1) return false;
     }
@@ -163,7 +164,16 @@ void UPlayerProfileSubsystem::RestoreMoveScores(int32& RedMoveScore, int32& Blac
     BlackMoveScore = ProgressData().SavedBlackMoveScore;
 }
 
-void UPlayerProfileSubsystem::SaveBoard(const FChessPosition& Board, EChessColor Turn, int32 RedMoveScore, int32 BlackMoveScore)
+bool UPlayerProfileSubsystem::RestoreDrawHistory(FChessDrawHistory& OutHistory, const FChessPosition& Board, EChessColor Turn) const
+{
+    // 旧存档没有该字段；只有局面与执棋方匹配时才沿用计数，避免移植到另一局。
+    if (!ProgressData().SavedDrawHistory.Matches(Board, Turn)) return false;
+    OutHistory = ProgressData().SavedDrawHistory;
+    return true;
+}
+
+void UPlayerProfileSubsystem::SaveBoard(const FChessPosition& Board, EChessColor Turn, int32 RedMoveScore, int32 BlackMoveScore,
+    const FChessDrawHistory* DrawHistory)
 {
     // 每手保存已提交的逻辑棋盘，动画尚未完成也能继续正确回合。
     if (!ProgressData().bRunActive)
@@ -175,6 +185,7 @@ void UPlayerProfileSubsystem::SaveBoard(const FChessPosition& Board, EChessColor
     ProgressData().SavedTurn = static_cast<uint8>(Turn);
     ProgressData().SavedRedMoveScore = RedMoveScore;
     ProgressData().SavedBlackMoveScore = BlackMoveScore;
+    ProgressData().SavedDrawHistory = DrawHistory ? *DrawHistory : FChessDrawHistory{};
     Save();
 }
 
@@ -220,6 +231,7 @@ void UPlayerProfileSubsystem::ClearLearning()
     auto& Progress = ProgressData();
     Progress.CurrentStreak = 0;
     Progress.SavedBoard.Reset();
+    Progress.SavedDrawHistory = {};
     Progress.SavedTurn = 0;
     Progress.SavedRedMoveScore = Progress.SavedBlackMoveScore = 0;
     auto& Learning = LearningData();
@@ -272,6 +284,7 @@ void UPlayerProfileSubsystem::CompleteRound(bool bPlayerWon)
         ProgressData().CurrentStreak = FMath::Min(ProgressData().CurrentStreak + 1, 1000000);
         ProgressData().BestStreak = FMath::Max(ProgressData().BestStreak, ProgressData().CurrentStreak);
         ProgressData().SavedBoard.Reset();
+        ProgressData().SavedDrawHistory = {};
         ProgressData().SavedRedMoveScore = ProgressData().SavedBlackMoveScore = 0;
     }
     else
@@ -282,6 +295,19 @@ void UPlayerProfileSubsystem::CompleteRound(bool bPlayerWon)
     Save();
     if (!bPlayerWon)
         Save(); // 覆盖备份，防止旧槽恢复已结束的挑战。
+}
+
+void UPlayerProfileSubsystem::CompleteDrawRound()
+{
+    if (!ProgressData().bRunActive) return;
+    // 和棋不递增连胜，也不清空已有连胜/模型；仅结束当前盘以便同难度重赛。
+    ProgressData().SavedBoard.Reset();
+    ProgressData().SavedDrawHistory = {};
+    ProgressData().SavedTurn = 0;
+    ProgressData().SavedRedMoveScore = ProgressData().SavedBlackMoveScore = 0;
+    LearningData().LastAIMoveKey.Reset();
+    LearningData().LastPlayerReplyKey.Reset();
+    Save();
 }
 
 FChessLearning UPlayerProfileSubsystem::LearningSnapshot() const
