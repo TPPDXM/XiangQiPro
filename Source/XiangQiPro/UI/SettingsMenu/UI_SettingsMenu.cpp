@@ -11,6 +11,16 @@ void UUI_SettingsMenu::NativeConstruct()
     // 原有视频、画面和返回按钮的蓝图接线保持有效，只连接新增的玩家设置入口。
     if (PlayerSettingsButton)
         XQPButtonBinding::GetButton(PlayerSettingsButton)->OnClicked.AddUniqueDynamic(this, &UUI_SettingsMenu::OpenPlayerSettings);
+    // 复用设置菜单自身的按钮样式；两端仅布局不同，共用 UIManager 的压栈和返回行为。
+    if (UButton* Button = XQPButtonBinding::GetButton(WB_Btn_AudioSettings))
+        Button->OnClicked.AddUniqueDynamic(this, &UUI_SettingsMenu::OpenAudioSettings);
+}
+
+void UUI_SettingsMenu::OpenAudioSettings()
+{
+    if (!AudioSettingsClass || !GetGameInstance()) return;
+    GetGameInstance()->GetSubsystem<UUIManager>()->AddUI(
+        XQPMobile::CreateWidget<UUserWidget>(GetGameInstance(), AudioSettingsClass));
 }
 
 void UUI_SettingsMenu::OpenPlayerSettings()

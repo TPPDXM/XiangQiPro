@@ -1,5 +1,6 @@
 // Copyright 2026 Ultimate Player All Rights Reserved.
 #include "MobileMenuCamera.h"
+#include "XiangQiPro/Audio/XQPAudioSettingsSubsystem.h"
 #include "XiangQiPro/Util/AssetPaths.h"
 #include "Camera/CameraComponent.h"
 #include "Engine/StaticMesh.h"
@@ -53,6 +54,7 @@ AMobileMenuCamera::AMobileMenuCamera()
     Demo->SetPresentationRoot(BoardPivot);
     Music = CreateDefaultSubobject<UAudioComponent>(TEXT("Music"));
     Music->SetupAttachment(Board);
+    Music->bAutoActivate = false; // 等待本机音乐偏好应用后，由 BeginPlay 显式起音。
     Music->bIsUISound = true;
     static ConstructorHelpers::FObjectFinder<USoundBase> MenuMusic(PATH_AUDIO_LOBBY);
     Music->SetSound(MenuMusic.Object);
@@ -86,6 +88,9 @@ void AMobileMenuCamera::BeginPlay()
             if (UWidget* LegacyCaption = Menu->GetWidgetFromName(TEXT("DemoCaption"))) LegacyCaption->RemoveFromParent();
             GetGameInstance()->GetSubsystem<UUIManager>()->Init(Menu);
         }
+    // 在背景音乐首次起音前应用本机总线偏好，覆盖 PIE 和跨地图的新音频设备。
+    if (UGameInstance* Game = GetGameInstance())
+        Game->GetSubsystem<UXQPAudioSettingsSubsystem>()->ApplyToWorld(GetWorld());
     Music->Play();
 }
 

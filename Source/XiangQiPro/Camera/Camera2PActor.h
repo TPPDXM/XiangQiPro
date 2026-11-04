@@ -14,6 +14,7 @@
 class AXQP_HUD;
 class UUI_Battle2P_Base;
 class UUI_InGamePause;
+class UBattleStartComponent;
 
 /**
  *
@@ -60,6 +61,15 @@ private:
     bool bDesktopFrameApplied = false;
     FVector2D LastDesktopViewport = FVector2D::ZeroVector;
     FBox2D LastDesktopBoardRect;
+
+    /** 保留正式资源的强引用，提前加载音乐，避免倒计时结束时同步读盘。 */
+    UPROPERTY(Transient)
+    TObjectPtr<USoundBase> FengHuoBattleMusic;
+    /** 记录绑定来源，离开世界时解除开局状态订阅。 */
+    TWeakObjectPtr<UBattleStartComponent> MusicBattleStart;
+    /** 与 IsPlaying 分开记录：曲目自然播完后，联机状态同步不能再次播放。 */
+    bool bFengHuoMusicStarted = false;
+    void RefreshFengHuoMusicState();
 
 
 

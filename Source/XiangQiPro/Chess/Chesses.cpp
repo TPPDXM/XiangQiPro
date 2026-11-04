@@ -79,6 +79,14 @@ void AChesses::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2
 			FVector Vertex = (End - Start) / 2 + Start + FVector(0, 0, 5);			// 顶点位置
 
 			FVector result = WeakThis->CalculateParabolicPosition(Start, Vertex, End, value);
+            if (WeakThis->MoveEffects->bKnightEffects)
+            {
+                // 马用直接时间进度而不是通用抬棋曲线，0.5 秒完成一次明确的二次贝塞尔腾跃。
+                const float Alpha = FMath::Clamp(WeakThis->TimeLine_ChessMove->GetPlaybackPosition()
+                    / FMath::Max(WeakThis->TimeLine_ChessMove->GetTimelineLength(), SMALL_NUMBER), 0.f, 1.f);
+                result = FMath::Lerp(Start, End, Alpha);
+                result.Z += 2.f * Alpha * (1.f - Alpha) * WeakThis->MoveEffects->GetKnightJumpHeight(Start, End);
+            }
 
 			WeakThis->SetActorLocation(result); // 更新Actor位置
             WeakThis->MoveEffects->UpdateMove(WeakThis->GetWorld()->GetDeltaSeconds());
@@ -191,6 +199,12 @@ void AChesses::Tick(float DeltaTime)
         FVector Location = GetActorLocation();
         Location.Z = FMath::FInterpConstantTo(Location.Z, Board2P->BoardLocs[Pos.X][Pos.Y].Z, DeltaTime, 12.f);
         SetActorLocation(Location);
+        if (FMath::IsNearlyEqual(Location.Z, Board2P->BoardLocs[Pos.X][Pos.Y].Z, 0.01f))
+        {
+            // 普通吃子与烽火吃子都先悬停再下降。将帅的落印只能在真正接触棋盘后触发；
+            // 组件内的单次锁存使后续静止帧和重复联机快照保持无待机特效。
+            MoveEffects->FinishLanding();
+        }
         if (bCaptureLanding && FMath::IsNearlyEqual(Location.Z, Board2P->BoardLocs[Pos.X][Pos.Y].Z, 0.01f))
         {
             bCaptureLanding = bAnimationing = false;
@@ -241,10 +255,22 @@ FVector AChesses::CaptureApproachLocation(AChesses* Victim, float Alpha) const
         const float BottomOffset = GetActorLocation().Z - (ChessMesh->Bounds.Origin.Z - ChessMesh->Bounds.BoxExtent.Z);
         const float HoverZ = Victim->GetSurfaceZ() + BottomOffset + 0.25f;
         FVector Location = FMath::Lerp(FengHuoMoveStart, End, Alpha);
+        if (MoveEffects->bKnightEffects)
+        {
+            // 吃子先腾空，在敌棋顶面以上收束，仍沿用原有结算、悬停与落下的生命周期。
+            Location.Z = FMath::Lerp(FengHuoMoveStart.Z, HoverZ, Alpha)
+                + 2.f * Alpha * (1.f - Alpha) * MoveEffects->GetKnightJumpHeight(FengHuoMoveStart, End);
+            return Location;
+        }
         Location.Z = FMath::Lerp(FengHuoMoveStart.Z, HoverZ, FMath::SmoothStep(0.f, 0.35f, Alpha));
         return Location;
     }
     FVector Location = FMath::Lerp(FengHuoMoveStart, End, Alpha);
+    if (MoveEffects->bKnightEffects)
+    {
+        Location.Z += 2.f * Alpha * (1.f - Alpha) * MoveEffects->GetKnightJumpHeight(FengHuoMoveStart, End);
+        return Location;
+    }
     Location.Z += FMath::Sin(Alpha * PI) * 1.8f;
     return Location;
 }
@@ -265,8 +291,9 @@ FVector AChesses::GetEffectImpactLocation() const
 
 void AChesses::BeginFengHuoMove(const FChessMove2P& Move, float Duration)
 {
-    MoveEffects->BeginMove();
     TargetPos = Move.to;
+    // 一次性世界弧线必须在目标格已更新后读取终点，连续走子不能沿用上一段 TargetPos。
+    MoveEffects->BeginMove();
     bRealtimeTravelling = bAnimationing = true;
     FengHuoMoveTime = 0.f;
     FengHuoMoveDuration = FMath::Max(0.01f, Duration);
@@ -549,7 +576,7 @@ void AChesses::ApplyMove(FChessMove2P Move)
     {
         // 普通模式吃子固定用时到达目标上方，距离越远位移速度越快。
         FengHuoMoveStart = GetActorLocation(); FengHuoMoveTime = 0.f;
-        FengHuoMoveDuration = 0.65f;
+        FengHuoMoveDuration = MoveEffects->bKnightEffects ? 0.5f : 0.65f;
         bCaptureApproach = bAnimationing = true;
         SetActorTickEnabled(true);
     }
@@ -570,7 +597,7 @@ void AChesses::PlayMoveAnim()
         return;
     }
 	bAnimationing = true;
-	const float Duration = FMath::Max(0.65f, FVector2D(TargetPos - Pos).Size() / 4.f);
+	const float Duration = MoveEffects->bKnightEffects ? 0.5f : FMath::Max(0.65f, FVector2D(TargetPos - Pos).Size() / 4.f);
 	TimeLine_ChessMove->SetPlayRate(TimeLine_ChessMove->GetTimelineLength() / Duration);
 	TimeLine_ChessMove->PlayFromStart(); // 播放移动动画
 }

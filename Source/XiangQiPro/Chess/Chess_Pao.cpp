@@ -3,11 +3,16 @@
 
 #include "Chess_Pao.h"
 #include "ChessMoveEffectsComponent.h"
+#include "Sound/SoundBase.h"
 
 AChess_Pao::AChess_Pao()
 {
 	MyType = EChessType::PAO;
 	MyRealType = EChessType::PAO;
+    // 喷火起音和命中爆响分开触发，避免远距离吃子时爆响提前于落点。
+    MoveEffects->MoveSound = OM::GetConstructorObject<USoundBase>(TEXT("/Game/Audio/Chess/Cannon/S_CannonMove.S_CannonMove"));
+    MoveEffects->LandingSound = OM::GetConstructorObject<USoundBase>(TEXT("/Game/Audio/Chess/Cannon/S_CannonLand.S_CannonLand"));
+    MoveEffects->CaptureSound = OM::GetConstructorObject<USoundBase>(TEXT("/Game/Audio/Chess/Cannon/S_CannonCapture.S_CannonCapture"));
 
     // 强引用使炮特效随原生棋子类进入 Cook；其他棋子仍继承基类的空配置。
     // 移动端不加载 GPU 发射器运行，改用同风格、低粒子预算的独立 CPU 系统。

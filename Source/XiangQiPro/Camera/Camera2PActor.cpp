@@ -2,8 +2,10 @@
 
 
 #include "Camera2PActor.h"
+#include "XiangQiPro/Audio/XQPAudioSettingsSubsystem.h"
 #include "XiangQiPro/Util/AssetPaths.h"
 #include "../GameMode/XQPGameStateBase.h"
+#include "XiangQiPro/GameMode/BattleStartComponent.h"
 #include "../UI/XQP_HUD.h"
 #include "../Util/Logger.h"
 #include "XiangQiPro/GameMode/XQPGameInstance.h"
@@ -45,6 +47,8 @@ ACamera2PActor::ACamera2PActor()
     BattleAudio->bIsUISound = true;
     static ConstructorHelpers::FObjectFinder<USoundBase> Music(PATH_AUDIO_BATTLE);
     BattleMusic = Music.Object;
+    static ConstructorHelpers::FObjectFinder<USoundBase> FengHuoMusic(PATH_AUDIO_FENGHUO_BATTLE);
+    FengHuoBattleMusic = FengHuoMusic.Object;
 
 	// 初始化变量
 	bIsRotatingCamera = false;
@@ -66,6 +70,10 @@ void ACamera2PActor::BeginPlay()
 // 离开场景时停止本对象的运行逻辑。
 void ACamera2PActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+    // 委托属于 GameState，生命周期可能比相机长；先解除订阅，再停止当前声音。
+    if (MusicBattleStart.IsValid()) MusicBattleStart->OnSetupChanged.RemoveAll(this);
+    MusicBattleStart.Reset();
+    if (IsValid(BattleAudio)) BattleAudio->Stop();
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -300,6 +308,10 @@ void ACamera2PActor::GamePlayAgain(UObject* OwnerObject)
 {
     if (const auto* State = GetWorld()->GetGameState<AXQPGameStateBase>(); State && State->IsFengHuoBattle())
     {
+        // 重开广播的 Actor 调用顺序不固定，不能依赖 GameState 已经重置确认组件。
+        // 立即停掉上一局曲目；新局 BeginSetup 的通知会重新进入等待倒计时状态。
+        if (IsValid(BattleAudio)) BattleAudio->Stop();
+        bFengHuoMusicStarted = false;
         bFengHuoResultCamera = false;
         TargetRotation = HomeRotation;
         if (bPortraitCamera) FitMobileBoard();
@@ -314,12 +326,51 @@ void ACamera2PActor::GamePlayAgain(UObject* OwnerObject)
     IIF_GameState::GamePlayAgain(OwnerObject);
 }
 
-// 设置并播放场景背景音乐。
+// 普通模式进场播放默认音乐；烽火弈只准备资源，正式起音由开局状态控制。
 void ACamera2PActor::InitAudio()
 {
     if (!IsValid(BattleAudio)) return;
+    // 在背景音乐首次起音前应用本机总线偏好，覆盖 PIE 和跨地图的新音频设备。
+    if (UGameInstance* Game = GetGameInstance())
+        Game->GetSubsystem<UXQPAudioSettingsSubsystem>()->ApplyToWorld(GetWorld());
+
+    const auto* State = GetWorld()->GetGameState<AXQPGameStateBase>();
+    if (State && State->IsFengHuoBattle())
+    {
+        // 复用唯一的 BattleAudio，明确替换默认声音，防止两首背景音乐同时播放。
+        // 即便专属资源缺失，也不退回默认音乐，避免提前起音掩盖导入问题。
+        BattleAudio->Stop();
+        BattleAudio->SetSound(FengHuoBattleMusic);
+        MusicBattleStart = State->BattleStart;
+        if (MusicBattleStart.IsValid())
+        {
+            MusicBattleStart->OnSetupChanged.AddUObject(this, &ThisClass::RefreshFengHuoMusicState);
+            // 兼容相机晚于开局创建；等待期间此调用只停止声音，不会提前播放。
+            RefreshFengHuoMusicState();
+        }
+        return;
+    }
     BattleAudio->SetSound(BattleMusic);
     if (BattleMusic) BattleAudio->Play();
+}
+
+void ACamera2PActor::RefreshFengHuoMusicState()
+{
+    if (!MusicBattleStart.IsValid() || !IsValid(BattleAudio)) return;
+    if (!MusicBattleStart->HasStarted())
+    {
+        // BeginSetup 会在每局开始时广播，包括联机重开；准备和三秒倒计时均保持静音。
+        BattleAudio->Stop();
+        bFengHuoMusicStarted = false;
+        return;
+    }
+    if (bFengHuoMusicStarted) return;
+
+    // HasStarted 是烽火计时组件使用的同一门槛：本机由倒计时归零置位，
+    // 联机客户端由权威开局快照置位。不能用本地 UI 倒计时推测开局时间。
+    // 标记保持到下一局，曲目结束或重复收到 running 快照都不会触发重播。
+    bFengHuoMusicStarted = true;
+    if (FengHuoBattleMusic) BattleAudio->Play(0.f);
 }
 
 // 如果需要每帧更新，可以重写Tick函数

@@ -2,7 +2,19 @@
 
 // 资源路径统一维护；调用处只引用 PATH_*。
 #define PATH_AUDIO_BATTLE TEXT("/Game/Audio/BattleMusic")
+// 《烽火·争势》仅供烽火弈使用；资源本身关闭循环，由开局确认状态触发一次。
+#define PATH_AUDIO_FENGHUO_BATTLE TEXT("/Game/Audio/S_FengHuoZhengShi.S_FengHuoZhengShi")
 #define PATH_AUDIO_LOBBY TEXT("/Game/Audio/Lobby")
+// 将帅的移动祥云、吃子冲击和落印分开维护；PC／移动端路径必须成对更新。
+#define PATH_AUDIO_ROYAL_MOVE TEXT("/Game/Audio/Chess/Royal/S_RoyalMove.S_RoyalMove")
+#define PATH_AUDIO_ROYAL_LAND TEXT("/Game/Audio/Chess/Royal/S_RoyalLand.S_RoyalLand")
+#define PATH_AUDIO_ROYAL_CAPTURE TEXT("/Game/Audio/Chess/Royal/S_RoyalCapture.S_RoyalCapture")
+#define PATH_NS_ROYAL_MOVE TEXT("/Game/Niagara/Royal/NS_RoyalMoveTrail.NS_RoyalMoveTrail")
+#define PATH_NS_ROYAL_MOVE_MOBILE TEXT("/Game/Niagara/Royal/NS_RoyalMoveTrail_Mobile.NS_RoyalMoveTrail_Mobile")
+#define PATH_NS_ROYAL_CAPTURE TEXT("/Game/Niagara/Royal/NS_RoyalCapture.NS_RoyalCapture")
+#define PATH_NS_ROYAL_CAPTURE_MOBILE TEXT("/Game/Niagara/Royal/NS_RoyalCapture_Mobile.NS_RoyalCapture_Mobile")
+#define PATH_NS_ROYAL_LANDING TEXT("/Game/Niagara/Royal/NS_RoyalLanding.NS_RoyalLanding")
+#define PATH_NS_ROYAL_LANDING_MOBILE TEXT("/Game/Niagara/Royal/NS_RoyalLanding_Mobile.NS_RoyalLanding_Mobile")
 #define PATH_CF_CHESSMOVE TEXT("/Script/Engine.CurveFloat'/Game/Curve/Chess/CF_ChessMove.CF_ChessMove'")
 #define PATH_DT_ENDINGS TEXT("/Game/DataTable/ChessGenerationInfos.ChessGenerationInfos")
 #define PATH_DT_GAME_MODES TEXT("/Game/DataTable/GameModeInfos.GameModeInfos")

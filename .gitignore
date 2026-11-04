@@ -373,6 +373,14 @@ FodyWeavers.xsd
 /Build/Windows
 /enc_temp_folder
 /Content/Audio
+!/Content/Audio/
+/Content/Audio/*
+!/Content/Audio/Chess/
+!/Content/Audio/Settings/
+!/Content/Audio/Lobby.uasset
+!/Content/Audio/BattleMusic.uasset
+!/Content/Audio/S_FengHuoZhengShi.uasset
+!/Content/Audio/烽火·争势.wav
 /Content/Material
 !/Content/Material/
 /Content/Material/*
@@ -386,6 +394,12 @@ FodyWeavers.xsd
 /Content/Niagara/*
 !/Content/Niagara/Cannon/
 !/Content/Niagara/Rook/
+!/Content/Niagara/Knight/
+!/Content/Niagara/Royal/
+!/Content/Niagara/Advisor/
+!/Content/Niagara/Elephant/
+!/Content/Niagara/Pawn/
+!/Content/Niagara/ChessGround/
 /Content/Texture
 /Content/UMG/Font
 /Docs

@@ -1,6 +1,7 @@
 // Copyright 2026 Ultimate Player All Rights Reserved.
 
 #include "CameraMainActor.h"
+#include "XiangQiPro/Audio/XQPAudioSettingsSubsystem.h"
 #include "CineCameraComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SceneComponent.h"
@@ -27,6 +28,7 @@ ACameraMainActor::ACameraMainActor()
 	// 创建音频组件
 	MainAudio = CreateDefaultSubobject<UAudioComponent>(TEXT("MainAudio"));
 	MainAudio->SetupAttachment(CineCameraComponent);
+    MainAudio->bAutoActivate = false; // 音乐先应用分类音量，再由 InitAudio 播放。
 
 	// 默认值
 	FocusTarget = nullptr;
@@ -107,6 +109,9 @@ void ACameraMainActor::InitUI()
 // 设置并播放场景背景音乐。
 void ACameraMainActor::InitAudio()
 {
+    // 在背景音乐首次起音前应用本机总线偏好，覆盖 PIE 和跨地图的新音频设备。
+    if (UGameInstance* Game = GetGameInstance())
+        Game->GetSubsystem<UXQPAudioSettingsSubsystem>()->ApplyToWorld(GetWorld());
 	MainAudio->SetSound(MainMusic); // 设置音频资源
 	MainAudio->Play(); // 开始播放背景音乐
 }

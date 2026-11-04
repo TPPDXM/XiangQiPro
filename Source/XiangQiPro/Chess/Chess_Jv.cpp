@@ -3,11 +3,16 @@
 
 #include "Chess_Jv.h"
 #include "ChessMoveEffectsComponent.h"
+#include "Sound/SoundBase.h"
 
 AChess_Jv::AChess_Jv()
 {
 	MyType = EChessType::JV;
 	MyRealType = EChessType::JV;
+    // 原创短音色：木轮带金属颤音，普通落子和吃子使用不同力度的收尾。
+    MoveEffects->MoveSound = OM::GetConstructorObject<USoundBase>(TEXT("/Game/Audio/Chess/Rook/S_RookMove.S_RookMove"));
+    MoveEffects->LandingSound = OM::GetConstructorObject<USoundBase>(TEXT("/Game/Audio/Chess/Rook/S_RookLand.S_RookLand"));
+    MoveEffects->CaptureSound = OM::GetConstructorObject<USoundBase>(TEXT("/Game/Audio/Chess/Rook/S_RookCapture.S_RookCapture"));
 
     // 原生类持有正式资源引用，使离线、联机和菜单演示中的车共用同一套走子特效。
     // 真正的 Android/iOS 不加载桌面版本；竖屏编辑器预览仍可按现有画质规则切换。

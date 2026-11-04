@@ -1,13 +1,32 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "Chess_Jiang.h"
+#include "ChessMoveEffectsComponent.h"
+#include "Sound/SoundBase.h"
 
 // 初始化默认属性和组件。
 AChess_Jiang::AChess_Jiang() : Super()
 {
 	MyType = EChessType::JIANG;
 	MyRealType = EChessType::JIANG;
+    // 地面动作与音效统一走真实移动/到达入口，复用自然完成、对象池和联机重复通知过滤。
+    MoveEffects->GroundStyle = EChessGroundStyle::Royal;
+    MoveEffects->MaxSpeed = 35.f;
+#if !PLATFORM_ANDROID && !PLATFORM_IOS
+    MoveEffects->MoveTrailEffect = OM::GetConstructorObject<UNiagaraSystem>(PATH_NS_ROYAL_MOVE);
+    MoveEffects->CaptureEffect = OM::GetConstructorObject<UNiagaraSystem>(PATH_NS_ROYAL_CAPTURE);
+    MoveEffects->LandingEffect = OM::GetConstructorObject<UNiagaraSystem>(PATH_NS_ROYAL_LANDING);
+#endif
+    // 移动端使用独立 CPU 版本；低档装饰层由质量参数关闭，主体符号始终保留。
+    MoveEffects->MobileMoveTrailEffect = OM::GetConstructorObject<UNiagaraSystem>(PATH_NS_ROYAL_MOVE_MOBILE);
+    MoveEffects->MobileCaptureEffect = OM::GetConstructorObject<UNiagaraSystem>(PATH_NS_ROYAL_CAPTURE_MOBILE);
+    // 落印独立于移动祥云和吃子冲击，普通走子与吃子下降完成后均只播放一次。
+    MoveEffects->MobileLandingEffect = OM::GetConstructorObject<UNiagaraSystem>(PATH_NS_ROYAL_LANDING_MOBILE);
+    MoveEffects->MoveSound = OM::GetConstructorObject<USoundBase>(PATH_AUDIO_ROYAL_MOVE);
+    MoveEffects->LandingSound = OM::GetConstructorObject<USoundBase>(PATH_AUDIO_ROYAL_LAND);
+    MoveEffects->CaptureSound = OM::GetConstructorObject<USoundBase>(PATH_AUDIO_ROYAL_CAPTURE);
+
 }
 
 // 初始化将帅名称和阵营材质。
