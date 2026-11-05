@@ -1,4 +1,4 @@
-#include "UI_BattleReady.h"
+﻿#include "UI_BattleReady.h"
 #include "Components/BackgroundBlur.h"
 #include "Components/TextBlock.h"
 #include "XiangQiPro/UI/Components/XQPButtonBinding.h"
@@ -18,7 +18,7 @@ void UUI_BattleReady::NativeConstruct()
         State->BattleStart->OnSetupChanged.AddUObject(this, &UUI_BattleReady::RefreshPresentation);
     }
     FSlateFontInfo CountdownFont = StartCountdown->GetFont();
-    CountdownFont.OutlineSettings.OutlineSize = 5;
+    CountdownFont.OutlineSettings.OutlineSize = 3;
     CountdownFont.OutlineSettings.OutlineColor = FLinearColor(.008f, .004f, .006f, 1.f);
     CountdownFont.OutlineSettings.bSeparateFillAlpha = true;
     StartCountdown->SetFont(CountdownFont);
