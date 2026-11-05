@@ -11,6 +11,8 @@
 #include "XiangQiPro/GameObject/ChessBoard2P.h"
 #include "XiangQiPro/GameObject/SettingPoint.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
+#include "ReenactmentComponent.h"
+#include "InputKeyEventArgs.h"
 
 // 进入场景后初始化本对象依赖。
 void AXQPPlayerController::BeginPlay()
@@ -117,6 +119,13 @@ ASettingPoint* AXQPPlayerController::FindTouchDropPoint(const FVector2D& ScreenP
 void AXQPPlayerController::ProcessTouchHitResult(FTouchId TouchId, ETouchType::Type Type,
     const FVector2D& TouchLocation, const FHitResult& HitResult, bool bHit)
 {
+    if (auto* EditState = GetWorld()->GetGameState<AXQPGameStateBase>(); EditState && EditState->Reenactment->IsEditing())
+    {
+        // 仅第一根手指参与编辑，Slate已消费的物品栏/按钮输入不会到达此处。
+        if (int32(TouchId.GetIndex()) == 0)
+            EditState->Reenactment->HandlePointer(TouchLocation, Type == ETouchType::Began, Type == ETouchType::Ended, Type == ETouchType::Moved);
+        return;
+    }
     auto* Menu = Cast<AMobileMenuCamera>(GetViewTarget());
     const auto* State = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr;
     if (!XQPMobile::IsPortrait(this) || (!Menu && (!State || !State->board2P)))
@@ -260,6 +269,11 @@ void AXQPPlayerController::ProcessTouchHitResult(FTouchId TouchId, ETouchType::T
 void AXQPPlayerController::PlayerTick(float DeltaTime)
 {
     Super::PlayerTick(DeltaTime);
+    if (auto* State = GetWorld()->GetGameState<AXQPGameStateBase>(); State && State->Reenactment->IsEditing() && !XQPMobile::IsPortrait(this))
+    {
+        float X,Y;
+        if (IsInputKeyDown(EKeys::LeftMouseButton) && GetMousePosition(X,Y)) State->Reenactment->HandlePointer(FVector2D(X,Y),false,false,true);
+    }
     if (BoardContacts.IsEmpty()) return;
     // 手指在 UI 上抬起、应用失焦或弹窗打断时，释放可能不会再次经过游戏拾取。
     // 每帧清理已结束的接触，只取消手势，绝不把中断补做成一次落子。
@@ -284,4 +298,16 @@ void AXQPPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
     CancelMobileBoardGesture();
     BoardContacts.Reset();
     Super::EndPlay(EndPlayReason);
+}
+
+bool AXQPPlayerController::InputKey(const FInputKeyEventArgs& Params)
+{
+    if (Params.Key == EKeys::LeftMouseButton)
+        if (auto* State = GetWorld()->GetGameState<AXQPGameStateBase>(); State && State->Reenactment->IsEditing())
+        {
+            float X,Y;
+            if (GetMousePosition(X,Y)) State->Reenactment->HandlePointer(FVector2D(X,Y),Params.Event == IE_Pressed,Params.Event == IE_Released,false);
+            return true;
+        }
+    return Super::InputKey(Params);
 }

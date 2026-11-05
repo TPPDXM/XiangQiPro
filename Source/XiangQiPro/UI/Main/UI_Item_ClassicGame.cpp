@@ -4,6 +4,7 @@
 #include "UI_Item_ClassicGame.h"
 #include "XiangQiPro/Audio/XQPFeedbackAudioSubsystem.h"
 #include "ClassicGameData.h"
+#include "XiangQiPro/UI/XQPMobile.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
@@ -37,7 +38,7 @@ void UUI_Item_ClassicGame::NativeOnListItemObjectSet(UObject* ListItemObject)
         OnItemClickedDelegate = Obj->OnItemClickedDelegate;
         bIsInitItem = true;
 
-        FSlateBrush brush = UWidgetBlueprintLibrary::MakeBrushFromTexture(Obj->Icon, 96, 96); // ´´½¨±ÊË¢
+        FSlateBrush brush = UWidgetBlueprintLibrary::MakeBrushFromTexture(Obj->Icon, 96, 96); // åˆ›å»ºç¬”åˆ·
         Icon->SetBrush(brush);
     }
 }
@@ -47,19 +48,20 @@ void UUI_Item_ClassicGame::SetSelected(bool bIsSelected)
     bSelected = bIsSelected;
 
     FSlateBrush brush;
-    brush.DrawAs = ESlateBrushDrawType::Type::RoundedBox; // »æÖÆÀàÐÍ
-    brush.OutlineSettings.RoundingType = ESlateBrushRoundingType::Type::FixedRadius; // ÂÖÀªÔ²½Ç
-    brush.OutlineSettings.Width = 5.f; // ÂÖÀª¿í¶È
+    brush.DrawAs = ESlateBrushDrawType::Type::RoundedBox; // ç»˜åˆ¶ç±»åž‹
+    brush.OutlineSettings.RoundingType = ESlateBrushRoundingType::Type::FixedRadius; // è½®å»“åœ†è§’
+    // ç§»åŠ¨ç«¯åŠ¨æ€é€‰ä¸­æ¡†ä¹Ÿéµå¾ªå…¨å±€æè¾¹åŠ ç²—è§„åˆ™ã€‚
+    brush.OutlineSettings.Width = XQPMobile::IsPortrait(this) ? 10.f : 5.f; // è½®å»“å®½åº¦
     if (bSelected)
     {
-        brush.OutlineSettings.Color = SelectedTextColor; // ÂÖÀªÑÕÉ«
+        brush.OutlineSettings.Color = SelectedTextColor; // è½®å»“é¢œè‰²
         SelectedIndicator->SetColorAndOpacity(SelectedColor);
         SelectedIndicator->SetBrush(brush);
         ItemText->SetColorAndOpacity(SelectedTextColor);
     }
     else
     {
-        brush.OutlineSettings.Color = FLinearColor(0.5f, 0.5f, 0.5f, 0.5f); // ÂÖÀªÑÕÉ«
+        brush.OutlineSettings.Color = FLinearColor(0.5f, 0.5f, 0.5f, 0.5f); // è½®å»“é¢œè‰²
         SelectedIndicator->SetColorAndOpacity(DefaultColor);
         SelectedIndicator->SetBrush(brush);
         ItemText->SetColorAndOpacity(DefaultTextColor);

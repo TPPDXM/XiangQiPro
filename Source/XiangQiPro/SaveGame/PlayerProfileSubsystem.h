@@ -37,6 +37,8 @@ class XIANGQIPRO_API UPlayerProfileSubsystem : public UGameInstanceSubsystem
     void CompleteRound(bool bPlayerWon);
     /** 和棋清除本局棋盘，保留当前连胜、难度及学习数据，下一局重赛。 */
     void CompleteDrawRound();
+    /** 重开本盘仅清除恢复快照与待评价的一手，保留连胜、起始难度及已学经验。 */
+    void RestartCurrentRound();
     void EndChallenge();
     // 反馈上一组AI落子/玩家回应是否造成明显损失。
     void ReviewAIOutcome(int32 CurrentScore);

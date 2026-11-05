@@ -1,4 +1,4 @@
-﻿// Copyright 2026 Ultimate Player All Rights Reserved.
+// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "SettingPoint.h"
@@ -6,10 +6,12 @@
 #include "NiagaraSystem.h"
 #include "Components/SphereComponent.h"
 #include "EngineUtils.h"
+#include "XiangQiPro/UI/XQPMobile.h"
 
 #include "../Chess/Chesses.h"
 #include "../GameObject/ChessBoard2P.h"
 #include "../GameMode/XQPGameStateBase.h"
+#include "../GameMode/ReenactmentComponent.h"
 #include "../Util/ObjectManager.h"
 
 // Sets default values
@@ -48,6 +50,8 @@ void ASettingPoint::BeginPlay()
 {
 	Super::BeginPlay();
 	GameState = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr;
+    // 移动端只放大查询碰撞，半径低于半格，避免相邻落点争抢触摸。
+    Sphere->SetSphereRadius(XQPMobile::IsPortrait(this) ? 3.55f : 3.f);
 	DefaultWorldPosition = GetActorLocation(); // 获取默认世界坐标
 }
 
@@ -68,6 +72,13 @@ void ASettingPoint::Tick(float DeltaTime)
 void ASettingPoint::UpdateSurfaceHeight()
 {
     FVector Location = DefaultWorldPosition;
+    // 布阵提示贴着棋盘空位，半透明预览和撤阵消散均不能成为落点的支撑面。
+    // 正式对弈仍保留吃子时抬升到实体棋子上方的原有显示行为。
+    if (GameState.IsValid() && GameState->Reenactment && GameState->Reenactment->IsEditing())
+    {
+        SetActorLocation(Location);
+        return;
+    }
     // 使用实际网格表面，包含短暂停留时的多层棋子和仍可见的消散棋子。
     for (TActorIterator<AChesses> It(GetWorld()); It; ++It)
     {

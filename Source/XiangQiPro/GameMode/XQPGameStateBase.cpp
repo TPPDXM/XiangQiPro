@@ -20,12 +20,15 @@
 #include "BattleStartComponent.h"
 #include "XiangQiPro/Camera/Camera2PActor.h"
 #include "EngineUtils.h"
+#include "ReenactmentComponent.h"
+#include "XiangQiPro/SaveGame/ReenactmentLibrary.h"
 
 // 设置默认对战类型和难度。
 AXQPGameStateBase::AXQPGameStateBase() : battleType(EBattleType::P2_AI), AIDifficulty(EAI2PDifficulty::Hard)
 {
     FengHuoBattle = CreateDefaultSubobject<UFengHuoBattleComponent>(TEXT("FengHuoBattle"));
     BattleStart = CreateDefaultSubobject<UBattleStartComponent>(TEXT("BattleStart"));
+    Reenactment = CreateDefaultSubobject<UReenactmentComponent>(TEXT("Reenactment"));
 }
 
 // 读取游戏实例中的用户配置。
@@ -99,6 +102,8 @@ void AXQPGameStateBase::GameResume(UObject* OwnerObject)
 void AXQPGameStateBase::GamePlayAgain(UObject* OwnerObject)
 {
     if (IsLANGame()) return; // 双方准备后由房主统一开新局。
+    if (bEnableMachineLearning)
+        GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>()->RestartCurrentRound();
     CancelAIRequest();
     bGameOver = true;
     GetWorld()->GetTimerManager().ClearTimer(FengHuoResultTimer);
@@ -162,6 +167,23 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
     board2PActor->Init(board2P);
     switch (GI->GetGameMode())
     {
+    case EXQPGameMode::Reenactment:
+    {
+        auto* Library = GI->GetSubsystem<UReenactmentLibrary>();
+        battleType = Library->GetDraft().bAI ? EBattleType::P2_AI : EBattleType::P2;
+        AIDifficulty = static_cast<EAI2PDifficulty>(Library->GetDraft().Difficulty);
+        board2PActor->GenerateFromPosition(Library->GetDraft().Position());
+        if (Library->IsEditing())
+        {
+            BattleStart->Stop();
+            for (const auto& Row : board2P->AllChess) for (const auto& Chess : Row)
+                if (Chess.IsValid()) Chess->SetActorEnableCollision(false);
+            Reenactment->InitializeEditor();
+            return; // 编辑状态绝不启动时钟、AI或胜负检测。
+        }
+        Reenactment->InitializeEditor();
+        break;
+    }
     case EXQPGameMode::Ending:
     {
         CurrentEndingIndex = USaveGameLibrary::GetEndingGameLevel();
@@ -225,7 +247,7 @@ void AXQPGameStateBase::Start2PGame(TWeakObjectPtr<AChessBoard2PActor> InBoard2P
         const EChessColor Winner = FChessPosition::Opponent(GetTurnColor());
         GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this, Winner]() { Finish2PGame(Winner); }));
     }
-    else if (GI->GetGameMode() == EXQPGameMode::AI2P && ClassicDrawHistory.Evaluate(InitialPosition) != EClassicDrawReason::None)
+    else if (!IsLANGame() && IsClassicBattle() && ClassicDrawHistory.Evaluate(InitialPosition) != EClassicDrawReason::None)
     {
         const EClassicDrawReason Reason = ClassicDrawHistory.Evaluate(InitialPosition);
         GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this, Reason]() { FinishClassicDraw(Reason); }));
@@ -266,7 +288,7 @@ void AXQPGameStateBase::ApplyMove2P(TWeakObjectPtr<AChesses> Target, FChessMove2
     }
     bMoveInProgress = true;
     // 只记录已经验证、即将提交的实际走法；搜索试走不进入和棋计数。
-    if (GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::AI2P)
+    if (IsClassicBattle())
         ClassicDrawHistory.Record(board2P->CreateSnapshot(), Move);
     TOptional<int32> MovePoints;
     // 所有合法本地、AI和网络走子仅在统一提交入口计分一次。
@@ -391,8 +413,8 @@ void AXQPGameStateBase::ApplyAIResult(const FChessSearchResult& Result)
         {
             UPlayerProfileSubsystem* Profile = GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>();
             const FChessPosition Snapshot = board2P->CreateSnapshot();
-            // 回加经验代价后再比较，避免把历史惩罚误当成一次新的局面损失。
-            const int32 RawScore = Result.Move.score + Profile->LearningSnapshot().AvoidancePenalty(Snapshot, Result.Move);
+            // 学习反例只影响搜索顺序，此处直接使用真实搜索评分评价上一手。
+            const int32 RawScore = Result.Move.score;
             Profile->ReviewAIOutcome(RawScore);
             Profile->RecordAIChoice(Snapshot, Result.Move, RawScore);
         }
@@ -445,7 +467,7 @@ FString AXQPGameStateBase::GetClassicDrawReasonText() const
 bool AXQPGameStateBase::CheckClassicDraw()
 {
     const auto* GI = GetGameInstance<UXQPGameInstance>();
-    if (!GI || GI->GetGameMode() != EXQPGameMode::AI2P || bGameOver || !IsValid(board2P)) return false;
+    if (!GI || !IsClassicBattle() || bGameOver || !IsValid(board2P)) return false;
     const EClassicDrawReason Reason = ClassicDrawHistory.Evaluate(board2P->CreateSnapshot());
     if (Reason == EClassicDrawReason::None) return false;
     FinishClassicDraw(Reason);
@@ -503,6 +525,8 @@ void AXQPGameStateBase::FinishFengHuoBattle(EChessColor Winner)
 // 声音按本机阵营判断，不把红方胜利硬编码成本机胜利。
 void AXQPGameStateBase::PlayMatchResultSound(EChessColor Winner)
 {
+    // 残局通关广播与普通 GameOver 不同，但所有终局都必须淡出BGM。
+    for (TActorIterator<ACamera2PActor> It(GetWorld()); It; ++It) It->FadeMatchMusic();
     const auto* GI = GetGameInstance<UXQPGameInstance>();
     // 观战没有本机输赢；单骑是计分挑战，不把其正常结束套成失败。
     if (!GI || IsSpectator() || GI->GetGameMode() == EXQPGameMode::SoloRide) return;
@@ -584,7 +608,8 @@ bool AXQPGameStateBase::IsMyTurn() const
         return !bGameOver && !bEndingPlay && !bAIPaused && FengHuoBattle->IsRunning() &&
             (!IsLANGame() || GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->IsBattleReady());
     if (IsLANGame() && !GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->CanLocalMove()) return false;
-    return !bGameOver && !bEndingPlay && !bAIPaused && !bMoveInProgress && MyPlayerTag == battleTurn;
+    const bool bLocalBothSides = GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::Reenactment && battleType == EBattleType::P2;
+    return !bGameOver && !bEndingPlay && !bAIPaused && !bMoveInProgress && (bLocalBothSides || MyPlayerTag == battleTurn);
 }
 
 bool AXQPGameStateBase::IsLANGame() const
@@ -629,7 +654,7 @@ void AXQPGameStateBase::SwitchBattleTurn()
 bool AXQPGameStateBase::IsClassicBattle() const
 {
     const auto* GI = GetGameInstance<UXQPGameInstance>();
-    return GI && (GI->GetGameMode() == EXQPGameMode::AI2P || GI->GetGameMode() == EXQPGameMode::LAN);
+    return GI && (GI->GetGameMode() == EXQPGameMode::AI2P || GI->GetGameMode() == EXQPGameMode::LAN || GI->GetGameMode() == EXQPGameMode::Reenactment);
 }
 
 int32 AXQPGameStateBase::GetClassicUndoPlies(EChessColor Requester) const

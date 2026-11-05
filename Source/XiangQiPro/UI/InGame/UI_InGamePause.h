@@ -27,7 +27,9 @@ private:
     UPROPERTY(Transient) TObjectPtr<UUserWidget> MainMenuButton;
     UPROPERTY(Transient) TObjectPtr<UUserWidget> ResignButton;
     UPROPERTY(Transient) TObjectPtr<UUserWidget> UndoButton;
+    UPROPERTY(Transient) TObjectPtr<UUserWidget> EditArrangementButton;
     UFUNCTION() void UndoMove();
+    UFUNCTION() void EditArrangement();
     UPROPERTY(EditDefaultsOnly, Category="UI") TSubclassOf<UUI_CommonDialog> CommonDialogClass;
     TWeakObjectPtr<UUI_CommonDialog> ResignDialog;
     UFUNCTION() void RestartOrShowResult();

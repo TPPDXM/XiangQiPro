@@ -48,6 +48,7 @@ private:
     bool bFengHuoResultCamera = false;
     FRotator HomeRotation;
     bool bPortraitCamera = false;
+    bool bPortraitEditingLayout = false;
     TWeakObjectPtr<class AChessBoard2PActor> MobileBoard;
     FVector2D LastMobileViewport = FVector2D::ZeroVector;
     FMargin LastMobileInsets;
@@ -71,11 +72,19 @@ private:
     bool bFengHuoMusicStarted = false;
     /** 仅单人菜单暂停音乐；联机选项菜单保持播放。 */
     bool bMusicPausedByMenu = false;
+    /** 组件原始增益与用户音乐总线独立，淡出不会改写用户设置。 */
+    float MatchMusicGain = 1.f;
+    bool bMatchMusicFading = false;
     void RefreshFengHuoMusicState();
 
 
 
 public:
+    virtual void GameOver(UObject* OwnerObject) override;
+    /** 所有终局（包括残局通关）共用，只启动一次音量包络。 */
+    void FadeMatchMusic();
+    /** 战局演绎独立BGM接口：目前留空，后续可在相机蓝图指定曲目。 */
+    UPROPERTY(EditAnywhere, Category="Music") TObjectPtr<USoundBase> ReenactmentMusic;
 	// 初始化默认属性和组件。
 	ACamera2PActor();
 

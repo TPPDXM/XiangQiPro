@@ -10,6 +10,7 @@
 #include "XiangQiPro/UI/Components/XQPButtonBinding.h"
 #include "XiangQiPro/GameMode/XQPGameStateBase.h"
 #include "XiangQiPro/GameMode/XQPGameInstance.h"
+#include "XiangQiPro/SaveGame/ReenactmentLibrary.h"
 #include "XiangQiPro/Network/XQPLANSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -38,6 +39,10 @@ void UUI_InGamePause::NativeConstruct()
     UndoButton = Cast<UUserWidget>(GetWidgetFromName(TEXT("Btn_Undo")));
     if (auto* Button = XQPButtonBinding::GetButton(UndoButton))
         Button->OnClicked.AddUniqueDynamic(this, &UUI_InGamePause::UndoMove);
+    // 控件直接预置在两端暂停UMG中，置于返回主菜单上方；其他模式收起整个占位。
+    EditArrangementButton = Cast<UUserWidget>(GetWidgetFromName(TEXT("Btn_EditGame")));
+    if (auto* Button = XQPButtonBinding::GetButton(EditArrangementButton))
+        Button->OnClicked.AddUniqueDynamic(this, &UUI_InGamePause::EditArrangement);
     RefreshActions();
     UpdateCanTick();
 }
@@ -55,6 +60,12 @@ void UUI_InGamePause::RefreshActions()
     if (bLeavingToMainMenu) return;
     const auto* State = GetWorld()->GetGameState<AXQPGameStateBase>();
     const bool LAN = State && State->IsLANGame();
+    const auto* Instance = GetGameInstance<UXQPGameInstance>();
+    const auto* Arrangements = Instance ? Instance->GetSubsystem<UReenactmentLibrary>() : nullptr;
+    const bool bArrangementBattle = Instance && Instance->GetGameMode() == EXQPGameMode::Reenactment &&
+        Arrangements && !Arrangements->IsEditing();
+    XQPButtonBinding::SetVisibility(EditArrangementButton,
+        bArrangementBattle ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
     const bool bClassic = State && State->SupportsUndo() && !State->IsSpectator();
     XQPButtonBinding::SetVisibility(UndoButton, bClassic ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
     if (UndoButton)
@@ -71,7 +82,7 @@ void UUI_InGamePause::RefreshActions()
     XQPButtonBinding::SetVisibility(RestartButton, !LAN || State->IsGameOver() || Room->GetState() == EXQPRoomState::Disconnected
         ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
     XQPButtonBinding::SetCaption(RestartButton, FText::FromString(State && (State->IsGameOver() || (LAN && Room->GetState() == EXQPRoomState::Disconnected))
-        ? TEXT("查看对局结果") : TEXT("重新开始")));
+        ? TEXT("查看对局结果") : State && State->bEnableMachineLearning ? TEXT("重开本局") : TEXT("重新开始")));
     if (auto* Title = Cast<UTextBlock>(GetWidgetFromName(TEXT("TextBlock_146"))))
         Title->SetText(FText::FromString(LAN ? TEXT("选项") : TEXT("暂停中…")));
 }
@@ -129,4 +140,30 @@ void UUI_InGamePause::UndoMove()
     if (!State || !State->SupportsUndo() || State->IsSpectator()) return;
     if (State->IsLANGame()) GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->RequestUndo();
     else if (State->UndoLocalClassicMove()) GetGameInstance()->GetSubsystem<UUIManager>()->CloseOverlays();
+}
+
+void UUI_InGamePause::EditArrangement()
+{
+    auto* Instance = GetGameInstance<UXQPGameInstance>();
+    if (bLeavingToMainMenu || !Instance || Instance->GetGameMode() != EXQPGameMode::Reenactment) return;
+    auto* Library = Instance->GetSubsystem<UReenactmentLibrary>();
+    if (!Library || Library->IsEditing()) return;
+    // 编辑的是已保存的开局布阵，而不是对弈中已经移动、吃子的临时棋盘。
+    // SelectGame保持棋局身份、作者及AI选项；重载关卡后由正式编辑初始化重建棋盘。
+    FString Error;
+    const FString Id = Library->GetDraft().Id;
+    if (!Library->SelectGame(Id,true,Error))
+    {
+        if (CommonDialogClass)
+            if (auto* Dialog = XQPMobile::CreateWidget<UUI_CommonDialog>(GetOwningPlayer(),CommonDialogClass))
+            {
+                Dialog->Configure(FText::FromString(TEXT("无法编辑棋局")),FText::FromString(Error),
+                    FText::GetEmpty(),FText::FromString(TEXT("返回")));
+                GetGameInstance()->GetSubsystem<UUIManager>()->AddUI(Dialog);
+            }
+        return;
+    }
+    // 复用退出转场的刷新锁，防止IsEditing变化让按钮在淡出期间突然消失。
+    bLeavingToMainMenu = true;
+    UXQPGameInstance::OpenGameLevel(this,PATH_MAP_BATTLE2P);
 }

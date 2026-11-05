@@ -1,5 +1,14 @@
 ﻿#pragma once
 
+#define PATH_UI_REENACTMENT_EDITOR TEXT("/Game/UMG/Reenactment/BP_UI_ReenactmentEditor.BP_UI_ReenactmentEditor_C")
+#define PATH_UI_REENACTMENT_SAVE TEXT("/Game/UMG/Reenactment/BP_UI_ReenactmentSave.BP_UI_ReenactmentSave_C")
+#define PATH_UI_REENACTMENT_IMPORT TEXT("/Game/UMG/Reenactment/BP_UI_ReenactmentImport.BP_UI_ReenactmentImport_C")
+#define PATH_UI_REENACTMENT_PAUSE TEXT("/Game/UMG/Pause/BP_UI_ReenactmentPause.BP_UI_ReenactmentPause_C")
+#define PATH_UI_REENACTMENT_PAUSE_MOBILE TEXT("/Game/UMG/Pause/BP_UI_ReenactmentPause_Mobile.BP_UI_ReenactmentPause_Mobile_C")
+#define PATH_UI_REENACTMENT_ENTRY TEXT("/Game/UMG/Reenactment/BP_UI_ReenactmentEntry.BP_UI_ReenactmentEntry_C")
+#define PATH_UI_TOGGLE_SWITCH TEXT("/Game/UMG/Components/WB_ToggleSwitch.WB_ToggleSwitch_C")
+#define PATH_M_REENACTMENT_GHOST TEXT("/Game/Material/Chess/M_ReenactmentGhost.M_ReenactmentGhost")
+
 // 资源路径统一维护；调用处只引用 PATH_*。
 #define PATH_AUDIO_BATTLE TEXT("/Game/Audio/BattleMusic")
 // 《烽火·争势》仅供烽火弈使用；资源本身关闭循环，由开局确认状态触发一次。

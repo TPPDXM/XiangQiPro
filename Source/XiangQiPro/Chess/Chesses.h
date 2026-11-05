@@ -95,6 +95,13 @@ protected:
 	TObjectPtr<UCurveFloat> CF_ChessMove = nullptr;
 
 public:
+    /** 编辑器置棋使用独立动画，不提交走法、不切换回合、不触发胜负。 */
+    void PlayArrangementSpawn();
+private:
+    bool bArrangementSpawn = false;
+    float ArrangementSpawnTime = 0.f;
+    FVector ArrangementTarget = FVector::ZeroVector;
+public:
     void SetMovementPaused(bool bPaused);
 	// Sets default values for this pawn's properties
 	AChesses();

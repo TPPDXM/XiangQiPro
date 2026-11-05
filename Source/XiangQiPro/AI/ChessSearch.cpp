@@ -61,6 +61,21 @@ FChessAISettings FChessAISettings::ForDifficulty(uint8 Difficulty)
     return Result;
 }
 
+FChessAISettings FChessAISettings::ForLearning(uint8 Difficulty, int32 Wins, int32 Observations)
+{
+    FChessAISettings Result = ForDifficulty(Difficulty);
+    const int32 Growth = FMath::Clamp(Wins, 0, 12);
+    // 第一胜就增加完整搜索层，避免简单档第二局仍只看一手，却改变静态叶子评估。
+    // 预算先连续增长，再逐层提升；样本数只增加时间，不在一盘中改变搜索语义。
+    Result.Depth = FMath::Min(12, Result.Depth + Growth);
+    Result.Seconds = FMath::Min(15.0, Result.Seconds * (1.0 + .6 * Growth)
+        + FMath::Min(1.5, FMath::Max(0, Observations) * .008));
+    Result.Style.CaptureDepth = FMath::Min(12, Result.Style.CaptureDepth + Growth * 2);
+    Result.Style.Inaccuracy = FMath::Max(0, Result.Style.Inaccuracy - Growth * 25);
+    // 高级算法沿用选定档位，避免第三局突然切换多项算法造成难度跳变。
+    return Result;
+}
+
 // 初始化一次搜索，内存由线程安全共享指针管理。
 FChessSearch::FChessSearch(const FChessPosition& InPosition, EChessColor InColor, int32 InDepth, double InSeconds,
     FChessLearning InLearning, FChessCheckHistory InCheckHistory, FChessSearchStyle InStyle)
@@ -108,6 +123,8 @@ void FChessSearch::OrderMoves(TArray<FChessMove2P>& Moves, const FChessMove2P& P
             Move.score += Exchange < 0 ? -1200000 : FMath::Min(20000, Exchange * 8);
         }
         if (Side == EChessColor::REDCHESS) Move.score += Learning.MovePriority(Board, Move);
+        // 反例只改变访问顺序，不直接扣除棋子的真实价值，避免学会“害怕正确走法”。
+        if (Side == EChessColor::BLACKCHESS) Move.score -= Learning.AvoidancePenalty(Board, Move) * 8;
     }
     // 高价值吃子和已验证的主变化优先搜索。
     Moves.Sort([](const FChessMove2P& A, const FChessMove2P& B) { return A.score > B.score; });
@@ -246,9 +263,9 @@ int32 FChessSearch::Negamax(int32 Depth, int32 Alpha, int32 Beta, EChessColor Si
     int32 MoveIndex = 0;
     for (const FChessMove2P& Move : Moves)
     {
-        // 将历史失误作为根走法的有限代价；同步平移子节点窗口保持剪枝一致。
-        const int32 LearnedPenalty = (Ply == 0 && Side == EChessColor::BLACKCHESS ? Learning.AvoidancePenalty(Board, Move) : 0)
-            - (Ply == 0 ? RootBias[Move.from.X * 9 + Move.from.Y][Move.to.X * 9 + Move.to.Y] : 0);
+        // 只对根节点应用选定档位的随机/棋谱偏好，并同步平移子节点窗口保持剪枝一致。
+        // 学习反例仅在OrderMoves排序，不能把历史惩罚当成真实子力损失参与评分。
+        const int32 LearnedPenalty = -(Ply == 0 ? RootBias[Move.from.X * 9 + Move.from.Y][Move.to.X * 9 + Move.to.Y] : 0);
         const FChessPiece2P Captured = Board.MakeMove(Move);
         int32 Score;
         if (Style.bAdvancedSearch && BestMove.IsValid())

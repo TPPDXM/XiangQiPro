@@ -10,7 +10,8 @@ UENUM()
 enum class EXQPSaveDataType : uint8
 {
     PlayerProfile,
-    Progress
+    Progress,
+    Arrangements
 };
 
 // 数据类别决定序列化类型，模式只决定命名空间，二者不能互相推断。

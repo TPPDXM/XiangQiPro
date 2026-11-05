@@ -2,6 +2,7 @@
 #include "Misc/Crc.h"
 #include "SavePlayerProfile.h"
 #include "SaveGameProgress.h"
+#include "ReenactmentLibrary.h"
 
 namespace
 {
@@ -40,6 +41,7 @@ FString FXQPSaveKey::SlotName(int32 Index) const
     {
     case EXQPSaveDataType::PlayerProfile: TypeId = TEXT("Profile"); break;
     case EXQPSaveDataType::Progress: TypeId = TEXT("Progress"); break;
+    case EXQPSaveDataType::Arrangements: TypeId = TEXT("Arrangements"); break;
     default: return FString();
     }
     // 枚举已有数值保持不变；槽名不依赖枚举显示文本或蓝图资源名。
@@ -53,6 +55,7 @@ bool XQPSaveStorage::Save(UXQPSaveData* Data, const FXQPSaveKey& Key)
     {
     case EXQPSaveDataType::PlayerProfile: if (!Data->IsA<USavePlayerProfile>()) return false; break;
     case EXQPSaveDataType::Progress: if (!Data->IsA<USaveGameProgress>()) return false; break;
+    case EXQPSaveDataType::Arrangements: if (!Data->IsA<USaveReenactments>()) return false; break;
     default: return false;
     }
     const int64 Previous = Data->Generation;

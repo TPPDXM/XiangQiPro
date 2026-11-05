@@ -5,6 +5,8 @@
 #include "ChessMoveEffectsComponent.h"
 #include "XiangQiPro/Network/XQPLANSubsystem.h"
 #include "XiangQiPro/GameMode/FengHuoBattleComponent.h"
+#include "XiangQiPro/UI/XQPMobile.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 // Sets default values
 AChesses::AChesses()
@@ -50,6 +52,15 @@ void AChesses::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBoard2
 	Board2P = board2P;
 
 	GameState = GetWorld() ? GetWorld()->GetGameState<AXQPGameStateBase>() : nullptr;
+    if (XQPMobile::IsPortrait(this) && MI_Stroke)
+    {
+        // 每颗棋子的描边都从同一入口适配，覆盖悬停、触摸、选中与编辑撤阵。
+        auto* Stroke = UMaterialInstanceDynamic::Create(MI_Stroke, this);
+        float Width = .03f;
+        MI_Stroke->GetScalarParameterValue(FMaterialParameterInfo(TEXT("StrokeWidth")), Width);
+        Stroke->SetScalarParameterValue(TEXT("StrokeWidth"), Width * 2.f);
+        MI_Stroke = Stroke;
+    }
 	if (GameState.IsValid())
 	{
 		//if (GameState->GetBattleType() == EBattleType::P2 || GameState->GetBattleType() == EBattleType::P2_AI)
@@ -156,6 +167,26 @@ void AChesses::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
     if (bMovementPaused || (GameState.IsValid() && GameState->IsGameplayFrozen()) || !Board2P.IsValid()) return;
+    if (bArrangementSpawn)
+    {
+        ArrangementSpawnTime += DeltaTime;
+        const float Alpha = FMath::Clamp(ArrangementSpawnTime / .35f, 0.f, 1.f);
+        SetActorLocation(ArrangementTarget + FVector(0,0,3.f * FMath::Square(1.f-Alpha)));
+        // 消散参数从完全消失回到实体，粒子按相同进度汇聚显形。
+        ChessMesh->SetScalarParameterValueOnMaterials(TEXT("Fade"), 1.f-Alpha);
+        FadeNiagara->SetVariableFloat(TEXT("Fade"), 1.f-Alpha);
+        // 位移和Niagara在同帧更新，避免下落拖尾采样上一帧的世界位置。
+        MoveEffects->UpdateMove(DeltaTime);
+        if (Alpha >= 1.f)
+        {
+            bArrangementSpawn = false;
+            FadeNiagara->Deactivate();
+            MoveEffects->FinishMove();
+            MoveEffects->FinishLanding();
+            SetActorTickEnabled(false);
+        }
+        return;
+    }
     if (bCaptureApproach)
     {
         FengHuoMoveTime += DeltaTime;
@@ -335,6 +366,22 @@ void AChesses::StopFengHuoMove()
     ChessMesh->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 }
 
+void AChesses::PlayArrangementSpawn()
+{
+    bArrangementSpawn = true;
+    ArrangementSpawnTime = 0.f;
+    ArrangementTarget = GetActorLocation();
+    // 布阵没有常规走法，但马的弧线、落子音效与冲击特效仍会读取TargetPos。
+    // 在激活特效之前指向本格，防止沿用默认(0,0)或旧走法终点。
+    TargetPos = Pos;
+    SetActorLocation(ArrangementTarget + FVector(0,0,3.f));
+    ChessMesh->SetScalarParameterValueOnMaterials(TEXT("Fade"), 1.f);
+    FadeNiagara->SetVariableFloat(TEXT("Fade"), 1.f);
+    FadeNiagara->Activate(true);
+    MoveEffects->BeginMove();
+    SetActorTickEnabled(true);
+}
+
 // Called to bind functionality to input
 void AChesses::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -451,6 +498,7 @@ void AChesses::HandleClick()
 // 播放棋子被吃效果，并处理派生棋子的结束逻辑。
 void AChesses::Defeated()
 {
+    bArrangementSpawn = false;
     SetActorTickEnabled(true);
 	if (bDead)
 		return;

@@ -1,11 +1,8 @@
-﻿#include "UI_ClassicAISetup.h"
+#include "UI_ClassicAISetup.h"
 #include "XiangQiPro/UI/XQPMobile.h"
 #include "XiangQiPro/SaveGame/PlayerProfileSubsystem.h"
-#include "Components/CheckBox.h"
+#include "XiangQiPro/UI/Components/UI_ToggleSwitch.h"
 #include "Components/TextBlock.h"
-#include "Components/Image.h"
-#include "Components/OverlaySlot.h"
-#include "Components/SizeBox.h"
 #include "XiangQiPro/UI/Components/UI_CommonDialog.h"
 #include "XiangQiPro/UI/UIManager.h"
 #include "XiangQiPro/GameMode/XQPGameInstance.h"
@@ -39,10 +36,9 @@ void UUI_ClassicAISetup::NativeConstruct()
         return;
     // Designer中的横排与颜色不在运行时修改，只连接已保存的控件。
     UPlayerProfileSubsystem* Profile = GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>();
-    ChallengeSwitch->OnCheckStateChanged.AddUniqueDynamic(this, &UUI_ClassicAISetup::OnChallengeChanged);
+    ChallengeSwitch->OnChanged.AddUniqueDynamic(this, &UUI_ClassicAISetup::OnChallengeChanged);
     ApplyChallengeSelection(Profile->HasActiveRun());
-    SwitchPosition = SwitchTarget;
-    UpdateSwitchThumb();
+    ChallengeSwitch->SetIsChecked(Profile->HasActiveRun(), false);
     // 页面进入时构建Slate控件，主动开关时复用，避免创建弹窗抢占首帧。
     if (XQPMobile::IsPortrait(this))
         if (auto* Dialog = GetChallengeDialog())
@@ -55,6 +51,7 @@ void UUI_ClassicAISetup::NativeConstruct()
 
 void UUI_ClassicAISetup::NativeDestruct()
 {
+    if (ChallengeSwitch) ChallengeSwitch->OnChanged.RemoveDynamic(this, &UUI_ClassicAISetup::OnChallengeChanged);
     PreparedChallengeSlate.Reset();
     Super::NativeDestruct();
 }
@@ -72,7 +69,7 @@ void UUI_ClassicAISetup::OnChallengeChanged(bool bChecked)
     const bool bJustEnabled = bChecked && !Profile->bChallengeSelected;
     if (!bChecked && Profile->HasActiveRun())
     {
-        ChallengeSwitch->SetIsChecked(true);
+        ChallengeSwitch->SetIsChecked(true, true);
         if (ChallengeDialog && ChallengeDialog->IsInViewport()) return;
         if (!CommonDialogClass) return;
         auto* Dialog = GetChallengeDialog();
@@ -105,42 +102,11 @@ void UUI_ClassicAISetup::ApplyChallengeSelection(bool bChecked)
 {
     UPlayerProfileSubsystem* Profile = GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>();
     Profile->bChallengeSelected = bChecked;
-    ChallengeSwitch->SetIsChecked(bChecked);
-    SwitchStart = SwitchPosition;
-    SwitchTarget = bChecked ? 1.f : 0.f;
-    SwitchElapsed = 0.f;
+    ChallengeSwitch->SetIsChecked(bChecked, true);
     // 有未完成的连战时锁定起始难度，关闭需先确认结算。
     if (UWidget* Difficulty = GetWidgetFromName(TEXT("WB_ComboBox_Difficult")))
         Difficulty->SetIsEnabled(!(bChecked && Profile->HasActiveRun()));
     // 连战区域只呈现最高连胜，不拼接当前连胜、玩法说明等额外文案。
     HighestStreakText->SetText(FText::FromString(FString::Printf(TEXT("最高连胜 %d 局"), Profile->GetBestStreak())));
     HighestStreakText->SetVisibility(bChecked ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-}
-
-void UUI_ClassicAISetup::NativeTick(const FGeometry& MyGeometry, float DeltaTime)
-{
-    Super::NativeTick(MyGeometry, DeltaTime);
-    if (!FMath::IsNearlyEqual(SwitchPosition, SwitchTarget))
-    {
-        SwitchElapsed = FMath::Min(SwitchElapsed + DeltaTime, 0.18f);
-        const float T = SwitchElapsed / 0.18f;
-        SwitchPosition = FMath::Lerp(SwitchStart, SwitchTarget, T * T * (3.f - 2.f * T));
-    }
-    UpdateSwitchThumb();
-}
-
-void UUI_ClassicAISetup::UpdateSwitchThumb()
-{
-    if (!SwitchThumb) return;
-    const UWidget* Track = GetWidgetFromName(TEXT("SwitchTrack"));
-    const UWidget* ThumbFrame = SwitchThumb->GetParent();
-    if (!Track || !ThumbFrame) return;
-    float TrackWidth = Track->GetCachedGeometry().GetLocalSize().X;
-    float ThumbWidth = ThumbFrame->GetCachedGeometry().GetLocalSize().X;
-    if (TrackWidth <= 0.f)
-        if (const auto* Box = Cast<USizeBox>(Track)) TrackWidth = Box->GetWidthOverride();
-    if (ThumbWidth <= 0.f)
-        if (const auto* Box = Cast<USizeBox>(ThumbFrame)) ThumbWidth = Box->GetWidthOverride();
-    const float Travel = FMath::Max(0.f, TrackWidth - ThumbWidth);
-    SwitchThumb->SetRenderTranslation(FVector2D(Travel * FMath::Clamp(SwitchPosition, 0.f, 1.f), 0.f));
 }

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/TextBlock.h"
 #include "XiangQiPro/Util/ChessInfo.h"
+#include "XiangQiPro/UI/XQPMobile.h"
 
 namespace XQPUIStyle
 {
@@ -44,6 +45,8 @@ inline void SetFactionText(UTextBlock* Text, EChessColor Color, bool bLightBackg
     FSlateFontInfo Font = Text->GetFont();
     Font.OutlineSettings.OutlineSize = bLightBackground ? 0 : (bRed ? 1 : 2);
     Font.OutlineSettings.OutlineColor = bRed ? FLinearColor(.025f, .005f, .005f, 1.f) : Paper();
+    // 动态阵营文字在每次刷新时都会重建字体，必须在此同步移动端的浅色描边规则。
+    if (!bRed && !bLightBackground && XQPMobile::IsPortrait(Text)) Font.OutlineSettings.OutlineSize *= 2;
     Text->SetFont(Font);
 }
 }

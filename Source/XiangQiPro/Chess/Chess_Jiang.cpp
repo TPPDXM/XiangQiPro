@@ -4,6 +4,7 @@
 #include "Chess_Jiang.h"
 #include "ChessMoveEffectsComponent.h"
 #include "Sound/SoundBase.h"
+#include "XiangQiPro/GameMode/ReenactmentComponent.h"
 
 // 初始化默认属性和组件。
 AChess_Jiang::AChess_Jiang() : Super()
@@ -56,7 +57,9 @@ void AChess_Jiang::Init(EChessColor color, Position pos, TWeakObjectPtr<UChessBo
 void AChess_Jiang::Defeated()
 {
 	Super::Defeated();
-	if (GameState.IsValid() && !GameState->IsFengHuoBattle()) GameState->NotifyGameOver(MyColor == EChessColor::BLACKCHESS ? EChessColor::REDCHESS : EChessColor::BLACKCHESS);
+    // 编辑器撤阵仅移除棋子；将帅消散不能沿用对弈吃将的胜负副作用。
+	if (GameState.IsValid() && !GameState->IsFengHuoBattle() && !GameState->Reenactment->IsEditing())
+        GameState->NotifyGameOver(MyColor == EChessColor::BLACKCHESS ? EChessColor::REDCHESS : EChessColor::BLACKCHESS);
 }
 
 // 生成选中棋子的合法走法并显示提示。

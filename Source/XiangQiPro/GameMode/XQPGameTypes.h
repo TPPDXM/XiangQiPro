@@ -21,7 +21,8 @@ enum class EXQPGameMode : uint8
     GuessWho = 4,
     LAN = 5,
     FengHuoAI = 6,
-    FengHuoLAN = 7
+    FengHuoLAN = 7,
+    Reenactment = 8
 };
 
 struct FXQPLANModeDefinition

@@ -310,6 +310,13 @@ void UPlayerProfileSubsystem::CompleteDrawRound()
     Save();
 }
 
+void UPlayerProfileSubsystem::RestartCurrentRound()
+{
+    // 与和棋后的重赛共用清理规则，不触发胜负结算，也不重新创建挑战模型。
+    // Start2PGame 随后会写入全新的初始棋盘，退出续接仍然可靠。
+    CompleteDrawRound();
+}
+
 FChessLearning UPlayerProfileSubsystem::LearningSnapshot() const
 {
     // 按值复制后交给搜索线程，后续存档更新不会与后台读数据竞争。

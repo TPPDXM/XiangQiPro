@@ -19,6 +19,7 @@ class AChessBoard2PActor;
 class AChesses;
 class UFengHuoBattleComponent;
 class UBattleStartComponent;
+class UReenactmentComponent;
 
 enum class EChessColor : uint8;
 enum class EAI2PDifficulty : uint8;
@@ -118,6 +119,7 @@ private:
     void UpdateScore();
 
 public:
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly) TObjectPtr<UReenactmentComponent> Reenactment;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="FengHuo Battle")
     TObjectPtr<UFengHuoBattleComponent> FengHuoBattle;

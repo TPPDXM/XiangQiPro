@@ -423,3 +423,9 @@ FodyWeavers.xsd
 !/Content/Material/Decal/ChessMask/
 /Content/Material/Decal/ChessMask/*
 !/Content/Material/Decal/ChessMask/M_MenuChessMask.uasset
+
+# Battle arrangement cursor preview is a required runtime asset.
+!/Content/Material/Chess/
+/Content/Material/Chess/*
+!/Content/Material/Chess/M_ReenactmentGhost.uasset
+/Validation-2026-11-05.md

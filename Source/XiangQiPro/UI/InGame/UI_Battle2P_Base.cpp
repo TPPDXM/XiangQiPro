@@ -33,6 +33,7 @@
 #include "XiangQiPro/UI/XQPUIStyle.h"
 #include "XiangQiPro/Camera/Camera2PActor.h"
 #include "EngineUtils.h"
+#include "XiangQiPro/SaveGame/ReenactmentLibrary.h"
 
 void UUI_Battle2P_Base::NativeConstruct()
 {
@@ -98,7 +99,9 @@ void UUI_Battle2P_Base::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
     if (Text_Name_P2)
     {
         Text_Name_P2->SetVisibility(Solo ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
-        Text_Name_P2->SetText(Solo ? FText::GetEmpty() : FText::FromString(LAN ? Room->GetBlackName() : TEXT("电子棋友")));
+        const bool bNoAI = GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::Reenactment &&
+            !GetGameInstance()->GetSubsystem<UReenactmentLibrary>()->GetDraft().bAI;
+        Text_Name_P2->SetText(Solo ? FText::GetEmpty() : FText::FromString(LAN ? Room->GetBlackName() : bNoAI ? TEXT("无") : TEXT("电子棋友")));
     }
     if (Solo)
     {

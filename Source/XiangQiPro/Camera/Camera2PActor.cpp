@@ -6,6 +6,7 @@
 #include "XiangQiPro/Util/AssetPaths.h"
 #include "../GameMode/XQPGameStateBase.h"
 #include "XiangQiPro/GameMode/BattleStartComponent.h"
+#include "XiangQiPro/GameMode/ReenactmentComponent.h"
 #include "../UI/XQP_HUD.h"
 #include "../Util/Logger.h"
 #include "XiangQiPro/GameMode/XQPGameInstance.h"
@@ -127,7 +128,9 @@ void ACamera2PActor::FitProBoardToViewport(const FVector2D& Viewport, const FBox
     const auto* GI = GetGameInstance<UXQPGameInstance>();
     const auto* Room = GI ? GI->GetSubsystem<UXQPLANSubsystem>() : nullptr;
     const bool Watching = Room && Room->IsSpectator();
-    if (!GI || (!Watching && GI->GetGameMode() != EXQPGameMode::FengHuoAI && GI->GetGameMode() != EXQPGameMode::FengHuoLAN) ||
+    const auto* State = GetWorld()->GetGameState<AXQPGameStateBase>();
+    const bool Editing = State && State->Reenactment->IsEditing();
+    if (!GI || (!Watching && !Editing && GI->GetGameMode() != EXQPGameMode::FengHuoAI && GI->GetGameMode() != EXQPGameMode::FengHuoLAN) ||
         bPortraitCamera || bFengHuoResultCamera || bDesktopCameraAdjusted || Viewport.X <= 0 || Viewport.Y <= 0 ||
         !BoardRect.bIsValid || BoardRect.GetSize().X < 80 || BoardRect.GetSize().Y < 80) return;
     if (!SpringArm->GetRelativeRotation().Equals(TargetRotation, .1f)) return;
@@ -306,6 +309,15 @@ void ACamera2PActor::PlayFengHuoResultCamera()
 
 void ACamera2PActor::GamePlayAgain(UObject* OwnerObject)
 {
+    // Stop 清除 FadeOut 的包络和读头；恢复组件增益后从零播放。
+    // 用户设置仍由 Music SoundClass 相乘，静音设置不会被重开覆盖。
+    if (IsValid(BattleAudio))
+    {
+        BattleAudio->Stop();
+        BattleAudio->SetPaused(false);
+        BattleAudio->SetVolumeMultiplier(MatchMusicGain);
+    }
+    bMatchMusicFading = bMusicPausedByMenu = false;
     if (const auto* State = GetWorld()->GetGameState<AXQPGameStateBase>(); State && State->IsFengHuoBattle())
     {
         // 重开广播的 Actor 调用顺序不固定，不能依赖 GameState 已经重置确认组件。
@@ -323,13 +335,34 @@ void ACamera2PActor::GamePlayAgain(UObject* OwnerObject)
         }
         EnableInput(GetController<APlayerController>());
     }
+    if (const auto* State = GetWorld()->GetGameState<AXQPGameStateBase>(); State && !State->IsFengHuoBattle())
+        InitAudio();
     IIF_GameState::GamePlayAgain(OwnerObject);
+}
+
+void ACamera2PActor::GameOver(UObject* OwnerObject)
+{
+    FadeMatchMusic();
+    IIF_GameState::GameOver(OwnerObject);
+}
+
+void ACamera2PActor::FadeMatchMusic()
+{
+    if (IsValid(BattleAudio) && !bMatchMusicFading)
+    {
+        MatchMusicGain = BattleAudio->VolumeMultiplier;
+        bMatchMusicFading = true;
+        BattleAudio->SetPaused(false);
+        // 引擎从当前播放包络淡出，而非先跳到满音量；SoundClass 继续保留设置音量。
+        BattleAudio->FadeOut(1.2f, 0.f);
+    }
 }
 
 // 普通模式进场播放默认音乐；烽火弈只准备资源，正式起音由开局状态控制。
 void ACamera2PActor::InitAudio()
 {
     if (!IsValid(BattleAudio)) return;
+    if (!bMatchMusicFading) MatchMusicGain = BattleAudio->VolumeMultiplier;
     // 在背景音乐首次起音前应用本机总线偏好，覆盖 PIE 和跨地图的新音频设备。
     if (UGameInstance* Game = GetGameInstance())
         Game->GetSubsystem<UXQPAudioSettingsSubsystem>()->ApplyToWorld(GetWorld());
@@ -350,8 +383,10 @@ void ACamera2PActor::InitAudio()
         }
         return;
     }
-    BattleAudio->SetSound(BattleMusic);
-    if (BattleMusic) BattleAudio->Play();
+    const auto* Game = GetGameInstance<UXQPGameInstance>();
+    USoundBase* Track = Game && Game->GetGameMode() == EXQPGameMode::Reenactment ? ReenactmentMusic.Get() : BattleMusic;
+    BattleAudio->SetSound(Track);
+    if (Track) BattleAudio->Play(0.f);
     BattleAudio->SetPaused(bMusicPausedByMenu);
 }
 
@@ -386,7 +421,10 @@ void ACamera2PActor::Tick(float DeltaTime)
     if (!bPortraitCamera && XQPMobile::IsPortrait(this)) EnablePortraitCamera();
     if (bPortraitCamera)
     {
-        if (!MobileBoard.IsValid() || !LastMobileViewport.Equals(XQPMobile::ViewportSize(this)) || LastMobileInsets != XQPMobile::SafeInsets(this)) FitMobileBoard();
+        const auto* State = GetWorld()->GetGameState<AXQPGameStateBase>();
+        const bool bEditing = State && State->Reenactment->IsEditing();
+        if (!MobileBoard.IsValid() || !LastMobileViewport.Equals(XQPMobile::ViewportSize(this)) || LastMobileInsets != XQPMobile::SafeInsets(this) || bPortraitEditingLayout != bEditing)
+        { bPortraitEditingLayout = bEditing; FitMobileBoard(); }
         return;
     }
 

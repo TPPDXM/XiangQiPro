@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
@@ -43,13 +43,14 @@ public:
     int32 SelectedIndex = -1;
     UPROPERTY(EditDefaultsOnly, Category="Classic Game")
     TSubclassOf<class UUI_LANLobby> LANIntroductionClass;
-    // 由原菜单选择事件的第三个分支调用，与其他简介共用IntroduceLayout。
-    UFUNCTION(BlueprintCallable)
-    void ShowLANIntroduction();
     // 移动端详情页返回独立的三模式选择页。
     bool HandleMobileBack();
 
 private:
+    // PC直接创建四个条目，由UMG垂直框分配整列空间；移动端仍使用原模式选择页。
+    UPROPERTY(meta=(BindWidgetOptional)) TObjectPtr<class UVerticalBox> ModeList;
+    UUI_Item_ClassicGame* FindEntry(int32 Index) const;
+    UFUNCTION() void OpenMobileReenactment();
     void ShowMobileSelection();
     UFUNCTION() void OpenMobileAI();
     UFUNCTION() void OpenMobileEnding();

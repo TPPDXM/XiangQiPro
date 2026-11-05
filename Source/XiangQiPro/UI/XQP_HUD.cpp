@@ -9,6 +9,7 @@
 #include "InGame/UI_FengHuoBattle.h"
 #include "TimerManager.h"
 #include "XiangQiPro/Network/XQPLANSubsystem.h"
+#include "XiangQiPro/SaveGame/ReenactmentLibrary.h"
 
 AXQP_HUD::AXQP_HUD()
 {
@@ -37,6 +38,19 @@ void AXQP_HUD::InitUI()
 	TSubclassOf<UUserWidget> PauseMenuClass;
 	switch (GameInstance->GetGameMode())
 	{
+    case EXQPGameMode::Reenactment:
+        if (GameInstance->GetSubsystem<UReenactmentLibrary>()->IsEditing())
+        {
+            BaseUI = XQPMobile::CreateWidget<UUserWidget>(GetWorld(),LoadClass<UUserWidget>(nullptr,PATH_UI_REENACTMENT_EDITOR));
+            PauseMenuClass = LoadClass<UUserWidget>(nullptr,PATH_UI_REENACTMENT_PAUSE);
+        }
+        else
+        {
+            BaseUI = XQPMobile::CreateWidget<UI_Battle2P_Base>(GetWorld(),Class_Battle2P_Base);
+            PauseMenuClass = Class_InGamePause;
+            if (auto* State = GetWorld()->GetGameState<AXQPGameStateBase>()) State->SetHUD2P(Cast<UUI_Battle2P_Base>(BaseUI));
+        }
+        break;
     case EXQPGameMode::FengHuoAI:
     case EXQPGameMode::FengHuoLAN:
     {

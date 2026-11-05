@@ -2,6 +2,7 @@
 #include "XQPFeedbackAudioSubsystem.h"
 #include "XQPAudioSettingsSubsystem.h"
 #include "XiangQiPro/Util/AssetPaths.h"
+#include "XiangQiPro/UI/XQPOutlineStyle.h"
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
@@ -39,6 +40,7 @@ void UXQPFeedbackAudioSubsystem::Initialize(FSubsystemCollectionBase& Collection
 void UXQPFeedbackAudioSubsystem::ConfigureFor(UUserWidget* Widget)
 {
     if (!IsValid(Widget) || Widget->IsDesignTime()) return;
+    XQPUIStyle::ApplyMobileOutlines(Widget);
     UGameInstance* Game = Widget->GetGameInstance();
     if (auto* Feedback = Game ? Game->GetSubsystem<UXQPFeedbackAudioSubsystem>() : nullptr)
         Feedback->ConfigureWidgetTree(Widget);

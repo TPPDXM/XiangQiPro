@@ -25,6 +25,7 @@ public:
 	UFUNCTION()
 	void OnEscapePressed();
     virtual void PlayerTick(float DeltaTime) override;
+    virtual bool InputKey(const FInputKeyEventArgs& Params) override;
 
 protected:
     // 在 PlayerInput 已更新接触状态之后接管移动棋盘触摸，避免 Actor 的旧抬手回调重复提交。

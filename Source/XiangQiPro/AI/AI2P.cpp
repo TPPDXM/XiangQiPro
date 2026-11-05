@@ -24,16 +24,12 @@ TSharedPtr<FChessSearch, ESPMode::ThreadSafe> UAI2P::CreateSearch(TWeakObjectPtr
         UPlayerProfileSubsystem* Profile = GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>();
         Learning = Profile->LearningSnapshot();
         const int32 Wins = Profile->GetCurrentStreak();
-        Depth = FMath::Min(12, Depth + Wins / 2 + FMath::Min(2, Learning.Observations / 100));
-        Budget = FMath::Min(15.0, Budget * (1.0 + 0.45 * Wins) + FMath::Min(1.5, Learning.Observations * 0.005));
-        // 连战单独成长；普通对弈始终保留玩家选定的棋力差异。
-        // 连战成长不能降低棋圣原有的静态搜索预算。
-        Style.CaptureDepth = FMath::Min(12, Style.CaptureDepth + Wins);
-        Style.Inaccuracy = FMath::Max(0, Style.Inaccuracy - Wins * 30);
-        Style.bUseOpeningBook |= Wins >= 2;
-        Style.bAdvancedSearch |= Wins >= 3;
-        Style.bTacticalEvaluation |= Wins >= 2;
-        Style.bSelectiveSearch |= Wins >= 4;
+        const auto Growing = FChessAISettings::ForLearning(static_cast<uint8>(Difficulty), Wins, Learning.Observations);
+        Depth = Growing.Depth;
+        Budget = Growing.Seconds;
+        const int32 Seed = Style.RandomSeed;
+        Style = Growing.Style;
+        Style.RandomSeed = Seed;
     }
     ActiveSearch = MakeShared<FChessSearch, ESPMode::ThreadSafe>(Board->CreateSnapshot(), Color, Depth, Budget,
         MoveTemp(Learning), Board->GetCheckHistory(), Style);

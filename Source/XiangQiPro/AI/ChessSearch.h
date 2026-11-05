@@ -39,6 +39,8 @@ struct XIANGQIPRO_API FChessAISettings
     double Seconds = 0.08;
     FChessSearchStyle Style;
     static FChessAISettings ForDifficulty(uint8 Difficulty);
+    /** 连战使用单调增加的预算；独立接口便于同难度开关学习的对照验证。 */
+    static FChessAISettings ForLearning(uint8 Difficulty, int32 Wins, int32 Observations);
 };
 
 // 每次请求独享搜索状态，唯一跨线程可写数据是原子取消标志。

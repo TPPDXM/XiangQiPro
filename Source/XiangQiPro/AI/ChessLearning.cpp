@@ -29,7 +29,7 @@ int32 FChessLearning::MovePriority(const FChessPosition& Board, const FChessMove
 int32 FChessLearning::AvoidancePenalty(const FChessPosition& Board, const FChessMove2P& Move) const
 {
     const int32* Risk = AICaution.Find(SampleKey(Board, Move, EChessColor::BLACKCHESS));
-    // 历史反例影响根节点选择；有限惩罚允许搜索推翻过时经验。
+    // 历史反例只影响走法访问顺序；有限权重允许搜索推翻过时经验。
     return Risk ? FMath::Min(120, *Risk * 12) : 0;
 }
 
@@ -48,5 +48,7 @@ int32 FChessLearning::StyleEvaluation(const FChessPosition& Board) const
         Score += PieceCounts[Type] * FMath::Max(0, I / 9 - 3) * 12 / Observations;
         Score += FileCounts[I % 9] * 5 / Observations;
     }
-    return FMath::Clamp(Score, 0, 35);
+    // 少量单局样本只产生极小的风格修正；不能抵消一枚兵，更不能覆盖将杀评价。
+    const float Confidence = FMath::Min(1.f, Observations / 200.f);
+    return FMath::RoundToInt(FMath::Clamp(Score, 0, 8) * Confidence);
 }

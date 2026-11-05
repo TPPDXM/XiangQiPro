@@ -1,4 +1,5 @@
-﻿#include "XQPMobile.h"
+#include "XQPMobile.h"
+#include "XiangQiPro/SaveGame/ReenactmentLibrary.h"
 #include "XiangQiPro/Util/AssetPaths.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
@@ -47,8 +48,9 @@ FBox2D XQPMobile::BoardRect(const UObject* Context)
     const auto* GameInstance = Context && Context->GetWorld() ? Context->GetWorld()->GetGameInstance<UXQPGameInstance>() : nullptr;
     const bool FengHuoBattle = GameInstance && (GameInstance->GetGameMode() == EXQPGameMode::FengHuoAI || GameInstance->GetGameMode() == EXQPGameMode::FengHuoLAN);
     const bool SpectatingFengHuo = FengHuoBattle && GameInstance->GetSubsystem<UXQPLANSubsystem>()->IsSpectator();
-    const float Top = FMath::Min((SpectatingFengHuo ? 154.f : FengHuoBattle ? 142.f : 100.f) * DPI, Height * .25f);
-    const float Bottom = Height - FMath::Min((SpectatingFengHuo ? 114.f : FengHuoBattle ? 212.f : 106.f) * DPI, Height * .35f);
+    const bool Editing = GameInstance && GameInstance->GetGameMode() == EXQPGameMode::Reenactment && GameInstance->GetSubsystem<UReenactmentLibrary>()->IsEditing();
+    const float Top = FMath::Min((Editing ? 90.f : SpectatingFengHuo ? 154.f : FengHuoBattle ? 142.f : 100.f) * DPI, Height * .25f);
+    const float Bottom = Height - FMath::Min((Editing ? 316.f : SpectatingFengHuo ? 114.f : FengHuoBattle ? 212.f : 106.f) * DPI, Height * .4f);
     const float Side = FMath::Min(8.f * DPI, Width * .025f);
     return FBox2D(FVector2D(Safe.Left + Side, Safe.Top + Top),
         FVector2D(Size.X - Safe.Right - Side, Safe.Top + FMath::Max(Top + 1.f, Bottom)));
@@ -58,6 +60,10 @@ UClass* XQPMobile::ResolveWidgetClass(const UObject* Context, UClass* WidgetClas
 {
     if (!WidgetClass || !IsPortrait(Context) || !WidgetClass->GetPathName().StartsWith(PATH_UI_ROOT) ||
         WidgetClass->GetPathName().StartsWith(PATH_UI_MOBILE_ROOT)) return WidgetClass;
+    // 战局演绎的两端暂停资产统一归档在Pause目录，使用显式资源宏解析移动版本。
+    if (WidgetClass->GetPathName() == PATH_UI_REENACTMENT_PAUSE_MOBILE) return WidgetClass;
+    if (WidgetClass->GetPathName() == PATH_UI_REENACTMENT_PAUSE)
+        return LoadClass<UUserWidget>(nullptr,PATH_UI_REENACTMENT_PAUSE_MOBILE);
     FString Name = WidgetClass->GetName();
     Name.RemoveFromEnd(TEXT("_C"));
     const FString Path = FString::Printf(PATH_UI_MOBILE_CLASS_FORMAT, *Name, *Name);

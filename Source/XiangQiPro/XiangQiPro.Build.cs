@@ -35,6 +35,7 @@ public class XiangQiPro : ModuleRules
 
 
         PrivateDependencyModuleNames.AddRange(new string[] {
+            "ApplicationCore",
             "Chaos",
             "PhysicsCore",
             "CinematicCamera",
