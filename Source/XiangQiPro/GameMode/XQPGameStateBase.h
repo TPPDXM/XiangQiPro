@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #pragma once
 
@@ -127,6 +127,7 @@ public:
     TObjectPtr<UBattleStartComponent> BattleStart;
     void OnBattleStarted();
     bool IsFengHuoBattle() const;
+    bool IsReenactmentMode() const;
     bool IsSpectator() const;
     void FinishFengHuoBattle(EChessColor Winner);
 

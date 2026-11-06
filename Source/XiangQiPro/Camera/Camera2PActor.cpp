@@ -1,8 +1,9 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 
 #include "Camera2PActor.h"
 #include "XiangQiPro/Audio/XQPAudioSettingsSubsystem.h"
+#include "XiangQiPro/SaveGame/ReenactmentLibrary.h"
 #include "XiangQiPro/Util/AssetPaths.h"
 #include "../GameMode/XQPGameStateBase.h"
 #include "XiangQiPro/GameMode/BattleStartComponent.h"
@@ -354,7 +355,7 @@ void ACamera2PActor::FadeMatchMusic()
         bMatchMusicFading = true;
         BattleAudio->SetPaused(false);
         // 引擎从当前播放包络淡出，而非先跳到满音量；SoundClass 继续保留设置音量。
-        BattleAudio->FadeOut(1.2f, 0.f);
+        BattleAudio->AdjustVolume(2.f, MatchMusicGain * 0.3f);
     }
 }
 
@@ -384,7 +385,9 @@ void ACamera2PActor::InitAudio()
         return;
     }
     const auto* Game = GetGameInstance<UXQPGameInstance>();
-    USoundBase* Track = Game && Game->GetGameMode() == EXQPGameMode::Reenactment ? ReenactmentMusic.Get() : BattleMusic;
+
+    // 战局演绎的编辑状态使用编辑音乐
+    USoundBase* Track = Game && Game->GetGameMode() == EXQPGameMode::Reenactment && Game->GetSubsystem<UReenactmentLibrary>()->IsEditing() ? ReenactmentMusic.Get() : BattleMusic;
     BattleAudio->SetSound(Track);
     if (Track) BattleAudio->Play(0.f);
     BattleAudio->SetPaused(bMusicPausedByMenu);

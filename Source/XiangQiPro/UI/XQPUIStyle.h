@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/TextBlock.h"
@@ -43,7 +43,7 @@ inline void SetFactionText(UTextBlock* Text, EChessColor Color, bool bLightBackg
     const FLinearColor Ink = bRed ? (bLightBackground ? Red() : FLinearColor(.95f, .10f, .075f)) : Black();
     Text->SetColorAndOpacity(FSlateColor(Ink));
     FSlateFontInfo Font = Text->GetFont();
-    Font.OutlineSettings.OutlineSize = bLightBackground ? 0 : (bRed ? 1 : 2);
+    Font.OutlineSettings.OutlineSize = bLightBackground ? 0 : 1;
     Font.OutlineSettings.OutlineColor = bRed ? FLinearColor(.025f, .005f, .005f, 1.f) : Paper();
     // 动态阵营文字在每次刷新时都会重建字体，必须在此同步移动端的浅色描边规则。
     if (!bRed && !bLightBackground && XQPMobile::IsPortrait(Text)) Font.OutlineSettings.OutlineSize *= 2;

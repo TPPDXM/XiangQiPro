@@ -1,4 +1,4 @@
-// Copyright 2026 Ultimate Player All Rights Reserved.
+﻿// Copyright 2026 Ultimate Player All Rights Reserved.
 
 #include "XQPGameStateBase.h"
 #include "XiangQiPro/Audio/XQPFeedbackAudioSubsystem.h"
@@ -355,7 +355,7 @@ void AXQPGameStateBase::RunAI2P()
     SearchBoardRevision = board2P->GetRevision();
     const uint64 RequestId = ++AIRequestId;
     AIActAfter = GetWorld()->GetTimeSeconds() + FMath::FRandRange(0.35f, 0.85f);
-    const auto Search = ActiveSearch;
+    const TSharedPtr<FChessSearch, ESPMode::ThreadSafe> Search = ActiveSearch;
     const TWeakObjectPtr<AXQPGameStateBase> WeakThis(this);
     if (HUD2P.IsValid()) HUD2P->SetAITurn(true);
     Async(EAsyncExecution::ThreadPool, [Search, WeakThis, RequestId]()
@@ -505,6 +505,12 @@ bool AXQPGameStateBase::IsFengHuoBattle() const
     return GI && (GI->GetGameMode() == EXQPGameMode::FengHuoAI || GI->GetGameMode() == EXQPGameMode::FengHuoLAN);
 }
 
+bool AXQPGameStateBase::IsReenactmentMode() const
+{
+    const auto* GI = GetGameInstance<UXQPGameInstance>();
+    return GI && GI->GetGameMode() == EXQPGameMode::Reenactment;
+}
+
 void AXQPGameStateBase::FinishFengHuoBattle(EChessColor Winner)
 {
     if (bGameOver || bEndingPlay) return;
@@ -552,6 +558,16 @@ void AXQPGameStateBase::UpdateScore()
 void AXQPGameStateBase::ShowSettingPoint2P(TArray<FChessMove2P> Moves, TWeakObjectPtr<AChesses> Target) const
 {
     if (!IsMyTurn() || !IsValid(board2P) || !Target.IsValid()) return;
+    
+    // 战局演绎不使用AI时，若点击非本轮执棋颜色的棋子也不显示落子点
+    if (IsReenactmentMode())
+    {
+        const auto& EChessColor = Target->GetColor();
+        if (EChessColor == EChessColor::REDCHESS && battleTurn == EPlayerTag::P2 ||
+            EChessColor == EChessColor::BLACKCHESS && battleTurn == EPlayerTag::P1)
+            return;
+    }
+
     if (!IsFengHuoBattle()) DismissSettingPoint2P();
     board2P->ShowSettingPoint2P(MoveTemp(Moves), Target);
 }
@@ -608,7 +624,7 @@ bool AXQPGameStateBase::IsMyTurn() const
         return !bGameOver && !bEndingPlay && !bAIPaused && FengHuoBattle->IsRunning() &&
             (!IsLANGame() || GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->IsBattleReady());
     if (IsLANGame() && !GetGameInstance()->GetSubsystem<UXQPLANSubsystem>()->CanLocalMove()) return false;
-    const bool bLocalBothSides = GetGameInstance<UXQPGameInstance>()->GetGameMode() == EXQPGameMode::Reenactment && battleType == EBattleType::P2;
+    const bool bLocalBothSides =IsReenactmentMode() && battleType == EBattleType::P2;
     return !bGameOver && !bEndingPlay && !bAIPaused && !bMoveInProgress && (bLocalBothSides || MyPlayerTag == battleTurn);
 }
 
