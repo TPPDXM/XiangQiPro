@@ -30,6 +30,9 @@
 
 namespace
 {
+    // 列表项双击判定窗口：同一条目在此时长内再次点击即视为双击直接开局。
+    constexpr double EntryDoubleClickSeconds = .35;
+
     // 页面可直接放置UButton，也可复用WB_Btn/WB_MenuIconButton。
     // 显隐作用于外层完整组件，事件绑定才下钻到内部点击层。
     UWidget* ActionRoot(UUserWidget* Widget, const TCHAR* Name)
@@ -69,7 +72,7 @@ void UUI_ReenactmentEntry::InitEntry(UUI_Reenactment* InOwner, const FString& In
     if (auto* Button = Action(this,TEXT("Delete"))) Button->OnClicked.AddUniqueDynamic(this,&ThisClass::RequestRemoval);
 }
 
-void UUI_ReenactmentEntry::Choose() { if (Page.IsValid()) Page->SelectEntry(Id); }
+void UUI_ReenactmentEntry::Choose() { if (Page.IsValid()) Page->HandleEntryClick(Id); }
 void UUI_ReenactmentEntry::RequestRemoval() { if (Page.IsValid()) Page->RequestRemoveEntry(Id); }
 void UUI_ReenactmentEntry::SetSelected(bool bSelected)
 {
@@ -129,7 +132,23 @@ void UUI_Reenactment::NativeConstruct()
         default: SetStatus(TEXT("保存当前布阵并继续编辑，未完成的布阵也可以保存。")); break;
         }
         if (auto* Name = Cast<UEditableTextBox>(GetWidgetFromName(TEXT("GameName")))) Name->SetText(FText::FromString(Library->GetDraft().Name));
-        if (auto* Author = Cast<UEditableTextBox>(GetWidgetFromName(TEXT("AuthorName")))) Author->SetText(FText::FromString(Library->GetDraft().Author));
+        if (auto* Author = Cast<UEditableTextBox>(GetWidgetFromName(TEXT("AuthorName"))))
+        {
+            const FXQPArrangement& Draft = Library->GetDraft();
+            // 作者只在“尚未保存过”的新棋局中可改；保存后草稿已有ID，再次打开即锁定。
+            const bool bFirstSave = Draft.Id.IsEmpty();
+            Author->SetText(FText::FromString(Draft.Author));
+            Author->SetIsEnabled(bFirstSave);
+
+            if (bFirstSave)
+            if (auto* Caption = Cast<UTextBlock>(GetWidgetFromName(TEXT("AuthorNameCaption"))))
+            {
+                // 作者保存后不可更改，在标题处给出提示；Contains 防止页面重复构造时反复拼接。
+                const FString Hint = TEXT("(保存后不可更改)");
+                const FString Base = Caption->GetText().ToString();
+                if (!Base.Contains(Hint)) Caption->SetText(FText::FromString(Base + Hint));
+            }
+        }
     }
 }
 
@@ -164,6 +183,25 @@ void UUI_Reenactment::RefreshLibrary()
 }
 
 void UUI_Reenactment::SelectEntry(const FString& Id) { SelectedId = Id; RefreshLibrary(); }
+
+void UUI_Reenactment::HandleEntryClick(const FString& Id)
+{
+    const double Now = GetWorld() ? static_cast<double>(GetWorld()->GetTimeSeconds()) : 0.0;
+    // 双击同一条目：直接选中并进入对弈，等价于“先点条目再点开始对弈”。
+    // 首次点击会重建列表，因此双击状态放在页面而不是条目实例上，避免重建后计时丢失。
+    if (!Id.IsEmpty() && Id == LastEntryClickId && Now - LastEntryClickTime <= EntryDoubleClickSeconds)
+    {
+        LastEntryClickId.Reset();
+        LastEntryClickTime = -1.0;
+        SelectEntry(Id);
+        StartGame();
+        return;
+    }
+    // 单击或切换条目：仅更新选中状态，并记录本次点击供下一次双击判定使用。
+    LastEntryClickId = Id;
+    LastEntryClickTime = Now;
+    SelectEntry(Id);
+}
 
 void UUI_Reenactment::RequestRemoveEntry(const FString& Id)
 {
@@ -258,7 +296,10 @@ void UUI_Reenactment::SaveGame()
     if (!Name || !Author) return;
     FString Error;
     auto* Library = GetGameInstance()->GetSubsystem<UReenactmentLibrary>();
-    if (!Library->SaveDraft(Name->GetText().ToString(),Author->GetText().ToString(),Error)) { SetStatus(Error); return; }
+    // 已保存过的棋局作者不可修改，保存时以草稿中的作者为准，忽略被禁用的输入框文本。
+    const bool bFirstSave = Library->GetDraft().Id.IsEmpty();
+    const FString AuthorName = bFirstSave ? Author->GetText().ToString() : Library->GetDraft().Author;
+    if (!Library->SaveDraft(Name->GetText().ToString(),AuthorName,Error)) { SetStatus(Error); return; }
     if (SaveCompletion == ESaveCompletion::ReturnToMainMenu) { TravelToMainMenu(); return; }
     if (SaveCompletion == ESaveCompletion::KeepEditing)
     {
@@ -399,7 +440,6 @@ void UUI_Reenactment::RefreshEditor()
         { Text->SetText(FText::FromString(Red ? RedNames[Type] : BlackNames[Type])); Text->SetColorAndOpacity(Red ? FLinearColor(.72f,.12f,.07f) : FLinearColor(.08f,.1f,.12f)); }
         if (auto* Mark = GetWidgetFromName(*(TEXT("Selected")+Suffix))) Mark->SetVisibility(static_cast<int32>(Edit->SelectedType) == Type ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
     }
-    Label(this,TEXT("ColorName"),Red ? TEXT("红方棋子") : TEXT("黑方棋子"));
     if (auto* Switch = Action(this,TEXT("SwitchColor")))
         Switch->SetToolTipText(FText::FromString(Red ? TEXT("当前红方，切换为黑方棋子") : TEXT("当前黑方，切换为红方棋子")));
     Label(this,TEXT("Dirty"),GetGameInstance()->GetSubsystem<UReenactmentLibrary>()->IsDirty() ? TEXT("未保存") : TEXT("已保存"));

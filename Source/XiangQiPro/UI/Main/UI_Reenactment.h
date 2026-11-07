@@ -39,8 +39,13 @@ public:
     virtual void NativeTick(const FGeometry& Geometry, float DeltaTime) override;
     void SelectEntry(const FString& Id);
     void RequestRemoveEntry(const FString& Id);
+    /** 列表项点击统一入口：单击选中，双击同一条目时直接选中并进入对弈。 */
+    void HandleEntryClick(const FString& Id);
 private:
     FString SelectedId;
+    // 双击判定：记录上次点击的条目与时间，避免单击与双击两种意图互相冲突。
+    FString LastEntryClickId;
+    double LastEntryClickTime = -1.0;
     TWeakObjectPtr<class ACamera2PActor> EditorCamera;
     bool bOpeningBattle = false;
     // 保存页实例携带入口意图，不能把暂停保存、开始前保存和退出前保存混为一条流程。

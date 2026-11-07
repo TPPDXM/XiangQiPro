@@ -424,6 +424,11 @@ void ACamera2PActor::Tick(float DeltaTime)
     if (!bPortraitCamera && XQPMobile::IsPortrait(this)) EnablePortraitCamera();
     if (bPortraitCamera)
     {
+        // 转场淡出/加载期间保持当前取景：开始对弈会把编辑状态切到战斗状态，
+        // 若此时立刻按战斗布局重构镜头，黑屏尚未完全遮住棋盘前就能看到镜头跳位。
+        const auto* GI = GetGameInstance<UXQPGameInstance>();
+        if (GI && GI->IsTransitioning()) return;
+
         const auto* State = GetWorld()->GetGameState<AXQPGameStateBase>();
         const bool bEditing = State && State->Reenactment->IsEditing();
         if (!MobileBoard.IsValid() || !LastMobileViewport.Equals(XQPMobile::ViewportSize(this)) || LastMobileInsets != XQPMobile::SafeInsets(this) || bPortraitEditingLayout != bEditing)

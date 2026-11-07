@@ -74,4 +74,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	EXQPGameMode GetGameMode() const;
 
+	/** 转场进行中（淡出等待切换或关卡加载中），界面与相机应保持现状，避免因玩法状态变化瞬时改位。 */
+	bool IsTransitioning() const { return bTravelPending || bIsLoadingLevel; }
+
 };
